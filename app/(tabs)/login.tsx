@@ -1,6 +1,8 @@
 import { useRouter } from 'expo-router';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { Colors, Radius } from '../../constants/theme';
+
 const logo = require('../../assets/images/logo.png');
 
 export default function LoginScreen() {
@@ -55,7 +57,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F4F4F4',
+    backgroundColor: Colors.background,
     alignItems: 'center',
     paddingTop: 92,
   },
@@ -79,11 +81,11 @@ const styles = StyleSheet.create({
   input: {
     width: '100%',
     height: 58,
-    backgroundColor: '#D9D9D9',
-    borderRadius: 10,
+    backgroundColor: Colors.backgroundMuted,
+    borderRadius: Radius.md,
     fontSize: 20,
     textAlign: 'center',
-    color: '#000000',
+    color: Colors.text,
   },
   buttonsContainer: {
     width: 234,
@@ -94,35 +96,33 @@ const styles = StyleSheet.create({
   loginButton: {
     width: 168,
     height: 46,
-    backgroundColor: '#D5BFB3',
-    borderRadius: 10,
+    backgroundColor: Colors.secondary,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   registerButton: {
     width: '100%',
     height: 46,
-    backgroundColor: '#D5BFB3',
-    borderRadius: 10,
+    backgroundColor: Colors.secondary,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   buttonText: {
-    fontFamily: 'Montserrat',
     fontSize: 20,
     fontWeight: '400',
-    color: '#000000',
+    color: Colors.primary,
     textAlign: 'center',
   },
   resetText: {
-    fontFamily: 'Montserrat',
     fontSize: 15,
     fontWeight: '400',
-    color: '#000000',
+    color: Colors.primary,
     textAlign: 'center',
     textDecorationLine: 'underline',
   },

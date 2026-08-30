@@ -1,6 +1,8 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { Colors, Radius } from '../../constants/theme';
+
 export default function RegisterScreen() {
   const router = useRouter();
 
@@ -45,13 +47,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F4F4F4',
+    backgroundColor: Colors.background,
     padding: 24,
   },
   title: {
     fontSize: 32,
     fontWeight: '700',
     marginBottom: 24,
+    color: Colors.primary,
   },
   inputContainer: {
     width: '100%',
@@ -61,11 +64,11 @@ const styles = StyleSheet.create({
   input: {
     width: '100%',
     height: 58,
-    backgroundColor: '#D9D9D9',
-    borderRadius: 10,
+    backgroundColor: Colors.backgroundMuted,
+    borderRadius: Radius.md,
     fontSize: 20,
     textAlign: 'center',
-    color: '#000000',
+    color: Colors.text,
   },
   buttonsContainer: {
     width: '100%',
@@ -75,20 +78,20 @@ const styles = StyleSheet.create({
   registerButton: {
     width: '100%',
     height: 46,
-    backgroundColor: '#D5BFB3',
-    borderRadius: 10,
+    backgroundColor: Colors.secondary,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   buttonText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#000000',
+    color: Colors.primary,
   },
   link: {
-    color: '#493628',
+    color: Colors.primary,
     fontSize: 16,
     textDecorationLine: 'underline',
   },
