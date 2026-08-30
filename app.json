@@ -2,6 +2,7 @@
   "expo": {
     "name": "newyou-app",
     "slug": "newyou-app",
+    "scheme": "newyou",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

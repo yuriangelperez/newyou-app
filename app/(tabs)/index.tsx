@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useProductos } from '../../hooks/useProductos';
 
-import { Colors } from '../../constants/theme';
+import { Colors, FontSize, Radius, Spacing } from '../../constants/theme';
 import { PRODUCTOS_MOCK } from '../../data/mockData';
 import { Producto } from '../../types';
 
 const NAVIGATION_ICONS = {
-  home: require('../../assets/images/bar-icons/home.png.png'),
-  bag: require('../../assets/images/bar-icons/bolsa.png.png'),
-  cart: require('../../assets/images/bar-icons/carrito.png.png'),
-  menu: require('../../assets/images/bar-icons/bar-hamburguesa.png.png'),
+  home: require('../../assets/images/bar-icons/home.png'),
+  bag: require('../../assets/images/bar-icons/bolsa.png'),
+  cart: require('../../assets/images/bar-icons/carrito.png'),
+  menu: require('../../assets/images/bar-icons/bar-hamburguesa.png'),
 };
 
 const LOGO = require('../../assets/images/logo.png');
@@ -17,7 +18,7 @@ const HERO_WIDTH = Dimensions.get('window').width;
 const HERO_IMAGES = PRODUCTOS_MOCK.slice(0, 3).map((producto) => producto.imagen);
 
 export default function HomeScreen() {
-  const [productos] = useState<Producto[]>(PRODUCTOS_MOCK);
+  const { productos, cargando, error, refrescar } = useProductos();
   const [heroIndex, setHeroIndex] = useState(0);
 
   const renderProductCard = ({ item }: { item: Producto }) => (
@@ -52,6 +53,8 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         columnWrapperStyle={styles.productRow}
+        refreshing={cargando}
+        onRefresh={refrescar}
         ListHeaderComponent={
           <View style={styles.hero}>
             <FlatList
@@ -161,14 +164,14 @@ const styles = StyleSheet.create({
   },
   productRow: {
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: 12,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.sm,
   },
   productCard: {
     width: '46%',
     minHeight: 172,
-    padding: 7,
-    borderRadius: 7,
+    padding: Spacing.xs,
+    borderRadius: Radius.md,
     backgroundColor: Colors.background,
   },
   cardDisabled: {
@@ -177,14 +180,14 @@ const styles = StyleSheet.create({
   productImage: {
     width: '100%',
     height: 112,
-    borderRadius: 6,
+    borderRadius: Radius.sm,
     backgroundColor: Colors.secondary,
   },
   productTitle: {
     height: 24,
-    marginTop: 7,
-    color: '#262020',
-    fontSize: 12,
+    marginTop: Spacing.xs,
+    color: Colors.text,
+    fontSize: FontSize.sm,
     lineHeight: 16,
   },
   productFooter: {
@@ -193,7 +196,7 @@ const styles = StyleSheet.create({
   productPrice: {
     color: Colors.secondary,
     alignSelf: 'flex-start',
-    fontSize: 14,
+    fontSize: FontSize.md,
     fontWeight: '700',
     letterSpacing: 0.4,
   },
@@ -201,11 +204,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
     paddingVertical: 5,
-    borderRadius: 4,
+    borderRadius: Radius.sm,
     backgroundColor: Colors.secondary,
   },
   productActionDisabled: {
-    backgroundColor: '#9B9B9B',
+    backgroundColor: Colors.textMuted,
   },
   productActionText: {
     color: Colors.surface,
@@ -222,7 +225,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    shadowColor: '#000000',
+    shadowColor: Colors.text,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -241,7 +244,7 @@ const styles = StyleSheet.create({
     height: 37,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: Radius.md,
   },
   activeIconContainer: {
     backgroundColor: Colors.secondary,
