@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useProductos } from '../../hooks/useProductos';
 
 import { Colors } from '../../constants/theme';
 import { PRODUCTOS_MOCK } from '../../data/mockData';
 import { Producto } from '../../types';
 
 const NAVIGATION_ICONS = {
-  home: require('../../assets/images/bar-icons/home.png.png'),
-  bag: require('../../assets/images/bar-icons/bolsa.png.png'),
-  cart: require('../../assets/images/bar-icons/carrito.png.png'),
-  menu: require('../../assets/images/bar-icons/bar-hamburguesa.png.png'),
+  home: require('../../assets/images/bar-icons/home.png'),
+  bag: require('../../assets/images/bar-icons/bolsa.png'),
+  cart: require('../../assets/images/bar-icons/carrito.png'),
+  menu: require('../../assets/images/bar-icons/bar-hamburguesa.png'),
 };
 
 const LOGO = require('../../assets/images/logo.png');
@@ -17,7 +18,7 @@ const HERO_WIDTH = Dimensions.get('window').width;
 const HERO_IMAGES = PRODUCTOS_MOCK.slice(0, 3).map((producto) => producto.imagen);
 
 export default function HomeScreen() {
-  const [productos] = useState<Producto[]>(PRODUCTOS_MOCK);
+  const { productos, cargando, error, refrescar } = useProductos();
   const [heroIndex, setHeroIndex] = useState(0);
 
   const renderProductCard = ({ item }: { item: Producto }) => (
@@ -52,6 +53,8 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         columnWrapperStyle={styles.productRow}
+        refreshing={cargando}
+        onRefresh={refrescar}
         ListHeaderComponent={
           <View style={styles.hero}>
             <FlatList
