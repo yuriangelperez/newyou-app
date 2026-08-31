@@ -13,7 +13,7 @@ export default function LoginScreen() {
   };
 
   const goToRegister = () => {
-    router.push('/(tabs)/register');
+    router.push('/register');
   };
 
   return (
