@@ -11,7 +11,7 @@ export default function RegisterScreen() {
   };
 
   const goToLogin = () => {
-    router.back();
+    router.replace('/login');
   };
 
   return (
