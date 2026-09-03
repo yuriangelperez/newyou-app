@@ -2,6 +2,7 @@
 export const Colors = {
 primary: '#493628', // Marron oscuro
 secondary: '#AB876D', // Marron claro
+tertiary: '#D5BFB3', // Marrón muy claro (para botones)
 background: '#F4F4F4', // Beige claro
 backgroundMuted: '#D9D9D9', // Gris claro
 border: '#E5E5E5', // Gris para bordes

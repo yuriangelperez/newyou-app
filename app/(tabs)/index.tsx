@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useProductos } from '../../hooks/useProductos';
 
 import { Colors, FontSize, Radius, Spacing } from '../../constants/theme';
@@ -17,12 +18,20 @@ const LOGO = require('../../assets/images/logo.png');
 const HERO_WIDTH = Dimensions.get('window').width;
 const HERO_IMAGES = PRODUCTOS_MOCK.slice(0, 3).map((producto) => producto.imagen);
 
+const CATEGORIES = ['TODO', 'TORSO', 'PIERNAS', 'ACCESORIOS', 'CALZADO'];
+
 export default function HomeScreen() {
+  const router = useRouter();
   const { productos, cargando, error, refrescar } = useProductos();
   const [heroIndex, setHeroIndex] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState(0);
 
   const renderProductCard = ({ item }: { item: Producto }) => (
-    <View style={[styles.productCard, !item.disponible && styles.cardDisabled]}>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => router.push({ pathname: '/producto/detalleproducto', params: { id: item.id } })}
+      style={[styles.productCard, !item.disponible && styles.cardDisabled]}
+    >
       <Image source={{ uri: item.imagen }} style={styles.productImage} />
       <Text style={styles.productTitle} numberOfLines={2}>{item.nombre}</Text>
       <View style={styles.productFooter}>
@@ -35,7 +44,7 @@ export default function HomeScreen() {
           <Text style={styles.productActionText}>{item.disponible ? 'Agregar' : 'Agotado'}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -44,6 +53,43 @@ export default function HomeScreen() {
         <Image accessibilityLabel="New You" source={LOGO} style={styles.logo} />
       </View>
       <View style={styles.headerStrip} />
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        contentContainerStyle={styles.categoriesContainer}
+        style={styles.categoriesScroll}
+      >
+        {CATEGORIES.map((category, index) => {
+          const isSelected = selectedCategory === index;
+          const isAlternate = index % 2 === 1;
+
+          return (
+            <TouchableOpacity
+              key={index}
+              onPress={() => setSelectedCategory(index)}
+              style={[
+                styles.categoryButton,
+                isSelected || isAlternate
+                  ? styles.categoryButtonAlternate
+                  : styles.categoryButtonDefault,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.categoryText,
+                  isSelected || isAlternate
+                    ? styles.categoryTextAlternate
+                    : styles.categoryTextDefault,
+                ]}
+              >
+                {category}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
       <FlatList
         data={productos}
@@ -129,6 +175,40 @@ const styles = StyleSheet.create({
     height: 48,
     resizeMode: 'contain',
   },
+  categoriesScroll: {
+    height: 45,
+    backgroundColor: Colors.surface,
+    paddingVertical: Spacing.sm,
+  },
+  categoriesContainer: {
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.sm,
+  },
+  categoryButton: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 100,
+  },
+  categoryButtonDefault: {
+    backgroundColor: Colors.backgroundMuted,
+  },
+  categoryButtonAlternate: {
+    backgroundColor: Colors.tertiary,
+  },
+  categoryText: {
+    fontSize: FontSize.sm,
+    fontWeight: '400',
+    fontFamily: 'Montserrat',
+  },
+  categoryTextDefault: {
+    color: Colors.text,
+  },
+  categoryTextAlternate: {
+    color: Colors.text,
+  },
   content: {
     paddingBottom: 92,
   },
@@ -205,13 +285,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingVertical: 5,
     borderRadius: Radius.sm,
-    backgroundColor: Colors.secondary,
+    backgroundColor: Colors.tertiary,
   },
   productActionDisabled: {
     backgroundColor: Colors.textMuted,
   },
   productActionText: {
-    color: Colors.surface,
+    color: Colors.text,
     fontSize: 8,
     fontWeight: '700',
   },
@@ -247,7 +327,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
   },
   activeIconContainer: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: Colors.tertiary,
   },
   tabIcon: {
     width: 28,

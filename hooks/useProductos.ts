@@ -1,7 +1,7 @@
 // hooks/useProductos.ts
 import { useState, useEffect } from 'react';
-import { Producto } from '../types';                  // Importación relativa a tus tipos de GitHub
-import { PRODUCTOS_MOCK } from '../data/mockData';    // Importación relativa a tus datos de GitHub
+import { Producto } from '../types';                 
+import { PRODUCTOS_MOCK } from '../data/mockData';   
 
 // Definimos la estructura que va a retornar nuestro hook
 interface UseProductosResult {
