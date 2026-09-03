@@ -1,43 +1,60 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { Colors, Radius } from '../../constants/theme';
+
+const logo = require('../../assets/images/logo.png');
 
 export default function RegisterScreen() {
   const router = useRouter();
 
-  const goToHome = () => {
-    router.replace('/(tabs)/');
+  const handleRegister = () => {
+    router.replace('/(auth)/login');
   };
 
   const goToLogin = () => {
-    router.replace('/login');
+    router.push('/(auth)/login');
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>REGISTRARSE</Text>
+      <View style={styles.logoContainer}>
+        <Image source={logo} style={styles.logo} />
+      </View>
+
+      <Text style={styles.title}>REGISTRO DE USUARIO</Text>
 
       <View style={styles.inputContainer}>
-        <TextInput style={styles.input} placeholder="NOMBRE" placeholderTextColor="#000" />
-        <TextInput style={styles.input} placeholder="EMAIL" placeholderTextColor="#000" />
+        <TextInput
+          style={styles.input}
+          placeholder="CORREO"
+          placeholderTextColor="#000000"
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="USUARIO"
+          placeholderTextColor="#000000"
+          autoCapitalize="none"
+        />
         <TextInput
           style={styles.input}
           placeholder="CONTRASEÑA"
-          placeholderTextColor="#000"
+          placeholderTextColor="#000000"
+          secureTextEntry
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="REPETIR CONTRASEÑA"
+          placeholderTextColor="#000000"
           secureTextEntry
         />
       </View>
 
-      <View style={styles.buttonsContainer}>
-        <TouchableOpacity style={styles.registerButton} onPress={goToHome}>
-          <Text style={styles.buttonText}>REGISTRAR</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={goToLogin}>
-          <Text style={styles.link}>YA TENGO CUENTA</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
+        <Text style={styles.buttonText}>REGISTRARSE</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -45,21 +62,33 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    paddingTop: 50,
+  },
+  logoContainer: {
+    width: 105,
+    height: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.background,
-    padding: 24,
+    marginBottom: 30,
+  },
+  logo: {
+    width: 80,
+    height: 40,
+    resizeMode: 'contain',
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    marginBottom: 24,
-    color: Colors.primary,
+    fontSize: 22,
+    fontWeight: '600',
+    color: Colors.secondary,
+    marginBottom: 45,
+    fontFamily: 'Montserrat',
   },
   inputContainer: {
-    width: '100%',
+    width: '80%',
     gap: 16,
-    marginBottom: 24,
+    marginBottom: 35,
   },
   input: {
     width: '100%',
@@ -69,30 +98,21 @@ const styles = StyleSheet.create({
     fontSize: 20,
     textAlign: 'center',
     color: Colors.text,
-  },
-  buttonsContainer: {
-    width: '100%',
-    alignItems: 'center',
-    gap: 16,
+    fontFamily: 'Montserrat',
   },
   registerButton: {
-    width: '100%',
+    width: '80%',
     height: 46,
-    backgroundColor: Colors.secondary,
+    backgroundColor: Colors.tertiary,
     borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   buttonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  link: {
-    color: Colors.primary,
-    fontSize: 16,
-    textDecorationLine: 'underline',
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.text,
+    textAlign: 'center',
+    fontFamily: 'Montserrat',
   },
 });
