@@ -67,8 +67,10 @@ export default function CarritoScreen() {
                 <Text style={styles.bulletText}>{'\u2022 '}Talle: {item.talle}</Text>
                 <Text style={styles.bulletText}>{'\u2022 '}Color: {item.color}</Text>
                 <Text style={styles.bulletText}>{'\u2022 '}Categoría: {item.categoria}</Text>
-                <Text style={styles.bulletText}>{'\u2022 '}${item.precio.toLocaleString('es-AR')} c/u</Text>
               </View>
+
+              <Text style={styles.productPrice}>${item.precio.toLocaleString('es-AR')}</Text>
+              <Text style={styles.productPriceCaption}>Precio por unidad</Text>
 
               <View style={styles.actionsRow}>
                 <View style={styles.quantityRow}>
@@ -201,6 +203,19 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       fontSize: s(10),
       lineHeight: s(12),
       fontWeight: '400',
+    },
+    productPrice: {
+      marginTop: s(8),
+      color: Colors.primary,
+      fontSize: s(24),
+      lineHeight: s(28),
+      fontWeight: '700',
+    },
+    productPriceCaption: {
+      color: Colors.textMuted,
+      fontSize: s(10),
+      lineHeight: s(12),
+      fontWeight: '500',
     },
     actionsRow: {
       marginTop: s(8),

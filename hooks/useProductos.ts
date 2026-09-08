@@ -1,5 +1,5 @@
 // hooks/useProductos.ts
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Producto } from '../types';                 
 import { PRODUCTOS_MOCK } from '../data/mockData';   
 
@@ -15,20 +15,27 @@ export function useProductos(): UseProductosResult {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cargar = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
     setCargando(true);
     setError(null);
 
     // Simulamos un retraso asíncrono de red de 1000ms (1 segundo)
     // En la Clase 5 esto se reemplazará por una consulta real a Firebase
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       try {
         setProductos(PRODUCTOS_MOCK);
         setCargando(false);
       } catch (err) {
         setError('No se pudo conectar con el catálogo de NEW YOU.');
         setCargando(false);
+      } finally {
+        timeoutRef.current = null;
       }
     }, 1000);
   };
@@ -36,6 +43,12 @@ export function useProductos(): UseProductosResult {
   // Se ejecuta automáticamente al montar la pantalla por primera vez
   useEffect(() => {
     cargar();
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, []);
 
   return {

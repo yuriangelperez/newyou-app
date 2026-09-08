@@ -25,6 +25,11 @@ const EXTRA_PHOTO_SLOTS = 4;
 
 const DEFAULT_SIZES = ['XS', 'S', 'M', 'L', 'XL'];
 const COLOR_OPTIONS = ['Marron', 'Negro', 'Beige'];
+const COLOR_SWATCHES: Record<string, string> = {
+  Marron: '#6F4E37',
+  Negro: '#1F1E1E',
+  Beige: '#D8C3A5',
+};
 
 export default function ProductDetailScreen() {
   const router = useRouter();
@@ -198,14 +203,21 @@ export default function ProductDetailScreen() {
                   return (
                     <Pressable
                       key={color}
+                      accessibilityLabel={`Seleccionar color ${color}`}
                       onPress={() => setSelectedColor(color)}
                       style={[styles.colorChip, isSelected && styles.colorChipSelected]}
                     >
-                      <Text style={[styles.colorChipText, isSelected && styles.colorChipTextSelected]}>{color}</Text>
+                      <View
+                        style={[
+                          styles.colorSwatch,
+                          { backgroundColor: COLOR_SWATCHES[color] ?? Colors.secondary },
+                        ]}
+                      />
                     </Pressable>
                   );
                 })}
               </View>
+              <Text style={styles.selectedColorText}>Seleccionado: {selectedColor}</Text>
             </View>
 
             <View style={styles.quantityRow}>
@@ -412,30 +424,33 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
     },
     colorChipsRow: {
       flexDirection: 'row',
-      columnGap: s(8),
+      columnGap: s(12),
     },
     colorChip: {
-      minWidth: s(64),
+      width: s(34),
+      height: s(34),
+      borderRadius: s(17),
+      borderWidth: s(2),
+      borderColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: Colors.background,
+    },
+    colorChipSelected: {
+      borderColor: Colors.secondary,
+    },
+    colorSwatch: {
+      width: s(24),
       height: s(24),
       borderRadius: s(12),
       borderWidth: 1,
-      borderColor: Colors.secondary,
-      backgroundColor: '#FFFFFF',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: s(10),
+      borderColor: 'rgba(45, 31, 22, 0.18)',
     },
-    colorChipSelected: {
-      backgroundColor: Colors.secondary,
-    },
-    colorChipText: {
-      color: '#2D1F16',
-      fontSize: s(11),
-      lineHeight: s(12),
+    selectedColorText: {
+      color: Colors.textMuted,
+      fontSize: s(12),
+      lineHeight: s(14),
       fontWeight: '500',
-    },
-    colorChipTextSelected: {
-      color: '#FFFFFF',
     },
     sizeChip: {
       width: s(34),
