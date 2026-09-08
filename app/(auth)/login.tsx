@@ -1,15 +1,40 @@
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { Colors, Radius } from '../../constants/theme';
+import { signInWithPassword } from '../../services/auth';
 
 const logo = require('../../assets/images/logo.png');
 
 export default function LoginScreen() {
   const router = useRouter();
+  const [correo, setCorreo] = useState('');
+  const [contrasena, setContrasena] = useState('');
+  const [error, setError] = useState('');
+  const [cargando, setCargando] = useState(false);
 
-  const goToHome = () => {
-    router.replace('/(tabs)/');
+  const goToHome = async () => {
+    if (!correo.trim() || !contrasena.trim()) {
+      setError('Completá correo y contraseña');
+      return;
+    }
+
+    setError('');
+
+    setCargando(true);
+    try {
+      const { error: authError } = await signInWithPassword(correo.trim(), contrasena);
+
+      if (authError) {
+        setError(authError.message);
+        return;
+      }
+
+      router.replace('/(tabs)/');
+    } finally {
+      setCargando(false);
+    }
   };
 
   const goToRegister = () => {
@@ -25,24 +50,37 @@ export default function LoginScreen() {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="USUARIO"
+          placeholder="CORREO"
           placeholderTextColor="#000000"
           autoCapitalize="none"
+          autoCorrect={false}
+          value={correo}
+          onChangeText={(value) => {
+            setCorreo(value);
+            setError('');
+          }}
         />
         <TextInput
           style={styles.input}
           placeholder="CONTRASEÑA"
           placeholderTextColor="#000000"
           secureTextEntry
+          value={contrasena}
+          onChangeText={(value) => {
+            setContrasena(value);
+            setError('');
+          }}
         />
       </View>
 
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
       <View style={styles.buttonsContainer}>
-        <TouchableOpacity style={styles.loginButton} onPress={goToHome}>
-          <Text style={styles.buttonText}>LOGIN</Text>
+        <TouchableOpacity style={styles.loginButton} onPress={goToHome} disabled={cargando}>
+          <Text style={styles.buttonText}>{cargando ? 'INGRESANDO...' : 'LOGIN'}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.registerButton} onPress={goToRegister}>
+        <TouchableOpacity style={styles.registerButton} onPress={goToRegister} disabled={cargando}>
           <Text style={styles.buttonText}>REGISTRARSE</Text>
         </TouchableOpacity>
       </View>
@@ -85,8 +123,11 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     fontSize: 20,
     textAlign: 'center',
+    textAlignVertical: 'center',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     color: Colors.text,
-    fontFamily: 'Montserrat',
+    fontFamily: 'Montserrat_400Regular',
   },
   buttonsContainer: {
     width: 234,
@@ -115,13 +156,20 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: Colors.text,
     textAlign: 'center',
-    fontFamily: 'Montserrat',
+    fontFamily: 'Montserrat_700Bold',
   },
   resetText: {
     fontSize: 15,
     fontWeight: '400',
     color: Colors.text,
     textAlign: 'center',
-    fontFamily: 'Montserrat',
+    fontFamily: 'Montserrat_700Bold',
+  },
+  errorText: {
+    marginTop: -25,
+    marginBottom: 20,
+    color: Colors.danger,
+    fontSize: 13,
+    fontFamily: 'Montserrat_500Medium',
   },
 });
