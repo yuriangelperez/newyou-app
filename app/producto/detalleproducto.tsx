@@ -9,7 +9,7 @@ const LOGO = require('../../assets/images/logo.png');
 const HOME_ICON = require('../../assets/images/bar-icons/home.png');
 const BAG_ICON = require('../../assets/images/bar-icons/bolsa.png');
 const CART_ICON = require('../../assets/images/bar-icons/carrito.png');
-const MENU_ICON = require('../../assets/images/bar-icons/bar-hamburguesa.png');
+const MENU_ICON = require('../../assets/images/bar-icons/barra-menu.png');
 
 const DEFAULT_SIZES = ['XS', 'S', 'M', 'L', 'XL'];
 
