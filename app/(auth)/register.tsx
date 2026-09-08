@@ -1,25 +1,21 @@
 import { useRouter } from 'expo-router';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { BRANDING_LOGO } from '../../constants/assets';
+import { ROUTES } from '../../constants/routes';
 import { Colors, Radius } from '../../constants/theme';
-
-const logo = require('../../assets/images/logo.png');
 
 export default function RegisterScreen() {
   const router = useRouter();
 
   const handleRegister = () => {
-    router.replace('/(auth)/login');
-  };
-
-  const goToLogin = () => {
-    router.push('/(auth)/login');
+    router.replace(ROUTES.login);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
-        <Image source={logo} style={styles.logo} />
+        <Image source={BRANDING_LOGO} style={styles.logo} />
       </View>
 
       <Text style={styles.title}>REGISTRO DE USUARIO</Text>
