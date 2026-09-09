@@ -1,17 +1,17 @@
-# NEW YOU - Documentacion del Proyecto Integrador
+# NEW YOU - Nuevo estilo, Nuevo Tú
 
-NEW YOU es una aplicacion movil de moda circular desarrollada para la materia Aplicaciones Moviles y Testing (Tecnicatura Superior en Desarrollo de Software, UNP, ciclo 2026).
+NEW YOU es una aplicación móvil de moda circular desarrollada para la materia Aplicaciones Móviles y Testing (Tecnicatura Superior en Desarrollo de Software, UNP, ciclo 2026).
 
 Este README deja explicito:
 - el estado actual implementado en el repositorio,
 - el roadmap proximo del equipo,
-- y la vision funcional objetivo del producto.
+- y la visión funcional objetivo del producto.
 
 ## Equipo del proyecto
 
 - Yuriangel Perez (Desarrolladora / Scrum Master)
 - Daiana Lencina (Product Owner / Desarrolladora)
-- Alejandro Terzano (Disenador / Desarrollador)
+- Alejandro Terzano (Diseñador / Project Manager)
 - Guillermo Nicolas Moreyra Montiel (Desarrollador)
 - Lucila Sanchez (Desarrolladora)
 - Carlos Semeco (Modelador de datos / Desarrollador)
