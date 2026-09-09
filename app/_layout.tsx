@@ -1,18 +1,14 @@
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-import { 
-  Montserrat_400Regular,
-  Montserrat_500Medium,
-  Montserrat_600SemiBold,
-  Montserrat_700Bold } from '@expo-google-fonts/montserrat';
+import { StatusBar } from 'expo-status-bar';
+import { CartProvider } from '../context/cart';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Montserrat_400Regular,
-    Montserrat_500Medium,
-    Montserrat_600SemiBold,
-    Montserrat_700Bold
+    Montserrat_400Regular: require('@expo-google-fonts/montserrat/400Regular/Montserrat_400Regular.ttf'),
+    Montserrat_500Medium: require('@expo-google-fonts/montserrat/500Medium/Montserrat_500Medium.ttf'),
+    Montserrat_600SemiBold: require('@expo-google-fonts/montserrat/600SemiBold/Montserrat_600SemiBold.ttf'),
+    Montserrat_700Bold: require('@expo-google-fonts/montserrat/700Bold/Montserrat_700Bold.ttf'),
   });
 
   if (!fontsLoaded) {
@@ -22,11 +18,16 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="auto" />
-      <Stack initialRouteName="(auth)/login" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)/login" />
-        <Stack.Screen name="(auth)/register" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
+      <CartProvider>
+        <Stack initialRouteName="(auth)/login" screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)/login" />
+          <Stack.Screen name="(auth)/register" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="producto/[id]" />
+          <Stack.Screen name="categorias" />
+          <Stack.Screen name="carrito" />
+        </Stack>
+      </CartProvider>
     </>
   );
 }

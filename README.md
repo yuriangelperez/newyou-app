@@ -51,16 +51,14 @@ Aun no estan instalados en este repo:
 
 ## Mapa de Pantallas y Arquitectura de Navegación
 
-El flujo de usuario de **NEW YOU** consta de **8 pantallas esenciales** mapeadas directamente con la estructura de archivos físicos de **Expo Router**:
+El flujo de usuario de **NEW YOU** consta hoy de **6 pantallas activas** mapeadas directamente con la estructura de archivos físicos de **Expo Router**:
 
 1.  **`app/(auth)/login.tsx` (Login):** Pantalla de ingreso protegida mediante Firebase Auth con inputs estilizados de usuario, contraseña y enlace para recuperar contraseña o registrarse.
 2.  **`app/(auth)/register.tsx` (Registro):** Formulario de alta de usuario con validación de coincidencia de contraseñas. Redirige al inicio tras el alta exitosa.
 3.  **`app/(tabs)/index.tsx` (Home / Catálogo):** Pantalla principal. Presenta una cabecera de marca con el logotipo del proyecto, un banner carrusel superior horizontal de prendas destacadas, y una grilla eficiente de 2 columnas (`FlatList`) que renderiza las tarjetas de prendas con pull-to-refresh nativo y conditional rendering.
-4.  **`app/producto/[id].tsx` (Detalle de Prenda):** Vista detallada de la prenda. Muestra imagen grande del artículo, descripción de lino o denim, talles disponibles interactivos, precio destacado y botón para agregar al carrito gestionado por Zustand.
-5.  **`app/(tabs)/carrito.tsx` (Carrito):** Listado dinámico de artículos agregados. Permite modificar cantidades, calcular subtotales y total general en tiempo real, e iniciar el checkout.
-6.  **`app/producto/nuevo.tsx` (CRUD Alta):** Formulario para subir una prenda (B2C/C2C). Permite capturar la foto con la cámara nativa del celular, validar los campos numéricos y guardar el producto en el catálogo.
-7.  **`app/checkout/index.tsx` (Pago y Envío):** Selección del método de envío (retiro o delivery) y método de pago (transferencia o tarjeta), confirmando la compra.
-8.  **`app/(tabs)/perfil.tsx` (Perfil):** Datos de cuenta del usuario activo, visualización de sus productos publicados para la venta circular y botón de cierre de sesión.
+4.  **`app/producto/[id].tsx` (Detalle de Prenda):** Vista detallada de la prenda con selección de talle/color, favorito y agregar al carrito.
+5.  **`app/categorias.tsx` (Categorías):** Pantalla de exploración por filtros con tarjetas visuales por categoría.
+6.  **`app/carrito.tsx` (Carrito / Checkout):** Listado dinámico de artículos agregados con cantidad, variantes elegidas y total.
 
 
 Funcionalidades visibles actualmente:
@@ -71,7 +69,8 @@ Funcionalidades visibles actualmente:
   - pull-to-refresh,
   - renderizado condicional de stock (`Agregar` / `Agotado`),
   - opacidad reducida para productos no disponibles.
-- Barra inferior visual custom (iconos), aun sin navegacion funcional a otras secciones.
+- Barra inferior custom con navegacion funcional entre Home, Categorías y Carrito.
+- Carrito global con badge de cantidad, eliminación de ítems y subtotal dinámico.
 
 ### Datos y capas disponibles
 
@@ -82,7 +81,7 @@ Funcionalidades visibles actualmente:
 
 ### Estado de carpetas
 
-- `components/`: vacia (pendiente de extraer UI reutilizable).
+- `components/`: contiene UI reutilizable (`BottomTabBar`, `TarjetaProducto`).
 - `services/`: vacia (pendiente integraciones externas).
 
 ## Roadmap inmediato (proximo sprint)
@@ -132,4 +131,3 @@ npm run start
 Luego abrir en Expo Go:
 - `a` para Android
 - `w` para Web
-

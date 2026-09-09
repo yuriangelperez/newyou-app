@@ -1,55 +1,137 @@
-import React from 'react';
-import { Dimensions, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { useProductos } from '../../hooks/useProductos';
+import {
+  Animated,
+  FlatList,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BottomTabBar } from '../../components/BottomTabBar';
+import TarjetaProducto from '../../components/TarjetaProducto';
+import { BRANDING_LOGO, HOME_HERO_IMAGES } from '../../constants/assets';
+import { ROUTES } from '../../constants/routes';
+import { Colors } from '../../constants/theme';
+import { useCart } from '../../context/cart';
+import { PRODUCTOS_MOCK } from '../../data/mockData';
+import { useProductos } from '../../hooks/useProductos';
 import { Producto } from '../../types';
 
-const NAVIGATION_ICONS = {
-  home: require('../../assets/images/bar-icons/home.png'),
-  bag: require('../../assets/images/bar-icons/bolsa.png'),
-  cart: require('../../assets/images/bar-icons/carrito.png'),
-  menu: require('../../assets/images/bar-icons/barra-menu.png'),
-};
+const CANVAS_WIDTH = 412;
+const HOME_TAGS = ['Promociones', 'Invierno', 'Verano', 'Femenino', 'Infantil'];
 
-const LOGO = require('../../assets/images/logo.png');
-const HERO_IMAGE = 'https://www.figma.com/api/mcp/asset/0247d61d-82d7-4515-902d-6ef0b0bc1fa1.png';
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const CARD_WIDTH = 157;
+const HOME_FILTERS: Record<string, string[]> = {
+  Promociones: ['Camisas', 'Jeans', 'Botas', 'Vestidos', 'Short', 'Camperas'],
+  Invierno: ['Camperas', 'Botas', 'Buzos'],
+  Verano: ['Short', 'Vestidos', 'Camisas'],
+  Femenino: ['Vestidos', 'Brasieres', 'Faldas', 'Camisas'],
+  Infantil: ['Infantil'],
+};
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { productos, cargando, error, refrescar } = useProductos();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const { productos, cargando, refrescar } = useProductos();
+  const { addToCart, totalItems } = useCart();
 
-  const renderProductCard = ({ item }: { item: Producto }) => (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={() => router.push({ pathname: '/producto/detalleproducto', params: { id: item.id } })}
-      style={[styles.productCard, !item.disponible && styles.cardDisabled]}
-    >
-      <View style={styles.productImage} />
-      <Text style={styles.productTitle} numberOfLines={2}>{item.nombre}</Text>
-      <View style={styles.productFooter}>
-        <Text style={styles.productPrice}>$$$$$</Text>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          disabled={!item.disponible}
-          style={[styles.productAction, !item.disponible && styles.productActionDisabled]}
-        >
-          <Text style={styles.productActionText}>{item.disponible ? 'Agregar' : 'Agotado'}</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+  const canvasWidth = Math.min(width, CANVAS_WIDTH);
+  const scale = canvasWidth / CANVAS_WIDTH;
+  const styles = useMemo(
+    () => createStyles(scale, canvasWidth, insets.top, insets.bottom),
+    [canvasWidth, insets.bottom, insets.top, scale]
   );
+
+  const [activeTag, setActiveTag] = useState(0);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [addedProductId, setAddedProductId] = useState<string | null>(null);
+  const addedTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const addButtonAnimationsRef = useRef<Record<string, Animated.Value>>({});
+
+  useEffect(() => {
+    return () => {
+      Object.values(addedTimersRef.current).forEach(clearTimeout);
+    };
+  }, []);
+
+  const sourceProducts = productos.length ? productos : PRODUCTOS_MOCK;
+  const selectedTag = HOME_TAGS[activeTag];
+  const activeCategories = HOME_FILTERS[selectedTag];
+
+  const visibleProducts = useMemo(
+    () => sourceProducts.filter((item) => activeCategories.some((category) => item.categoria.includes(category))),
+    [activeCategories, sourceProducts]
+  );
+
+  const getAddButtonAnimation = (productId: string) => {
+    if (!addButtonAnimationsRef.current[productId]) {
+      addButtonAnimationsRef.current[productId] = new Animated.Value(1);
+    }
+    return addButtonAnimationsRef.current[productId];
+  };
+
+  const onPressAgregar = (item: Producto) => {
+    if (!item.disponible) {
+      return;
+    }
+
+    addToCart({
+      producto: item,
+      talle: item.talle?.[0] ?? 'M',
+      color: 'Marron',
+      cantidad: 1,
+    });
+
+    const animation = getAddButtonAnimation(item.id);
+    setAddedProductId(item.id);
+
+    if (addedTimersRef.current[item.id]) {
+      clearTimeout(addedTimersRef.current[item.id]);
+    }
+
+    Animated.sequence([
+      Animated.timing(animation, { toValue: 1.08, duration: 100, useNativeDriver: true }),
+      Animated.timing(animation, { toValue: 1, duration: 140, useNativeDriver: true }),
+    ]).start();
+
+    addedTimersRef.current[item.id] = setTimeout(() => {
+      setAddedProductId((current) => (current === item.id ? null : current));
+    }, 900);
+  };
+
+  const renderProductCard = ({ item }: { item: Producto }) => {
+    const isAdded = addedProductId === item.id;
+    const buttonAnimation = getAddButtonAnimation(item.id);
+
+    return (
+      <TarjetaProducto
+        producto={item}
+        scale={scale}
+        isAdded={isAdded}
+        addButtonScale={buttonAnimation}
+        onPressProducto={(producto) => router.push({ pathname: ROUTES.productDetail, params: { id: producto.id } })}
+        onPressAgregar={onPressAgregar}
+      />
+    );
+  };
 
   return (
     <View style={styles.container}>
+      <StatusBar style="dark" />
+
       <View style={styles.header}>
-        <Image accessibilityLabel="New You" source={LOGO} style={styles.logo} />
+        <Image accessibilityLabel="New You" source={BRANDING_LOGO} style={styles.logo} />
       </View>
 
       <FlatList
-        data={productos}
+        data={visibleProducts}
         renderItem={renderProductCard}
         keyExtractor={(item) => item.id}
         numColumns={2}
@@ -59,157 +141,149 @@ export default function HomeScreen() {
         refreshing={cargando}
         onRefresh={refrescar}
         ListHeaderComponent={
-          <Image accessibilityLabel="Ropero de New You" source={{ uri: HERO_IMAGE }} style={styles.heroImage} />
+          <>
+            <View style={styles.heroContainer}>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                bounces={false}
+                onMomentumScrollEnd={(event) => {
+                  const nextIndex = Math.round(event.nativeEvent.contentOffset.x / canvasWidth);
+                  setHeroIndex(nextIndex);
+                }}
+              >
+                {HOME_HERO_IMAGES.map((image, index) => (
+                  <Image key={index} source={image} style={styles.heroImage} />
+                ))}
+              </ScrollView>
+              <View style={styles.heroDots}>
+                {HOME_HERO_IMAGES.map((_, index) => (
+                  <View key={index} style={[styles.heroDot, index === heroIndex && styles.heroDotActive]} />
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.promoBarContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promoBarContent}>
+                {HOME_TAGS.map((tag, index) => {
+                  const selected = index === activeTag;
+                  return (
+                    <Pressable
+                      key={tag}
+                      onPress={() => setActiveTag(index)}
+                      style={[styles.promoTag, selected && styles.promoTagActive]}
+                    >
+                      <Text style={styles.promoTagText}>{tag}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </>
         }
       />
 
-      <View style={styles.tabBar}>
-        <TabButton accessibilityLabel="Inicio" icon={NAVIGATION_ICONS.home} active />
-        <TabButton accessibilityLabel="Bolsa" icon={NAVIGATION_ICONS.bag} />
-        <TabButton accessibilityLabel="Carrito" icon={NAVIGATION_ICONS.cart} />
-        <TabButton accessibilityLabel="Menú" icon={NAVIGATION_ICONS.menu} />
-      </View>
+      <BottomTabBar
+        activeTab="home"
+        canvasWidth={canvasWidth}
+        scale={scale}
+        bottomInset={insets.bottom}
+        cartCount={totalItems}
+        onPressBag={() => router.push(ROUTES.categories)}
+        onPressCart={() => router.push(ROUTES.cart)}
+      />
     </View>
   );
 }
 
-function TabButton({ accessibilityLabel, active = false, icon }: {
-  accessibilityLabel: string;
-  active?: boolean;
-  icon: number;
-}) {
-  return (
-    <TouchableOpacity accessibilityLabel={accessibilityLabel} style={styles.tabItem}>
-      <View style={[styles.iconContainer, active && styles.activeIconContainer]}>
-        <Image source={icon} style={styles.tabIcon} />
-      </View>
-    </TouchableOpacity>
-  );
-}
+function createStyles(scale: number, canvasWidth: number, topInset: number, bottomInset: number) {
+  const s = (value: number) => value * scale;
 
-// Estilos para la aplicación New You
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    height: 76,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f4f4f4',
-    borderBottomWidth: 1,
-    borderBottomColor: '#bdbdbd',
-  },
-  logo: {
-    width: 105,
-    height: 60,
-    resizeMode: 'contain',
-  },
-  content: {
-    paddingTop: 21,
-    paddingBottom: 112,
-  },
-  heroImage: {
-    width: SCREEN_WIDTH,
-    height: 224,
-    resizeMode: 'cover',
-  },
-  productRow: {
-    justifyContent: 'space-between',
-    paddingHorizontal: 36,
-    marginTop: 31,
-  },
-  productCard: {
-    width: CARD_WIDTH,
-    height: 222,
-    padding: 11,
-    borderRadius: 10,
-    backgroundColor: '#e4e0e1',
-  },
-  cardDisabled: {
-    opacity: 0.62,
-  },
-  productImage: {
-    width: '100%',
-    height: 133,
-    borderRadius: 10,
-    backgroundColor: '#aa876d',
-  },
-  productTitle: {
-    height: 34,
-    marginTop: 7,
-    color: '#2d1f16',
-    fontSize: 12,
-    lineHeight: 14,
-    fontWeight: '500',
-  },
-  productFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 3,
-  },
-  productPrice: {
-    color: '#aa876d',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  productAction: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 61,
-    height: 20,
-    borderRadius: 100,
-    backgroundColor: '#aa876d',
-  },
-  productActionDisabled: {
-    backgroundColor: '#8f8f8f',
-  },
-  productActionText: {
-    color: '#2d1f16',
-    fontSize: 8,
-    fontWeight: '700',
-  },
-  tabBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 92,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-start',
-    backgroundColor: '#f4f4f4',
-    shadowColor: '#2d1f16',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#d0d0d0',
-    paddingTop: 5,
-    paddingBottom: 20,
-  },
-  tabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    flex: 1,
-  },
-  iconContainer: {
-    width: 37,
-    height: 37,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
-  },
-  activeIconContainer: {
-    backgroundColor: '#d5bfb3',
-  },
-  tabIcon: {
-    width: 28,
-    height: 28,
-    resizeMode: 'contain',
-  },
-});
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: Colors.background,
+    },
+    header: {
+      paddingTop: topInset,
+      height: topInset + s(76),
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: Colors.background,
+      borderBottomWidth: 2,
+      borderBottomColor: Colors.secondary,
+    },
+    logo: {
+      width: s(105),
+      height: s(60),
+      resizeMode: 'contain',
+    },
+    heroContainer: {
+      width: canvasWidth,
+      height: s(146),
+      backgroundColor: Colors.secondary,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    heroImage: {
+      width: canvasWidth,
+      height: s(146),
+      resizeMode: 'cover',
+    },
+    heroDots: {
+      position: 'absolute',
+      bottom: s(8),
+      alignSelf: 'center',
+      flexDirection: 'row',
+      columnGap: s(6),
+    },
+    heroDot: {
+      width: s(6),
+      height: s(6),
+      borderRadius: s(3),
+      backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    },
+    heroDotActive: {
+      backgroundColor: '#FFFFFF',
+    },
+    promoBarContainer: {
+      marginTop: s(8),
+      height: s(50),
+      justifyContent: 'center',
+      backgroundColor: Colors.background,
+    },
+    promoBarContent: {
+      paddingHorizontal: s(20),
+      columnGap: s(8),
+      alignItems: 'center',
+    },
+    promoTag: {
+      minWidth: s(104),
+      height: s(27),
+      borderRadius: s(10),
+      backgroundColor: '#D9D9D9',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: s(12),
+    },
+    promoTagActive: {
+      backgroundColor: Colors.tertiary,
+    },
+    promoTagText: {
+      color: '#000000',
+      fontSize: s(12),
+      lineHeight: s(14),
+      fontWeight: '400',
+    },
+    content: {
+      paddingBottom: s(24) + s(78) + bottomInset,
+      paddingTop: s(10),
+    },
+    productRow: {
+      justifyContent: 'space-between',
+      paddingHorizontal: s(20),
+      marginTop: s(10),
+    },
+  });
+}

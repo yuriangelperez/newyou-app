@@ -1,11 +1,12 @@
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { BRANDING_LOGO } from '../../constants/assets';
+import { ROUTES } from '../../constants/routes';
 import { Colors, Radius } from '../../constants/theme';
 import { signInWithPassword } from '../../services/auth';
-
-const logo = require('../../assets/images/logo.png');
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function LoginScreen() {
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
 
   const goToHome = async () => {
     if (!correo.trim() || !contrasena.trim()) {
@@ -21,8 +23,8 @@ export default function LoginScreen() {
     }
 
     setError('');
-
     setCargando(true);
+
     try {
       const { error: authError } = await signInWithPassword(correo.trim(), contrasena);
 
@@ -31,46 +33,66 @@ export default function LoginScreen() {
         return;
       }
 
-      router.replace('/(tabs)/');
+      router.replace(ROUTES.home);
     } finally {
       setCargando(false);
     }
   };
 
   const goToRegister = () => {
-    router.push('/register');
+    router.push(ROUTES.register);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
-        <Image source={logo} style={styles.logo} />
+        <Image source={BRANDING_LOGO} style={styles.logo} />
       </View>
 
       <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="CORREO"
-          placeholderTextColor="#000000"
-          autoCapitalize="none"
-          autoCorrect={false}
-          value={correo}
-          onChangeText={(value) => {
-            setCorreo(value);
-            setError('');
-          }}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="CONTRASEÑA"
-          placeholderTextColor="#000000"
-          secureTextEntry
-          value={contrasena}
-          onChangeText={(value) => {
-            setContrasena(value);
-            setError('');
-          }}
-        />
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>Correo</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={Colors.text}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            value={correo}
+            onChangeText={(value) => {
+              setCorreo(value);
+              setError('');
+            }}
+          />
+        </View>
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>Contraseña</Text>
+          <View style={styles.passwordField}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Contraseña"
+              placeholderTextColor={Colors.text}
+              secureTextEntry={!mostrarContrasena}
+              value={contrasena}
+              onChangeText={(value) => {
+                setContrasena(value);
+                setError('');
+              }}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={mostrarContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              style={styles.eyeButton}
+              onPress={() => setMostrarContrasena((value) => !value)}>
+              <Ionicons
+                name={mostrarContrasena ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color={Colors.textMuted}
+              />
+            </Pressable>
+          </View>
+        </View>
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -113,27 +135,66 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     width: '80%',
-    gap: 16,
+    gap: 18,
     marginBottom: 41,
+  },
+  fieldGroup: {
+    gap: 8,
+  },
+  fieldLabel: {
+    color: Colors.primary,
+    fontSize: 14,
+    paddingLeft: 4,
+    fontFamily: 'Montserrat_600SemiBold',
   },
   input: {
     width: '100%',
-    height: 58,
-    backgroundColor: Colors.backgroundMuted,
-    borderRadius: Radius.md,
-    fontSize: 20,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    paddingHorizontal: 0,
-    paddingVertical: 0,
+    height: 56,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    fontSize: 16,
+    textAlign: 'left',
+    paddingHorizontal: 18,
     color: Colors.text,
     fontFamily: 'Montserrat_400Regular',
+  },
+  passwordField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingLeft: 18,
+    paddingRight: 10,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 56,
+    fontSize: 16,
+    color: Colors.text,
+    fontFamily: 'Montserrat_400Regular',
+  },
+  eyeButton: {
+    width: 38,
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonsContainer: {
     width: 234,
     alignItems: 'center',
     gap: 21,
     marginBottom: 35,
+  },
+  errorText: {
+    marginTop: -25,
+    marginBottom: 20,
+    color: Colors.danger,
+    fontSize: 13,
+    fontFamily: 'Montserrat_500Medium',
   },
   loginButton: {
     width: 168,
@@ -164,12 +225,5 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textAlign: 'center',
     fontFamily: 'Montserrat_700Bold',
-  },
-  errorText: {
-    marginTop: -25,
-    marginBottom: 20,
-    color: Colors.danger,
-    fontSize: 13,
-    fontFamily: 'Montserrat_500Medium',
   },
 });
