@@ -15,7 +15,7 @@ export default function PerfilScreen() {
   const router = useRouter();
   const usuario = useUsuarioStore((state) => state.usuario);
   const totalItems = useCarritoStore(selectTotalItems);
-  const esVendedor = usuario?.tipo === 'vendedor';
+  const esVendedor = usuario?.role === 'vendedor';
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const canvasWidth = Math.min(width, 412);

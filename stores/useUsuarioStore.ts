@@ -55,22 +55,44 @@ export const useUsuarioStore = create<UsuarioStore>((set) => ({
       return;
     }
 
-    const { data: profile } = await supabase
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+      await supabase.auth.signOut();
+      set({ usuario: null });
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", authUser.id)
+      .eq("id", authData.user.id)
       .single();
+
+    if (profileError) {
+      await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: authData.user.id,
+            role: authData.user.user_metadata?.role === "vendedor" ? "vendedor" : "comprador",
+          },
+          { onConflict: "id" }
+        );
+    }
+
+    const fallbackRole = authData.user.user_metadata?.role === "vendedor" ? "vendedor" : "comprador";
 
     const role =
       profile?.role === "vendedor"
         ? "vendedor"
-        : "comprador";
+        : fallbackRole;
 
     set({
       usuario: {
-        id: authUser.id,
-        nombre: resolverNombre(authUser),
-        email: authUser.email,
+        id: authData.user.id,
+        nombre: resolverNombre(authData.user),
+        email: authData.user.email || authUser.email,
         role,
       },
     });

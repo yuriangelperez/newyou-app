@@ -65,7 +65,7 @@ export default function CategoriasScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const totalItems = useCarritoStore(selectTotalItems);
-  const esVendedor = useUsuarioStore((state) => state.usuario?.tipo === 'vendedor');
+  const esVendedor = useUsuarioStore((state) => state.usuario?.role === 'vendedor');
   const [activeFilter, setActiveFilter] = useState('TODO');
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);

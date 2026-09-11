@@ -206,7 +206,7 @@ export default function HomeScreen() {
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
-        esVendedor={usuario?.tipo === 'vendedor'}
+          esVendedor={usuario?.role === 'vendedor'}
         onPressCreate={() => router.push(ROUTES.newProduct)}
         onPressBag={() => router.push(ROUTES.categories)}
         onPressCart={() => router.push(ROUTES.cart)}

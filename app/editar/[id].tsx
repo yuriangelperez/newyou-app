@@ -52,7 +52,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
 export default function EditarProductoScreen() {
   const router = useRouter();
   const esVendedor = useUsuarioStore(
-    (state) => state.usuario?.tipo === "vendedor",
+    (state) => state.usuario?.role === "vendedor",
   );
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { producto, cargando, error, refrescar } = useProductoById(id);

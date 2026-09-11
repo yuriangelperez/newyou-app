@@ -1,10 +1,9 @@
 import { supabase } from './supabase';
 
-export async function signInWithPassword(email: string, password: string) {
-  if (!supabase) {
-    return { error: new Error('Supabase todavía no está configurado') };
-  }
-
+export async function signInWithPassword(
+  email: string,
+  password: string
+) {
   try {
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -17,18 +16,14 @@ export async function signInWithPassword(email: string, password: string) {
   }
 }
 
-export type TipoUsuario = 'comprador' | 'vendedor';
+export type RoleUsuario = 'comprador' | 'vendedor';
 
 export async function signUpWithPassword(
   email: string,
   password: string,
   username: string,
-  tipo: TipoUsuario,
+  role: RoleUsuario
 ) {
-  if (!supabase) {
-    return { error: new Error('Supabase todavía no está configurado') };
-  }
-
   try {
     const { error } = await supabase.auth.signUp({
       email,
@@ -36,7 +31,7 @@ export async function signUpWithPassword(
       options: {
         data: {
           username,
-          tipo,
+          role,
         },
       },
     });

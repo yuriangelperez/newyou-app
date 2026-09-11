@@ -44,7 +44,7 @@ export default function ProductDetailScreen() {
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
   const totalItems = useCarritoStore(selectTotalItems);
   const esVendedor = useUsuarioStore(
-    (state) => state.usuario?.tipo === "vendedor",
+    (state) => state.usuario?.role === "vendedor",
   );
   const { producto, cargando, error, refrescar } = useProductoById(id);
 
