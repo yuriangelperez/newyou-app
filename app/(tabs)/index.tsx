@@ -15,13 +15,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomTabBar } from '../../components/BottomTabBar';
+import { ErrorView } from '../../components/ui/ErrorView';
+import { SkeletonList } from '../../components/ui/SkeletonList';
 import TarjetaProducto from '../../components/TarjetaProducto';
 import { BRANDING_LOGO, HOME_HERO_IMAGES } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
 import { Colors } from '../../constants/theme';
-import { useCart } from '../../context/cart';
-import { PRODUCTOS_MOCK } from '../../data/mockData';
 import { useProductos } from '../../hooks/useProductos';
+import { selectTotalItems, useCarritoStore } from '../../stores/useCarritoStore';
+import { useUsuarioStore } from '../../stores/useUsuarioStore';
 import { Producto } from '../../types';
 
 const CANVAS_WIDTH = 412;
@@ -39,8 +41,10 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { productos, cargando, refrescar } = useProductos();
-  const { addToCart, totalItems } = useCart();
+  const { productos, cargando, error, refreshing, refrescar } = useProductos();
+  const agregarProducto = useCarritoStore((state) => state.agregarProducto);
+  const totalItems = useCarritoStore(selectTotalItems);
+  const usuario = useUsuarioStore((state) => state.usuario);
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
@@ -61,13 +65,12 @@ export default function HomeScreen() {
     };
   }, []);
 
-  const sourceProducts = productos.length ? productos : PRODUCTOS_MOCK;
   const selectedTag = HOME_TAGS[activeTag];
   const activeCategories = HOME_FILTERS[selectedTag];
 
   const visibleProducts = useMemo(
-    () => sourceProducts.filter((item) => activeCategories.some((category) => item.categoria.includes(category))),
-    [activeCategories, sourceProducts]
+    () => productos.filter((item) => activeCategories.some((category) => item.categoria.includes(category))),
+    [activeCategories, productos]
   );
 
   const getAddButtonAnimation = (productId: string) => {
@@ -82,7 +85,7 @@ export default function HomeScreen() {
       return;
     }
 
-    addToCart({
+    agregarProducto({
       producto: item,
       talle: item.talle?.[0] ?? 'M',
       color: 'Marron',
@@ -127,62 +130,75 @@ export default function HomeScreen() {
       <StatusBar style="dark" />
 
       <View style={styles.header}>
+        <Text style={styles.userLabel}>{usuario ? `Hola, ${usuario.nombre}` : 'Hola, invitado'}</Text>
         <Image accessibilityLabel="New You" source={BRANDING_LOGO} style={styles.logo} />
       </View>
 
-      <FlatList
-        data={visibleProducts}
-        renderItem={renderProductCard}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-        columnWrapperStyle={styles.productRow}
-        refreshing={cargando}
-        onRefresh={refrescar}
-        ListHeaderComponent={
-          <>
-            <View style={styles.heroContainer}>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                bounces={false}
-                onMomentumScrollEnd={(event) => {
-                  const nextIndex = Math.round(event.nativeEvent.contentOffset.x / canvasWidth);
-                  setHeroIndex(nextIndex);
-                }}
-              >
-                {HOME_HERO_IMAGES.map((image, index) => (
-                  <Image key={index} source={image} style={styles.heroImage} />
-                ))}
-              </ScrollView>
-              <View style={styles.heroDots}>
-                {HOME_HERO_IMAGES.map((_, index) => (
-                  <View key={index} style={[styles.heroDot, index === heroIndex && styles.heroDotActive]} />
-                ))}
-              </View>
-            </View>
+      {cargando ? <SkeletonList /> : null}
 
-            <View style={styles.promoBarContainer}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promoBarContent}>
-                {HOME_TAGS.map((tag, index) => {
-                  const selected = index === activeTag;
-                  return (
-                    <Pressable
-                      key={tag}
-                      onPress={() => setActiveTag(index)}
-                      style={[styles.promoTag, selected && styles.promoTagActive]}
-                    >
-                      <Text style={styles.promoTagText}>{tag}</Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+      {!cargando && error ? <ErrorView message={error} onRetry={() => void refrescar()} /> : null}
+
+      {!cargando && !error ? (
+        <FlatList
+          data={visibleProducts}
+          renderItem={renderProductCard}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          columnWrapperStyle={styles.productRow}
+          refreshing={refreshing}
+          onRefresh={() => void refrescar()}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No hay prendas disponibles</Text>
+              <Text style={styles.emptyText}>Publica una nueva prenda con el boton +.</Text>
             </View>
-          </>
-        }
-      />
+          }
+          ListHeaderComponent={
+            <>
+              <View style={styles.heroContainer}>
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  bounces={false}
+                  onMomentumScrollEnd={(event) => {
+                    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / canvasWidth);
+                    setHeroIndex(nextIndex);
+                  }}
+                >
+                  {HOME_HERO_IMAGES.map((image, index) => (
+                    <Image key={index} source={image} style={styles.heroImage} />
+                  ))}
+                </ScrollView>
+                <View style={styles.heroDots}>
+                  {HOME_HERO_IMAGES.map((_, index) => (
+                    <View key={index} style={[styles.heroDot, index === heroIndex && styles.heroDotActive]} />
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.promoBarContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promoBarContent}>
+                  {HOME_TAGS.map((tag, index) => {
+                    const selected = index === activeTag;
+                    return (
+                      <Pressable
+                        key={tag}
+                        onPress={() => setActiveTag(index)}
+                        style={[styles.promoTag, selected && styles.promoTagActive]}
+                      >
+                        <Text style={styles.promoTagText}>{tag}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </>
+          }
+        />
+      ) : null}
 
       <BottomTabBar
         activeTab="home"
@@ -190,8 +206,11 @@ export default function HomeScreen() {
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
+        esVendedor={usuario?.tipo === 'vendedor'}
+        onPressCreate={() => router.push(ROUTES.newProduct)}
         onPressBag={() => router.push(ROUTES.categories)}
         onPressCart={() => router.push(ROUTES.cart)}
+        onPressMenu={() => router.push(ROUTES.profile)}
       />
     </View>
   );
@@ -207,7 +226,7 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
     },
     header: {
       paddingTop: topInset,
-      height: topInset + s(76),
+      minHeight: topInset + s(76),
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: Colors.background,
@@ -218,6 +237,15 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       width: s(105),
       height: s(60),
       resizeMode: 'contain',
+    },
+    userLabel: {
+      position: 'absolute',
+      left: s(18),
+      top: topInset + s(12),
+      color: Colors.textMuted,
+      fontSize: s(11),
+      fontFamily: 'Montserrat_500Medium',
+      maxWidth: s(120),
     },
     heroContainer: {
       width: canvasWidth,
@@ -279,11 +307,30 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
     content: {
       paddingBottom: s(24) + s(78) + bottomInset,
       paddingTop: s(10),
+      flexGrow: 1,
     },
     productRow: {
       justifyContent: 'space-between',
       paddingHorizontal: s(20),
       marginTop: s(10),
+    },
+    emptyState: {
+      marginTop: s(60),
+      alignItems: 'center',
+      rowGap: s(8),
+      paddingHorizontal: s(24),
+    },
+    emptyTitle: {
+      color: '#2D1F16',
+      fontSize: s(22),
+      fontFamily: 'Montserrat_600SemiBold',
+      textAlign: 'center',
+    },
+    emptyText: {
+      color: Colors.textMuted,
+      fontSize: s(13),
+      textAlign: 'center',
+      fontFamily: 'Montserrat_400Regular',
     },
   });
 }

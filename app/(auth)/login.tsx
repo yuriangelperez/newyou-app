@@ -1,7 +1,18 @@
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import { BRANDING_LOGO } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
@@ -44,7 +55,13 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
       <View style={styles.logoContainer}>
         <Image source={BRANDING_LOGO} style={styles.logo} />
       </View>
@@ -110,16 +127,22 @@ export default function LoginScreen() {
       <TouchableOpacity onPress={goToRegister}>
         <Text style={styles.resetText}>¿REESTABLECER CONTRASEÑA?</Text>
       </TouchableOpacity>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
+    backgroundColor: Colors.background,
+  },
+  container: {
+    flexGrow: 1,
     backgroundColor: Colors.background,
     alignItems: 'center',
     paddingTop: 92,
+    paddingBottom: 36,
   },
   logoContainer: {
     width: 239,

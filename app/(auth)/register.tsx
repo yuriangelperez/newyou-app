@@ -1,7 +1,18 @@
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import { BRANDING_LOGO } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
@@ -18,6 +29,7 @@ export default function RegisterScreen() {
   const [cargando, setCargando] = useState(false);
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
   const [mostrarRepetirContrasena, setMostrarRepetirContrasena] = useState(false);
+  const [quiereVender, setQuiereVender] = useState(false);
 
   const handleRegister = async () => {
     if (!correo.trim() || !usuario.trim() || !contrasena || !repetirContrasena) {
@@ -53,6 +65,7 @@ export default function RegisterScreen() {
         correo.trim(),
         contrasena,
         usuario.trim(),
+        quiereVender ? 'vendedor' : 'comprador',
       );
 
       if (authError) {
@@ -67,7 +80,13 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
       <View style={styles.logoContainer}>
         <Image source={BRANDING_LOGO} style={styles.logo} />
       </View>
@@ -160,6 +179,25 @@ export default function RegisterScreen() {
             </Pressable>
           </View>
         </View>
+        <View style={styles.roleGroup}>
+          <Text style={styles.fieldLabel}>¿Querés vender prendas?</Text>
+          <View style={styles.roleOptions}>
+            <Pressable
+              accessibilityRole="radio"
+              accessibilityState={{ selected: !quiereVender }}
+              onPress={() => setQuiereVender(false)}
+              style={[styles.roleOption, !quiereVender && styles.roleOptionSelected]}>
+              <Text style={styles.roleOptionText}>No, quiero comprar</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="radio"
+              accessibilityState={{ selected: quiereVender }}
+              onPress={() => setQuiereVender(true)}
+              style={[styles.roleOption, quiereVender && styles.roleOptionSelected]}>
+              <Text style={styles.roleOptionText}>Sí, quiero vender</Text>
+            </Pressable>
+          </View>
+        </View>
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -167,16 +205,22 @@ export default function RegisterScreen() {
       <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={cargando}>
         <Text style={styles.buttonText}>{cargando ? 'CREANDO...' : 'REGISTRARSE'}</Text>
       </TouchableOpacity>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
+    backgroundColor: Colors.background,
+  },
+  container: {
+    flexGrow: 1,
     backgroundColor: Colors.background,
     alignItems: 'center',
     paddingTop: 50,
+    paddingBottom: 32,
   },
   logoContainer: {
     width: 105,
@@ -204,6 +248,34 @@ const styles = StyleSheet.create({
   },
   fieldGroup: {
     gap: 8,
+  },
+  roleGroup: {
+    gap: 8,
+  },
+  roleOptions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  roleOption: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  roleOptionSelected: {
+    borderColor: Colors.secondary,
+    backgroundColor: Colors.tertiary,
+  },
+  roleOptionText: {
+    color: Colors.text,
+    fontSize: 12,
+    textAlign: 'center',
+    fontFamily: 'Montserrat_600SemiBold',
   },
   fieldLabel: {
     color: Colors.primary,
