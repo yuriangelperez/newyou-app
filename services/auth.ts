@@ -17,7 +17,14 @@ export async function signInWithPassword(email: string, password: string) {
   }
 }
 
-export async function signUpWithPassword(email: string, password: string, username: string) {
+export type TipoUsuario = 'comprador' | 'vendedor';
+
+export async function signUpWithPassword(
+  email: string,
+  password: string,
+  username: string,
+  tipo: TipoUsuario,
+) {
   if (!supabase) {
     return { error: new Error('Supabase todavía no está configurado') };
   }
@@ -29,6 +36,7 @@ export async function signUpWithPassword(email: string, password: string, userna
       options: {
         data: {
           username,
+          tipo,
         },
       },
     });

@@ -1,15 +1,47 @@
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
-import { CartProvider } from '../context/cart';
+import { useEffect } from 'react';
+import Toast from 'react-native-toast-message';
+
+import { supabase } from '../services/supabase';
+import { useUsuarioStore } from '../stores/useUsuarioStore';
 
 export default function RootLayout() {
+  const hidratarDesdeAuthUser = useUsuarioStore((state) => state.hidratarDesdeAuthUser);
+
   const [fontsLoaded] = useFonts({
     Montserrat_400Regular: require('@expo-google-fonts/montserrat/400Regular/Montserrat_400Regular.ttf'),
     Montserrat_500Medium: require('@expo-google-fonts/montserrat/500Medium/Montserrat_500Medium.ttf'),
     Montserrat_600SemiBold: require('@expo-google-fonts/montserrat/600SemiBold/Montserrat_600SemiBold.ttf'),
     Montserrat_700Bold: require('@expo-google-fonts/montserrat/700Bold/Montserrat_700Bold.ttf'),
   });
+
+  useEffect(() => {
+    if (!supabase) {
+      hidratarDesdeAuthUser(null);
+      return;
+    }
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        hidratarDesdeAuthUser(data.session?.user ?? null);
+      })
+      .catch(() => {
+        hidratarDesdeAuthUser(null);
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      hidratarDesdeAuthUser(session?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [hidratarDesdeAuthUser]);
 
   if (!fontsLoaded) {
     return null;
@@ -18,16 +50,18 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="auto" />
-      <CartProvider>
-        <Stack initialRouteName="(auth)/login" screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)/login" />
-          <Stack.Screen name="(auth)/register" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="producto/[id]" />
-          <Stack.Screen name="categorias" />
-          <Stack.Screen name="carrito" />
-        </Stack>
-      </CartProvider>
+      <Stack initialRouteName="(auth)/login" screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)/login" />
+        <Stack.Screen name="(auth)/register" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="producto/[id]" />
+        <Stack.Screen name="producto/nuevo" />
+        <Stack.Screen name="editar/[id]" />
+        <Stack.Screen name="categorias" />
+        <Stack.Screen name="carrito" />
+        <Stack.Screen name="perfil" />
+      </Stack>
+      <Toast />
     </>
   );
 }

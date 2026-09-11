@@ -16,7 +16,8 @@ import { BottomTabBar } from '../components/BottomTabBar';
 import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from '../constants/assets';
 import { ROUTES } from '../constants/routes';
 import { Colors } from '../constants/theme';
-import { useCart } from '../context/cart';
+import { selectSubtotal, selectTotalItems, useCarritoStore } from '../stores/useCarritoStore';
+import { useUsuarioStore } from '../stores/useUsuarioStore';
 
 const CANVAS_WIDTH = 412;
 
@@ -24,7 +25,13 @@ export default function CarritoScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { items, totalItems, subtotal, updateQuantity, removeItem } = useCart();
+  const items = useCarritoStore((state) => state.items);
+  const restarUnidad = useCarritoStore((state) => state.restarUnidad);
+  const incrementarUnidad = useCarritoStore((state) => state.incrementarUnidad);
+  const eliminarProducto = useCarritoStore((state) => state.eliminarProducto);
+  const totalItems = useCarritoStore(selectTotalItems);
+  const subtotal = useCarritoStore(selectSubtotal);
+  const esVendedor = useUsuarioStore((state) => state.usuario?.tipo === 'vendedor');
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
@@ -74,18 +81,18 @@ export default function CarritoScreen() {
 
               <View style={styles.actionsRow}>
                 <View style={styles.quantityRow}>
-                  <Pressable onPress={() => updateQuantity(item.key, item.cantidad - 1)} style={styles.quantityButton}>
+                  <Pressable onPress={() => restarUnidad(item.key)} style={styles.quantityButton}>
                     <Text style={styles.quantitySymbol}>-</Text>
                   </Pressable>
                   <View style={styles.quantityValueBox}>
                     <Text style={styles.quantityValue}>{item.cantidad}</Text>
                   </View>
-                  <Pressable onPress={() => updateQuantity(item.key, item.cantidad + 1)} style={styles.quantityButton}>
+                  <Pressable onPress={() => incrementarUnidad(item.key)} style={styles.quantityButton}>
                     <Text style={styles.quantitySymbol}>+</Text>
                   </Pressable>
                 </View>
 
-                <Pressable onPress={() => removeItem(item.key)} style={styles.removeButton}>
+                <Pressable onPress={() => eliminarProducto(item.key)} style={styles.removeButton}>
                   <Text style={styles.removeText}>Eliminar</Text>
                 </Pressable>
               </View>
@@ -107,8 +114,11 @@ export default function CarritoScreen() {
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
+        esVendedor={esVendedor}
+        onPressCreate={() => router.push(ROUTES.newProduct)}
         onPressHome={() => router.replace(ROUTES.home)}
         onPressBag={() => router.push(ROUTES.categories)}
+        onPressMenu={() => router.push(ROUTES.profile)}
       />
     </View>
   );

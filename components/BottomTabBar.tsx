@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { TAB_BAR_ICONS } from '../constants/assets';
@@ -11,10 +12,12 @@ interface BottomTabBarProps {
   scale: number;
   bottomInset: number;
   cartCount: number;
+  esVendedor?: boolean;
   onPressHome?: () => void;
   onPressBag?: () => void;
   onPressCart?: () => void;
   onPressMenu?: () => void;
+  onPressCreate?: () => void;
 }
 
 export function BottomTabBar({
@@ -23,10 +26,12 @@ export function BottomTabBar({
   scale,
   bottomInset,
   cartCount,
+  esVendedor = false,
   onPressHome,
   onPressBag,
   onPressCart,
   onPressMenu,
+  onPressCreate,
 }: BottomTabBarProps) {
   const styles = createStyles(scale, canvasWidth, bottomInset);
 
@@ -45,6 +50,17 @@ export function BottomTabBar({
           onPress={onPressBag}
           styles={styles}
         />
+        {esVendedor ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Añadir prenda"
+            onPress={onPressCreate}
+            style={styles.createTabButton}>
+            <View style={styles.createCircle}>
+              <Ionicons name="add" size={30 * scale} color="#2D1F16" />
+            </View>
+          </Pressable>
+        ) : null}
         <TabButton
           active={activeTab === 'cart'}
           icon={TAB_BAR_ICONS.cart}
@@ -123,6 +139,22 @@ function createStyles(scale: number, canvasWidth: number, bottomInset: number) {
     tabItem: {
       width: s(60),
       height: s(60),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    createTabButton: {
+      width: s(60),
+      height: s(60),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    createCircle: {
+      width: s(52),
+      height: s(52),
+      borderRadius: s(26),
+      backgroundColor: Colors.tertiary,
+      borderWidth: s(2),
+      borderColor: Colors.secondary,
       alignItems: 'center',
       justifyContent: 'center',
     },

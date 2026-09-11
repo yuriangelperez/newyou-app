@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Image,
   Pressable,
@@ -14,29 +15,30 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomTabBar } from '../../components/BottomTabBar';
+import { ErrorView } from '../../components/ui/ErrorView';
+import { SkeletonList } from '../../components/ui/SkeletonList';
 import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from '../../constants/assets';
+import { PRODUCT_COLOR_OPTIONS, resolveProductColorHex } from '../../constants/productColors';
 import { ROUTES } from '../../constants/routes';
 import { Colors } from '../../constants/theme';
-import { useCart } from '../../context/cart';
-import { PRODUCTOS_MOCK } from '../../data/mockData';
+import { useProductoById } from '../../hooks/useProductoById';
+import { deleteProducto } from '../../services/productosService';
+import { selectTotalItems, useCarritoStore } from '../../stores/useCarritoStore';
+import { useUsuarioStore } from '../../stores/useUsuarioStore';
 
 const CANVAS_WIDTH = 412;
-const EXTRA_PHOTO_SLOTS = 4;
 
 const DEFAULT_SIZES = ['XS', 'S', 'M', 'L', 'XL'];
-const COLOR_OPTIONS = ['Marron', 'Negro', 'Beige'];
-const COLOR_SWATCHES: Record<string, string> = {
-  Marron: '#6F4E37',
-  Negro: '#1F1E1E',
-  Beige: '#D8C3A5',
-};
 
 export default function ProductDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { addToCart, totalItems } = useCart();
+  const agregarProducto = useCarritoStore((state) => state.agregarProducto);
+  const totalItems = useCarritoStore(selectTotalItems);
+  const esVendedor = useUsuarioStore((state) => state.usuario?.tipo === 'vendedor');
+  const { producto, cargando, error, refrescar } = useProductoById(id);
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
@@ -45,27 +47,27 @@ export default function ProductDetailScreen() {
     [canvasWidth, insets.bottom, insets.top, scale]
   );
 
-  const producto = useMemo(
-    () => PRODUCTOS_MOCK.find((item) => item.id === id) ?? PRODUCTOS_MOCK[0],
-    [id]
-  );
-  const talles = producto.talle?.length ? producto.talle : DEFAULT_SIZES;
-  const galleryImages = useMemo(
-    () => Array.from({ length: EXTRA_PHOTO_SLOTS }, () => producto.imagen),
-    [producto.imagen]
-  );
+  const talles = producto?.talle?.length ? producto.talle : DEFAULT_SIZES;
+  const colores = producto?.colores?.length ? producto.colores : [...PRODUCT_COLOR_OPTIONS];
+  const galleryImages = useMemo(() => {
+    const imagenes = producto?.imagenes?.filter(Boolean) ?? [];
+    if (imagenes.length > 0) {
+      return imagenes;
+    }
+    return producto?.imagen ? [producto.imagen] : [];
+  }, [producto?.imagen, producto?.imagenes]);
   const detailItems = useMemo(
-    () => [
+    () => producto ? [
       producto.descripcion,
       `Talles disponibles: ${talles.join(', ')}.`,
       producto.disponible ? 'Disponible para compra inmediata.' : 'Producto agotado por el momento.',
-    ],
-    [producto.descripcion, producto.disponible, talles]
+    ] : [],
+    [producto, talles]
   );
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState(talles[0]);
-  const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0]);
+  const [selectedColor, setSelectedColor] = useState(colores[0]);
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
   const [purchaseFeedback, setPurchaseFeedback] = useState(false);
@@ -73,11 +75,15 @@ export default function ProductDetailScreen() {
   const purchaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (!producto) {
+      return;
+    }
+
     setSelectedImageIndex(0);
     setSelectedSize(talles[0]);
-    setSelectedColor(COLOR_OPTIONS[0]);
+    setSelectedColor(colores[0]);
     setQuantity(1);
-  }, [producto.id, talles]);
+  }, [colores, producto, talles]);
 
   useEffect(
     () => () => {
@@ -97,10 +103,10 @@ export default function ProductDetailScreen() {
   };
 
   const onPressComprar = () => {
-    if (!producto.disponible) {
+    if (!producto || !producto.disponible) {
       return;
     }
-    addToCart({
+    agregarProducto({
       producto,
       talle: selectedSize,
       color: selectedColor,
@@ -112,6 +118,55 @@ export default function ProductDetailScreen() {
     }
     purchaseTimerRef.current = setTimeout(() => setPurchaseFeedback(false), 900);
   };
+
+  const onPressEliminar = () => {
+    if (!producto) {
+      return;
+    }
+
+    Alert.alert('Eliminar producto', 'Esta accion no se puede deshacer.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteProducto(producto.id);
+            router.replace(ROUTES.home);
+          } catch {
+            Alert.alert('Error', 'No se pudo eliminar el producto.');
+          }
+        },
+      },
+    ]);
+  };
+
+  if (cargando) {
+    return (
+      <View style={styles.screen}>
+        <StatusBar style="dark" />
+        <SkeletonList />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.screen}>
+        <StatusBar style="dark" />
+        <ErrorView message={error} onRetry={() => void refrescar()} />
+      </View>
+    );
+  }
+
+  if (!producto) {
+    return (
+      <View style={styles.screen}>
+        <StatusBar style="dark" />
+        <ErrorView message="No encontramos este producto." onRetry={() => router.replace(ROUTES.home)} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -141,28 +196,33 @@ export default function ProductDetailScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.galleryRow}>
-            <View style={styles.thumbnailColumn}>
-              {galleryImages.map((image, index) => {
-                const isSelected = index === selectedImageIndex;
-
-                return (
-                  <Pressable
-                    key={`${producto.id}-${index}`}
-                    accessibilityLabel={`Foto ${index + 1} del producto`}
-                    onPress={() => setSelectedImageIndex(index)}
-                    style={[styles.thumbnailFrame, isSelected && styles.thumbnailFrameSelected]}
-                  >
-                    <Image source={{ uri: image }} style={styles.thumbnailImage} />
-                  </Pressable>
+          <View style={styles.carouselFrame}>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(event) => {
+                const next = Math.round(
+                  event.nativeEvent.contentOffset.x / event.nativeEvent.layoutMeasurement.width
                 );
-              })}
-            </View>
-
-            <View style={styles.mainImageFrame}>
-              <Image source={{ uri: galleryImages[selectedImageIndex] }} style={styles.mainImage} />
-            </View>
+                setSelectedImageIndex(next);
+              }}
+            >
+              {galleryImages.map((image, index) => (
+                <Image key={`${producto.id}-${index.toString()}`} source={{ uri: image }} style={styles.carouselImage} />
+              ))}
+            </ScrollView>
           </View>
+          {galleryImages.length > 1 ? (
+            <View style={styles.carouselDots}>
+              {galleryImages.map((_, index) => (
+                <View
+                  key={`${producto.id}-dot-${index.toString()}`}
+                  style={[styles.carouselDot, selectedImageIndex === index && styles.carouselDotActive]}
+                />
+              ))}
+            </View>
+          ) : null}
 
           <View style={styles.infoSection}>
             <Text numberOfLines={2} style={styles.productName}>
@@ -198,7 +258,7 @@ export default function ProductDetailScreen() {
             <View style={styles.colorSelector}>
               <Text style={styles.colorLabel}>Color:</Text>
               <View style={styles.colorChipsRow}>
-                {COLOR_OPTIONS.map((color) => {
+                {colores.map((color) => {
                   const isSelected = color === selectedColor;
                   return (
                     <Pressable
@@ -210,7 +270,7 @@ export default function ProductDetailScreen() {
                       <View
                         style={[
                           styles.colorSwatch,
-                          { backgroundColor: COLOR_SWATCHES[color] ?? Colors.secondary },
+                          { backgroundColor: resolveProductColorHex(color, Colors.secondary) },
                         ]}
                       />
                     </Pressable>
@@ -244,12 +304,23 @@ export default function ProductDetailScreen() {
 
             <View style={styles.descriptionList}>
               {detailItems.map((item, index) => (
-                <View key={`${producto.id}-detail-${index}`} style={styles.descriptionItem}>
+                <View key={`${producto.id}-detail-${index.toString()}`} style={styles.descriptionItem}>
                   <Text style={styles.bulletMarker}>{'\u2022'}</Text>
                   <Text style={styles.descriptionText}>{item}</Text>
                 </View>
               ))}
             </View>
+
+            {esVendedor ? (
+              <View style={styles.adminActionsRow}>
+                <Pressable onPress={() => router.push({ pathname: ROUTES.editProduct, params: { id: producto.id } })} style={styles.adminButton}>
+                  <Text style={styles.adminButtonText}>EDITAR</Text>
+                </Pressable>
+                <Pressable onPress={onPressEliminar} style={[styles.adminButton, styles.deleteButton]}>
+                  <Text style={styles.adminButtonText}>ELIMINAR</Text>
+                </Pressable>
+              </View>
+            ) : null}
 
             <Pressable
               accessibilityLabel="Comprar producto"
@@ -271,9 +342,12 @@ export default function ProductDetailScreen() {
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
+        esVendedor={esVendedor}
+        onPressCreate={() => router.push(ROUTES.newProduct)}
         onPressHome={() => router.replace(ROUTES.home)}
         onPressBag={() => router.push(ROUTES.categories)}
         onPressCart={() => router.push(ROUTES.cart)}
+        onPressMenu={() => router.push(ROUTES.profile)}
       />
     </View>
   );
@@ -329,47 +403,35 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       paddingTop: s(23),
       paddingBottom: s(122) + bottomInset,
     },
-    galleryRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      paddingLeft: s(24),
-      paddingRight: s(27),
-      columnGap: s(24),
-    },
-    thumbnailColumn: {
-      width: s(57),
-      rowGap: s(18),
-    },
-    thumbnailFrame: {
-      width: s(57),
-      height: s(57),
-      borderRadius: s(10),
-      borderWidth: s(5),
-      borderColor: Colors.secondary,
-      backgroundColor: '#E8D7CB',
-      overflow: 'hidden',
-    },
-    thumbnailFrameSelected: {
-      backgroundColor: '#E4D0C2',
-    },
-    thumbnailImage: {
-      width: '100%',
-      height: '100%',
-      resizeMode: 'cover',
-    },
-    mainImageFrame: {
+    carouselFrame: {
       width: s(275),
       height: s(275),
+      alignSelf: 'center',
       borderRadius: s(10),
       borderWidth: s(5),
       borderColor: Colors.secondary,
       backgroundColor: '#E8D7CB',
       overflow: 'hidden',
     },
-    mainImage: {
-      width: '100%',
-      height: '100%',
+    carouselImage: {
+      width: s(275),
+      height: s(275),
       resizeMode: 'cover',
+    },
+    carouselDots: {
+      marginTop: s(10),
+      flexDirection: 'row',
+      alignSelf: 'center',
+      columnGap: s(8),
+    },
+    carouselDot: {
+      width: s(8),
+      height: s(8),
+      borderRadius: s(4),
+      backgroundColor: 'rgba(45, 31, 22, 0.3)',
+    },
+    carouselDotActive: {
+      backgroundColor: Colors.secondary,
     },
     infoSection: {
       marginTop: s(14),
@@ -522,6 +584,27 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       fontSize: s(15),
       lineHeight: s(26),
       fontWeight: '500',
+    },
+    adminActionsRow: {
+      marginTop: s(18),
+      flexDirection: 'row',
+      columnGap: s(10),
+    },
+    adminButton: {
+      flex: 1,
+      minHeight: s(42),
+      borderRadius: s(10),
+      backgroundColor: Colors.tertiary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    deleteButton: {
+      backgroundColor: '#F4B3B3',
+    },
+    adminButtonText: {
+      color: '#2D1F16',
+      fontSize: s(13),
+      fontFamily: 'Montserrat_700Bold',
     },
     buyButton: {
       width: s(225),

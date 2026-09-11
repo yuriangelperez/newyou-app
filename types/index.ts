@@ -1,13 +1,18 @@
 // types/index.ts
 
+import { CategoriaProducto } from '../constants/categoriasProductos';
+
 export interface Producto {
   id: string;
   nombre: string;
   precio: number;
   imagen: string;
+  imagenes?: string[];
   categoria: string;
+  categoriaProducto?: CategoriaProducto;
   disponible: boolean;
   talle?: string[];
+  colores?: string[];
   descripcion: string;
 }
 

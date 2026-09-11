@@ -17,7 +17,8 @@ import { BottomTabBar } from '../components/BottomTabBar';
 import { BRANDING_LOGO, CATEGORY_DIAGONAL_CUT } from '../constants/assets';
 import { ROUTES } from '../constants/routes';
 import { Colors } from '../constants/theme';
-import { useCart } from '../context/cart';
+import { selectTotalItems, useCarritoStore } from '../stores/useCarritoStore';
+import { useUsuarioStore } from '../stores/useUsuarioStore';
 
 const CANVAS_WIDTH = 412;
 const FILTERS = ['TODO', 'TORSO', 'PIERNAS', 'ACCESORIOS', 'CALZADO'];
@@ -63,7 +64,8 @@ export default function CategoriasScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { totalItems } = useCart();
+  const totalItems = useCarritoStore(selectTotalItems);
+  const esVendedor = useUsuarioStore((state) => state.usuario?.tipo === 'vendedor');
   const [activeFilter, setActiveFilter] = useState('TODO');
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
@@ -119,8 +121,11 @@ export default function CategoriasScreen() {
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
+        esVendedor={esVendedor}
+        onPressCreate={() => router.push(ROUTES.newProduct)}
         onPressHome={() => router.replace(ROUTES.home)}
         onPressCart={() => router.push(ROUTES.cart)}
+        onPressMenu={() => router.push(ROUTES.profile)}
       />
     </View>
   );

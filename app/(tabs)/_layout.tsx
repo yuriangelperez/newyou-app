@@ -1,6 +1,10 @@
 import { Tabs } from 'expo-router';
 
+import { selectTotalItems, useCarritoStore } from '../../stores/useCarritoStore';
+
 export default function TabsLayout() {
+  const totalItems = useCarritoStore(selectTotalItems);
+
   return (
     <Tabs
       screenOptions={{
@@ -9,7 +13,13 @@ export default function TabsLayout() {
         tabBarShowLabel: false,
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Inicio' }} />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Inicio',
+          tabBarBadge: totalItems > 0 ? (totalItems > 99 ? '99+' : totalItems) : undefined,
+        }}
+      />
     </Tabs>
   );
 }
