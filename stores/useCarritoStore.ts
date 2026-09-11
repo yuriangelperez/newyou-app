@@ -10,6 +10,7 @@ export interface CarritoItem {
   imagen: string;
   categoria: string;
   disponible: boolean;
+  stock: number;
   descripcion: string;
   talle: string;
   color: string;
@@ -39,8 +40,18 @@ function makeKey(productoId: string, talle: string, color: string) {
 
 export const useCarritoStore = create<CarritoStore>((set) => ({
   items: [],
+
   agregarProducto: ({ producto, talle, color, cantidad = 1 }) => {
-    const safeQuantity = Math.max(1, cantidad);
+    if (!producto.disponible) {
+      return;
+    }
+
+    const stockDisponible = producto.stock ?? 0;
+
+    if (stockDisponible <= 0) {
+      return;
+    }
+
     const key = makeKey(producto.id, talle, color);
 
     set((state) => {
@@ -58,53 +69,93 @@ export const useCarritoStore = create<CarritoStore>((set) => ({
               imagen: producto.imagen,
               categoria: producto.categoria,
               disponible: producto.disponible,
+              stock: stockDisponible,
               descripcion: producto.descripcion,
               talle,
               color,
-              cantidad: safeQuantity,
+              cantidad: Math.min(Math.max(1, cantidad), stockDisponible),
             },
           ],
         };
       }
 
+      const nuevaCantidad = Math.min(
+        itemExistente.cantidad + Math.max(1, cantidad),
+        stockDisponible
+      );
+
       return {
         items: state.items.map((item) =>
           item.key === key
-            ? { ...item, cantidad: item.cantidad + safeQuantity }
+            ? {
+                ...item,
+                cantidad: nuevaCantidad,
+                stock: stockDisponible,
+                disponible: producto.disponible,
+              }
             : item
         ),
       };
     });
   },
+
   incrementarUnidad: (key) => {
     set((state) => ({
-      items: state.items.map((item) =>
-        item.key === key ? { ...item, cantidad: item.cantidad + 1 } : item
-      ),
+      items: state.items.map((item) => {
+        if (item.key !== key) {
+          return item;
+        }
+
+        if (item.cantidad >= item.stock) {
+          return item;
+        }
+
+        return {
+          ...item,
+          cantidad: item.cantidad + 1,
+        };
+      }),
     }));
   },
+
   restarUnidad: (key) => {
     set((state) => ({
       items: state.items
         .map((item) =>
-          item.key === key ? { ...item, cantidad: item.cantidad - 1 } : item
+          item.key === key
+            ? { ...item, cantidad: item.cantidad - 1 }
+            : item
         )
         .filter((item) => item.cantidad > 0),
     }));
   },
+
   eliminarProducto: (key) => {
     set((state) => ({
       items: state.items.filter((item) => item.key !== key),
     }));
   },
+
   actualizarCantidad: (key, cantidad) => {
-    const safeCantidad = Math.max(1, cantidad);
     set((state) => ({
-      items: state.items.map((item) =>
-        item.key === key ? { ...item, cantidad: safeCantidad } : item
-      ),
+      items: state.items.map((item) => {
+        if (item.key !== key) {
+          return item;
+        }
+
+        const nuevaCantidad = Math.min(
+          Math.max(1, cantidad),
+          item.stock
+        );
+
+        return {
+          ...item,
+          cantidad: nuevaCantidad,
+        };
+      }),
     }));
   },
+
   vaciarCarrito: () => {
     set({ items: [] });
   },
