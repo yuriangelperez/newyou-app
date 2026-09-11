@@ -371,9 +371,7 @@ export default function ProductDetailScreen() {
               <Pressable
                 accessibilityLabel="Disminuir cantidad"
                 onPress={() =>
-                  setQuantity((current) =>
-                    Math.min(current + 1, producto?.stock ?? 1),
-                  )
+                  setQuantity((current) => Math.max(current - 1, 1))
                 }
                 style={styles.quantityButton}
               >
@@ -386,7 +384,11 @@ export default function ProductDetailScreen() {
 
               <Pressable
                 accessibilityLabel="Aumentar cantidad"
-                onPress={() => setQuantity((current) => current + 1)}
+                onPress={() =>
+                  setQuantity((current) =>
+                    Math.min(current + 1, producto.stock),
+                  )
+                }
                 style={styles.quantityButton}
               >
                 <Text style={styles.quantityButtonText}>+</Text>

@@ -49,7 +49,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
 export default function NuevoProductoScreen() {
   const router = useRouter();
   const esVendedor = useUsuarioStore(
-    (state) => state.usuario?.tipo === "vendedor",
+    (state) => state.usuario?.role === "vendedor",
   );
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
