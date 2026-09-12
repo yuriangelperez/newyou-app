@@ -31,7 +31,7 @@ export default function CarritoScreen() {
   const eliminarProducto = useCarritoStore((state) => state.eliminarProducto);
   const totalItems = useCarritoStore(selectTotalItems);
   const subtotal = useCarritoStore(selectSubtotal);
-  const esVendedor = useUsuarioStore((state) => state.usuario?.tipo === 'vendedor');
+  const esVendedor = useUsuarioStore((state) => state.usuario?.role === 'vendedor');
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;

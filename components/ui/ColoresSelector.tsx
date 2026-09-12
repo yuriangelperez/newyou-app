@@ -1,9 +1,11 @@
 import { Control, useController } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { PRODUCT_COLOR_OPTIONS, resolveProductColorHex } from '../../constants/productColors';
 import { Colors, Radius } from '../../constants/theme';
 import { ProductoFormValues } from '../../schemas/productoSchema';
+
+const COLORES = ['Negro', 'Blanco', 'Beige', 'Marrón', 'Azul', 'Rojo', 'Verde', 'Gris', 'Rosa', 'Amarillo'];
+const TONOS: Record<string, string> = { Negro: '#1F1E1E', Blanco: '#FFFFFF', Beige: '#D8C3A5', Marrón: '#6F4E37', Azul: '#2563EB', Rojo: '#DC2626', Verde: '#16A34A', Gris: '#6B7280', Rosa: '#EC4899', Amarillo: '#CA8A04' };
 
 export function ColoresSelector({ control }: { control: Control<ProductoFormValues> }) {
   const { field, fieldState } = useController({ control, name: 'colores' });
@@ -12,9 +14,9 @@ export function ColoresSelector({ control }: { control: Control<ProductoFormValu
 
   return <View style={styles.container}>
     <Text style={styles.label}>Colores</Text>
-    <View style={styles.options}>{PRODUCT_COLOR_OPTIONS.map((color) => {
+    <View style={styles.options}>{COLORES.map((color) => {
       const selected = seleccionados.includes(color);
-      const tone = resolveProductColorHex(color, Colors.secondary);
+      const tone = TONOS[color];
 
       return <Pressable key={color} onPress={() => toggle(color)} style={[styles.option, selected && styles.selected]}>
         <View style={[styles.swatch, { backgroundColor: tone }, color === 'Blanco' && styles.whiteSwatch]} />

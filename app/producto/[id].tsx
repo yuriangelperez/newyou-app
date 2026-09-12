@@ -1,6 +1,6 @@
-import { StatusBar } from 'expo-status-bar';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { StatusBar } from "expo-status-bar";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -11,24 +11,30 @@ import {
   Text,
   useWindowDimensions,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BottomTabBar } from '../../components/BottomTabBar';
-import { ErrorView } from '../../components/ui/ErrorView';
-import { SkeletonList } from '../../components/ui/SkeletonList';
-import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from '../../constants/assets';
-import { PRODUCT_COLOR_OPTIONS, resolveProductColorHex } from '../../constants/productColors';
-import { ROUTES } from '../../constants/routes';
-import { Colors } from '../../constants/theme';
-import { useProductoById } from '../../hooks/useProductoById';
-import { deleteProducto } from '../../services/productosService';
-import { selectTotalItems, useCarritoStore } from '../../stores/useCarritoStore';
-import { useUsuarioStore } from '../../stores/useUsuarioStore';
+import { BottomTabBar } from "../../components/BottomTabBar";
+import { ErrorView } from "../../components/ui/ErrorView";
+import { SkeletonList } from "../../components/ui/SkeletonList";
+import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from "../../constants/assets";
+import {
+  PRODUCT_COLOR_OPTIONS,
+  resolveProductColorHex,
+} from "../../constants/productColors";
+import { ROUTES } from "../../constants/routes";
+import { Colors } from "../../constants/theme";
+import { useProductoById } from "../../hooks/useProductoById";
+import { deleteProducto } from "../../services/productosService";
+import {
+  selectTotalItems,
+  useCarritoStore,
+} from "../../stores/useCarritoStore";
+import { useUsuarioStore } from "../../stores/useUsuarioStore";
 
 const CANVAS_WIDTH = 412;
 
-const DEFAULT_SIZES = ['XS', 'S', 'M', 'L', 'XL'];
+const DEFAULT_SIZES = ["XS", "S", "M", "L", "XL"];
 
 export default function ProductDetailScreen() {
   const router = useRouter();
@@ -37,18 +43,22 @@ export default function ProductDetailScreen() {
   const insets = useSafeAreaInsets();
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
   const totalItems = useCarritoStore(selectTotalItems);
-  const esVendedor = useUsuarioStore((state) => state.usuario?.tipo === 'vendedor');
+  const esVendedor = useUsuarioStore(
+    (state) => state.usuario?.role === "vendedor",
+  );
   const { producto, cargando, error, refrescar } = useProductoById(id);
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
   const styles = useMemo(
     () => createStyles(scale, canvasWidth, insets.top, insets.bottom),
-    [canvasWidth, insets.bottom, insets.top, scale]
+    [canvasWidth, insets.bottom, insets.top, scale],
   );
 
   const talles = producto?.talle?.length ? producto.talle : DEFAULT_SIZES;
-  const colores = producto?.colores?.length ? producto.colores : [...PRODUCT_COLOR_OPTIONS];
+  const colores = producto?.colores?.length
+    ? producto.colores
+    : [...PRODUCT_COLOR_OPTIONS];
   const galleryImages = useMemo(() => {
     const imagenes = producto?.imagenes?.filter(Boolean) ?? [];
     if (imagenes.length > 0) {
@@ -57,12 +67,17 @@ export default function ProductDetailScreen() {
     return producto?.imagen ? [producto.imagen] : [];
   }, [producto?.imagen, producto?.imagenes]);
   const detailItems = useMemo(
-    () => producto ? [
-      producto.descripcion,
-      `Talles disponibles: ${talles.join(', ')}.`,
-      producto.disponible ? 'Disponible para compra inmediata.' : 'Producto agotado por el momento.',
-    ] : [],
-    [producto, talles]
+    () =>
+      producto
+        ? [
+            producto.descripcion,
+            `Talles disponibles: ${talles.join(", ")}.`,
+            producto.disponible
+              ? "Disponible para compra inmediata."
+              : "Producto agotado por el momento.",
+          ]
+        : [],
+    [producto, talles],
   );
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -91,14 +106,23 @@ export default function ProductDetailScreen() {
         clearTimeout(purchaseTimerRef.current);
       }
     },
-    []
+    [],
   );
 
   const toggleFavorite = () => {
     setIsFavorite((current) => !current);
     Animated.sequence([
-      Animated.timing(favoriteScale, { toValue: 1.22, duration: 120, useNativeDriver: true }),
-      Animated.spring(favoriteScale, { toValue: 1, useNativeDriver: true, friction: 5, tension: 140 }),
+      Animated.timing(favoriteScale, {
+        toValue: 1.22,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+      Animated.spring(favoriteScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 5,
+        tension: 140,
+      }),
     ]).start();
   };
 
@@ -106,17 +130,35 @@ export default function ProductDetailScreen() {
     if (!producto || !producto.disponible) {
       return;
     }
+
+    if (producto.stock <= 0) {
+      Alert.alert("Sin stock", "Este producto no tiene unidades disponibles.");
+      return;
+    }
+
+    if (quantity > producto.stock) {
+      Alert.alert(
+        "Stock insuficiente",
+        `Solo quedan ${producto.stock} unidades disponibles.`,
+      );
+      return;
+    }
+
     agregarProducto({
       producto,
       talle: selectedSize,
       color: selectedColor,
       cantidad: quantity,
     });
+
     setPurchaseFeedback(true);
     if (purchaseTimerRef.current) {
       clearTimeout(purchaseTimerRef.current);
     }
-    purchaseTimerRef.current = setTimeout(() => setPurchaseFeedback(false), 900);
+    purchaseTimerRef.current = setTimeout(
+      () => setPurchaseFeedback(false),
+      900,
+    );
   };
 
   const onPressEliminar = () => {
@@ -124,17 +166,17 @@ export default function ProductDetailScreen() {
       return;
     }
 
-    Alert.alert('Eliminar producto', 'Esta accion no se puede deshacer.', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert("Eliminar producto", "Esta accion no se puede deshacer.", [
+      { text: "Cancelar", style: "cancel" },
       {
-        text: 'Eliminar',
-        style: 'destructive',
+        text: "Eliminar",
+        style: "destructive",
         onPress: async () => {
           try {
             await deleteProducto(producto.id);
             router.replace(ROUTES.home);
           } catch {
-            Alert.alert('Error', 'No se pudo eliminar el producto.');
+            Alert.alert("Error", "No se pudo eliminar el producto.");
           }
         },
       },
@@ -163,7 +205,10 @@ export default function ProductDetailScreen() {
     return (
       <View style={styles.screen}>
         <StatusBar style="dark" />
-        <ErrorView message="No encontramos este producto." onRetry={() => router.replace(ROUTES.home)} />
+        <ErrorView
+          message="No encontramos este producto."
+          onRetry={() => router.replace(ROUTES.home)}
+        />
       </View>
     );
   }
@@ -174,15 +219,34 @@ export default function ProductDetailScreen() {
 
       <View style={styles.canvas}>
         <View style={styles.header}>
-          <Pressable accessibilityLabel="Volver" onPress={() => router.back()} style={styles.headerIconButton}>
-            <Image source={PRODUCT_DETAIL_ICONS.back} style={styles.headerIcon} />
+          <Pressable
+            accessibilityLabel="Volver"
+            onPress={() => router.back()}
+            style={styles.headerIconButton}
+          >
+            <Image
+              source={PRODUCT_DETAIL_ICONS.back}
+              style={styles.headerIcon}
+            />
           </Pressable>
 
-          <Image accessibilityLabel="New You" source={BRANDING_LOGO} style={styles.logo} />
+          <Image
+            accessibilityLabel="New You"
+            source={BRANDING_LOGO}
+            style={styles.logo}
+          />
 
-          <Pressable accessibilityLabel="Favorito" onPress={toggleFavorite} style={styles.headerIconButton}>
+          <Pressable
+            accessibilityLabel="Favorito"
+            onPress={toggleFavorite}
+            style={styles.headerIconButton}
+          >
             <Animated.Image
-              source={isFavorite ? PRODUCT_DETAIL_ICONS.favoriteOn : PRODUCT_DETAIL_ICONS.favoriteOff}
+              source={
+                isFavorite
+                  ? PRODUCT_DETAIL_ICONS.favoriteOn
+                  : PRODUCT_DETAIL_ICONS.favoriteOff
+              }
               style={[
                 styles.favoriteIcon,
                 { transform: [{ scale: favoriteScale }] },
@@ -203,13 +267,18 @@ export default function ProductDetailScreen() {
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={(event) => {
                 const next = Math.round(
-                  event.nativeEvent.contentOffset.x / event.nativeEvent.layoutMeasurement.width
+                  event.nativeEvent.contentOffset.x /
+                    event.nativeEvent.layoutMeasurement.width,
                 );
                 setSelectedImageIndex(next);
               }}
             >
               {galleryImages.map((image, index) => (
-                <Image key={`${producto.id}-${index.toString()}`} source={{ uri: image }} style={styles.carouselImage} />
+                <Image
+                  key={`${producto.id}-${index.toString()}`}
+                  source={{ uri: image }}
+                  style={styles.carouselImage}
+                />
               ))}
             </ScrollView>
           </View>
@@ -218,7 +287,10 @@ export default function ProductDetailScreen() {
               {galleryImages.map((_, index) => (
                 <View
                   key={`${producto.id}-dot-${index.toString()}`}
-                  style={[styles.carouselDot, selectedImageIndex === index && styles.carouselDotActive]}
+                  style={[
+                    styles.carouselDot,
+                    selectedImageIndex === index && styles.carouselDotActive,
+                  ]}
                 />
               ))}
             </View>
@@ -228,7 +300,9 @@ export default function ProductDetailScreen() {
             <Text numberOfLines={2} style={styles.productName}>
               {producto.nombre}
             </Text>
-            <Text style={styles.price}>${producto.precio.toLocaleString('es-AR')}</Text>
+            <Text style={styles.price}>
+              ${producto.precio.toLocaleString("es-AR")}
+            </Text>
 
             <View style={styles.sizeSelector}>
               <View style={styles.sizeLabelsRow}>
@@ -248,7 +322,10 @@ export default function ProductDetailScreen() {
                       key={size}
                       accessibilityLabel={`Seleccionar talle ${size}`}
                       onPress={() => setSelectedSize(size)}
-                      style={[styles.sizeChip, isSelected && styles.sizeChipSelected]}
+                      style={[
+                        styles.sizeChip,
+                        isSelected && styles.sizeChipSelected,
+                      ]}
                     />
                   );
                 })}
@@ -265,25 +342,37 @@ export default function ProductDetailScreen() {
                       key={color}
                       accessibilityLabel={`Seleccionar color ${color}`}
                       onPress={() => setSelectedColor(color)}
-                      style={[styles.colorChip, isSelected && styles.colorChipSelected]}
+                      style={[
+                        styles.colorChip,
+                        isSelected && styles.colorChipSelected,
+                      ]}
                     >
                       <View
                         style={[
                           styles.colorSwatch,
-                          { backgroundColor: resolveProductColorHex(color, Colors.secondary) },
+                          {
+                            backgroundColor: resolveProductColorHex(
+                              color,
+                              Colors.secondary,
+                            ),
+                          },
                         ]}
                       />
                     </Pressable>
                   );
                 })}
               </View>
-              <Text style={styles.selectedColorText}>Seleccionado: {selectedColor}</Text>
+              <Text style={styles.selectedColorText}>
+                Seleccionado: {selectedColor}
+              </Text>
             </View>
 
             <View style={styles.quantityRow}>
               <Pressable
                 accessibilityLabel="Disminuir cantidad"
-                onPress={() => setQuantity((current) => Math.max(1, current - 1))}
+                onPress={() =>
+                  setQuantity((current) => Math.max(current - 1, 1))
+                }
                 style={styles.quantityButton}
               >
                 <Text style={styles.quantityButtonText}>-</Text>
@@ -295,7 +384,11 @@ export default function ProductDetailScreen() {
 
               <Pressable
                 accessibilityLabel="Aumentar cantidad"
-                onPress={() => setQuantity((current) => current + 1)}
+                onPress={() =>
+                  setQuantity((current) =>
+                    Math.min(current + 1, producto.stock),
+                  )
+                }
                 style={styles.quantityButton}
               >
                 <Text style={styles.quantityButtonText}>+</Text>
@@ -304,8 +397,11 @@ export default function ProductDetailScreen() {
 
             <View style={styles.descriptionList}>
               {detailItems.map((item, index) => (
-                <View key={`${producto.id}-detail-${index.toString()}`} style={styles.descriptionItem}>
-                  <Text style={styles.bulletMarker}>{'\u2022'}</Text>
+                <View
+                  key={`${producto.id}-detail-${index.toString()}`}
+                  style={styles.descriptionItem}
+                >
+                  <Text style={styles.bulletMarker}>{"\u2022"}</Text>
                   <Text style={styles.descriptionText}>{item}</Text>
                 </View>
               ))}
@@ -313,10 +409,21 @@ export default function ProductDetailScreen() {
 
             {esVendedor ? (
               <View style={styles.adminActionsRow}>
-                <Pressable onPress={() => router.push({ pathname: ROUTES.editProduct, params: { id: producto.id } })} style={styles.adminButton}>
+                <Pressable
+                  onPress={() =>
+                    router.push({
+                      pathname: ROUTES.editProduct,
+                      params: { id: producto.id },
+                    })
+                  }
+                  style={styles.adminButton}
+                >
                   <Text style={styles.adminButtonText}>EDITAR</Text>
                 </Pressable>
-                <Pressable onPress={onPressEliminar} style={[styles.adminButton, styles.deleteButton]}>
+                <Pressable
+                  onPress={onPressEliminar}
+                  style={[styles.adminButton, styles.deleteButton]}
+                >
                   <Text style={styles.adminButtonText}>ELIMINAR</Text>
                 </Pressable>
               </View>
@@ -326,10 +433,18 @@ export default function ProductDetailScreen() {
               accessibilityLabel="Comprar producto"
               onPress={onPressComprar}
               disabled={!producto.disponible}
-              style={[styles.buyButton, !producto.disponible && styles.buyButtonDisabled, purchaseFeedback && styles.buyButtonAdded]}
+              style={[
+                styles.buyButton,
+                !producto.disponible && styles.buyButtonDisabled,
+                purchaseFeedback && styles.buyButtonAdded,
+              ]}
             >
               <Text style={styles.buyButtonText}>
-                {producto.disponible ? (purchaseFeedback ? 'AGREGADO' : 'COMPRAR') : 'AGOTADO'}
+                {producto.disponible
+                  ? purchaseFeedback
+                    ? "AGREGADO"
+                    : "COMPRAR"
+                  : "AGOTADO"}
               </Text>
             </Pressable>
           </View>
@@ -353,7 +468,12 @@ export default function ProductDetailScreen() {
   );
 }
 
-function createStyles(scale: number, canvasWidth: number, topInset: number, bottomInset: number) {
+function createStyles(
+  scale: number,
+  canvasWidth: number,
+  topInset: number,
+  bottomInset: number,
+) {
   const s = (value: number) => value * scale;
 
   return StyleSheet.create({
@@ -364,16 +484,16 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
     canvas: {
       flex: 1,
       width: canvasWidth,
-      alignSelf: 'center',
+      alignSelf: "center",
       backgroundColor: Colors.background,
     },
     header: {
       paddingTop: topInset,
       height: topInset + s(76),
       paddingHorizontal: s(15),
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       backgroundColor: Colors.background,
       borderBottomWidth: s(2),
       borderBottomColor: Colors.secondary,
@@ -381,23 +501,23 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
     headerIconButton: {
       width: s(39),
       height: s(39),
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
     },
     headerIcon: {
       width: s(39),
       height: s(39),
-      resizeMode: 'contain',
+      resizeMode: "contain",
     },
     favoriteIcon: {
       width: s(38),
       height: s(38),
-      resizeMode: 'contain',
+      resizeMode: "contain",
     },
     logo: {
       width: s(105),
       height: s(60),
-      resizeMode: 'contain',
+      resizeMode: "contain",
     },
     scrollContent: {
       paddingTop: s(23),
@@ -406,29 +526,29 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
     carouselFrame: {
       width: s(275),
       height: s(275),
-      alignSelf: 'center',
+      alignSelf: "center",
       borderRadius: s(10),
       borderWidth: s(5),
       borderColor: Colors.secondary,
-      backgroundColor: '#E8D7CB',
-      overflow: 'hidden',
+      backgroundColor: "#E8D7CB",
+      overflow: "hidden",
     },
     carouselImage: {
       width: s(275),
       height: s(275),
-      resizeMode: 'cover',
+      resizeMode: "cover",
     },
     carouselDots: {
       marginTop: s(10),
-      flexDirection: 'row',
-      alignSelf: 'center',
+      flexDirection: "row",
+      alignSelf: "center",
       columnGap: s(8),
     },
     carouselDot: {
       width: s(8),
       height: s(8),
       borderRadius: s(4),
-      backgroundColor: 'rgba(45, 31, 22, 0.3)',
+      backgroundColor: "rgba(45, 31, 22, 0.3)",
     },
     carouselDotActive: {
       backgroundColor: Colors.secondary,
@@ -439,39 +559,39 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       marginRight: s(38),
     },
     productName: {
-      color: '#2D1F16',
+      color: "#2D1F16",
       fontSize: s(30),
       lineHeight: s(36),
-      fontWeight: '600',
+      fontWeight: "600",
     },
     price: {
       marginTop: s(8),
       color: Colors.secondary,
       fontSize: s(30),
       lineHeight: s(36),
-      fontWeight: '700',
+      fontWeight: "700",
     },
     sizeSelector: {
       marginTop: s(18),
-      alignSelf: 'flex-start',
+      alignSelf: "flex-start",
       rowGap: s(8),
     },
     sizeLabelsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       columnGap: s(8),
     },
     sizeLabel: {
       width: s(34),
-      color: '#000000',
-      textAlign: 'center',
+      color: "#000000",
+      textAlign: "center",
       fontSize: s(15),
       lineHeight: s(19),
-      fontWeight: '500',
+      fontWeight: "500",
     },
     sizeChipsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       columnGap: s(8),
     },
     colorSelector: {
@@ -479,13 +599,13 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       rowGap: s(6),
     },
     colorLabel: {
-      color: '#2D1F16',
+      color: "#2D1F16",
       fontSize: s(14),
       lineHeight: s(16),
-      fontWeight: '600',
+      fontWeight: "600",
     },
     colorChipsRow: {
-      flexDirection: 'row',
+      flexDirection: "row",
       columnGap: s(12),
     },
     colorChip: {
@@ -493,9 +613,9 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       height: s(34),
       borderRadius: s(17),
       borderWidth: s(2),
-      borderColor: 'transparent',
-      alignItems: 'center',
-      justifyContent: 'center',
+      borderColor: "transparent",
+      alignItems: "center",
+      justifyContent: "center",
       backgroundColor: Colors.background,
     },
     colorChipSelected: {
@@ -506,19 +626,19 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       height: s(24),
       borderRadius: s(12),
       borderWidth: 1,
-      borderColor: 'rgba(45, 31, 22, 0.18)',
+      borderColor: "rgba(45, 31, 22, 0.18)",
     },
     selectedColorText: {
       color: Colors.textMuted,
       fontSize: s(12),
       lineHeight: s(14),
-      fontWeight: '500',
+      fontWeight: "500",
     },
     sizeChip: {
       width: s(34),
       height: s(34),
       borderRadius: s(10),
-      backgroundColor: '#E8D7CB',
+      backgroundColor: "#E8D7CB",
       borderWidth: 1,
       borderColor: Colors.tertiary,
     },
@@ -528,23 +648,23 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
     },
     quantityRow: {
       marginTop: s(24),
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       columnGap: s(12),
     },
     quantityButton: {
       width: s(35),
       height: s(35),
       borderRadius: s(4),
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       backgroundColor: Colors.secondary,
     },
     quantityButtonText: {
-      color: '#2D1F16',
+      color: "#2D1F16",
       fontSize: s(20),
       lineHeight: s(23),
-      fontWeight: '400',
+      fontWeight: "400",
     },
     quantityValueBox: {
       width: s(47),
@@ -552,15 +672,15 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       borderRadius: s(4),
       borderWidth: s(2),
       borderColor: Colors.secondary,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       backgroundColor: Colors.background,
     },
     quantityValueText: {
-      color: '#2D1F16',
+      color: "#2D1F16",
       fontSize: s(20),
       lineHeight: s(23),
-      fontWeight: '400',
+      fontWeight: "400",
     },
     descriptionList: {
       marginTop: s(17),
@@ -568,26 +688,26 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       maxWidth: s(300),
     },
     descriptionItem: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
+      flexDirection: "row",
+      alignItems: "flex-start",
       columnGap: s(8),
     },
     bulletMarker: {
       marginTop: s(2),
-      color: '#2D1F16',
+      color: "#2D1F16",
       fontSize: s(15),
       lineHeight: s(22),
     },
     descriptionText: {
       flex: 1,
-      color: '#2D1F16',
+      color: "#2D1F16",
       fontSize: s(15),
       lineHeight: s(26),
-      fontWeight: '500',
+      fontWeight: "500",
     },
     adminActionsRow: {
       marginTop: s(18),
-      flexDirection: 'row',
+      flexDirection: "row",
       columnGap: s(10),
     },
     adminButton: {
@@ -595,16 +715,16 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       minHeight: s(42),
       borderRadius: s(10),
       backgroundColor: Colors.tertiary,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
     },
     deleteButton: {
-      backgroundColor: '#F4B3B3',
+      backgroundColor: "#F4B3B3",
     },
     adminButtonText: {
-      color: '#2D1F16',
+      color: "#2D1F16",
       fontSize: s(13),
-      fontFamily: 'Montserrat_700Bold',
+      fontFamily: "Montserrat_700Bold",
     },
     buyButton: {
       width: s(225),
@@ -612,8 +732,8 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       marginTop: s(18),
       marginBottom: s(8),
       borderRadius: s(10),
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       backgroundColor: Colors.secondary,
       paddingVertical: s(8),
     },
@@ -621,13 +741,13 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       opacity: 0.7,
     },
     buyButtonAdded: {
-      backgroundColor: '#87B279',
+      backgroundColor: "#87B279",
     },
     buyButtonText: {
-      color: '#2D1F16',
+      color: "#2D1F16",
       fontSize: s(22),
       lineHeight: s(27),
-      fontWeight: '600',
+      fontWeight: "600",
       letterSpacing: s(0.4),
     },
   });

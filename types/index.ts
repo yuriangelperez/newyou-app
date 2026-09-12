@@ -1,5 +1,3 @@
-// types/index.ts
-
 import { CategoriaProducto } from '../constants/categoriasProductos';
 
 export interface Producto {
@@ -11,6 +9,7 @@ export interface Producto {
   categoria: string;
   categoriaProducto?: CategoriaProducto;
   disponible: boolean;
+  stock: number;
   talle?: string[];
   colores?: string[];
   descripcion: string;
@@ -20,5 +19,5 @@ export interface Usuario {
   id: string;
   nombre: string;
   email: string;
-  rol: 'vendedor' | 'comprador';
+  role: 'vendedor' | 'comprador';
 }
