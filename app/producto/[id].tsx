@@ -31,6 +31,7 @@ import {
   useCarritoStore,
 } from "../../stores/useCarritoStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { useFavoritosStore } from "../../stores/useFavoritosStore";
 
 const CANVAS_WIDTH = 412;
 
@@ -84,7 +85,10 @@ export default function ProductDetailScreen() {
   const [selectedSize, setSelectedSize] = useState(talles[0]);
   const [selectedColor, setSelectedColor] = useState(colores[0]);
   const [quantity, setQuantity] = useState(1);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const isFavorite = useFavoritosStore((state) =>
+    producto ? state.favoritos.some((item) => item.id === producto.id) : false,
+  );
+  const toggleFavorito = useFavoritosStore((state) => state.toggleFavorito);
   const [purchaseFeedback, setPurchaseFeedback] = useState(false);
   const favoriteScale = useState(() => new Animated.Value(1))[0];
   const purchaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -110,7 +114,9 @@ export default function ProductDetailScreen() {
   );
 
   const toggleFavorite = () => {
-    setIsFavorite((current) => !current);
+    if (producto) {
+      toggleFavorito(producto);
+    }
     Animated.sequence([
       Animated.timing(favoriteScale, {
         toValue: 1.22,

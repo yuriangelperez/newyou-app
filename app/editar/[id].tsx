@@ -42,6 +42,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
   precio: "0",
   stock: "1",
   imagen: "",
+  categoria: "Camisas",
   ...CATEGORIA_PRODUCTO_POR_DEFECTO,
   disponible: true,
   talle: "",
@@ -84,6 +85,7 @@ export default function EditarProductoScreen() {
       precio: producto.precio.toString(),
       stock: producto.stock.toString(),
       imagen: producto.imagen,
+      categoria: producto.categoria as ProductoFormValues["categoria"],
       tipoPrenda:
         producto.categoriaProducto?.tipoPrenda ??
         CATEGORIA_PRODUCTO_POR_DEFECTO.tipoPrenda,
@@ -156,6 +158,7 @@ export default function EditarProductoScreen() {
         precio: values.precio,
         stock: values.stock,
         imagen: values.imagen.trim(),
+        categoria: values.categoria,
         tipoPrenda: values.tipoPrenda,
         temporada: values.temporada,
         publico: values.publico,

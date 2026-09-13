@@ -19,16 +19,38 @@ const CATEGORY_NAME_BY_ID: Record<number, string> = {
   9: 'Zapatillas',
   10: 'Gorras',
   11: 'Mochilas',
-  31: 'Brasieres',
-  32: 'Boxers',
-  33: 'Cinturones',
-  34: 'Carteras',
-  35: 'Gorras',
-  36: 'Lentes',
-  37: 'Botas',
-  38: 'Zapatillas',
-  39: 'Sandalias',
-  40: 'Mocasines',
+  12: 'Brasieres',
+  13: 'Boxers',
+  14: 'Cinturones',
+  15: 'Carteras',
+  16: 'Gorras',
+  17: 'Lentes',
+  18: 'Botas',
+  19: 'Zapatillas',
+  20: 'Sandalias',
+  21: 'Mocasines',
+};
+
+const CATEGORY_ID_BY_NAME: Record<string, number> = {
+  Camisas: 1,
+  Jeans: 2,
+  Pantalones: 2,
+  Camperas: 4,
+  Buzos: 5,
+  Faldas: 7,
+  Short: 8,
+  Shorts: 8,
+  Gorras: 10,
+  Mochilas: 11,
+  Brasieres: 12,
+  Boxers: 13,
+  Cinturones: 14,
+  Carteras: 15,
+  Lentes: 17,
+  Botas: 18,
+  Zapatillas: 19,
+  Sandalias: 20,
+  Mocasines: 21,
 };
 
 interface ProductoRow {
@@ -58,9 +80,10 @@ interface ProductoPersistData {
   imagenes: string[];
   talles: string[];
   colores: string[];
-  tipo_prenda: CategoriaProducto['tipoPrenda'];
+  tipo_prenda: string;
   temporada: CategoriaProducto['temporada'];
   publico: CategoriaProducto['publico'];
+  creado_por: string;
 }
 
 export interface ProductoInput {
@@ -68,6 +91,7 @@ export interface ProductoInput {
   precio: number;
   stock: number;
   imagen: string;
+  categoria: string;
   tipoPrenda: CategoriaProducto['tipoPrenda'];
   temporada: CategoriaProducto['temporada'];
   publico: CategoriaProducto['publico'];
@@ -85,6 +109,11 @@ function assertSupabaseConfigured() {
   }
 
   return supabase;
+}
+
+function formatSupabaseError(error: { code?: string; message?: string; details?: string; hint?: string }) {
+  const parts = [error.code, error.message, error.details, error.hint].filter(Boolean);
+  return parts.join(' | ') || 'No se pudo crear el producto.';
 }
 
 /*
@@ -145,11 +174,14 @@ function legacyCategoryName(
  * dependiendo del contenido de la base de datos.
  */
 async function obtenerCategoriaId(
-  tipoPrenda: CategoriaProducto['tipoPrenda']
+  nombreCategoria: string
 ) {
   const client = assertSupabaseConfigured();
 
-  const nombreCategoria = legacyCategoryName(tipoPrenda);
+  const categoriaIdConocida = CATEGORY_ID_BY_NAME[nombreCategoria];
+  if (categoriaIdConocida) {
+    return categoriaIdConocida;
+  }
 
   const { data, error } = await client
     .from('categorias')
@@ -158,7 +190,7 @@ async function obtenerCategoriaId(
     .maybeSingle();
 
   if (error) {
-    throw error;
+    throw new Error(`No se pudo consultar la categoría: ${formatSupabaseError(error)}`);
   }
 
   if (data) {
@@ -182,6 +214,31 @@ async function obtenerCategoriaId(
   }
 
   return nuevaCategoria.categoriaid;
+}
+
+function tipoPrendaPersistido(categoria: string, tipoPrenda: CategoriaProducto['tipoPrenda']) {
+  const tiposPorCategoria: Record<string, string> = {
+    Camisas: 'Camisa',
+    Camperas: 'Campera',
+    Buzos: 'Buzo',
+    Faldas: 'Falda',
+    Pantalones: 'Pantalón',
+    Jeans: 'Pantalón',
+    Short: 'Short',
+    Brasieres: 'Accesorio',
+    Boxers: 'Accesorio',
+    Cinturones: 'Accesorio',
+    Carteras: 'Accesorio',
+    Gorras: 'Accesorio',
+    Lentes: 'Accesorio',
+    Mochilas: 'Accesorio',
+    Botas: 'Calzado',
+    Zapatillas: 'Calzado',
+    Sandalias: 'Calzado',
+    Mocasines: 'Calzado',
+  };
+
+  return tiposPorCategoria[categoria] ?? tipoPrenda;
 }
 
 /*
@@ -216,6 +273,7 @@ function mapRowToProducto(row: ProductoRow): Producto {
     categoria: CATEGORY_NAME_BY_ID[row.categoriaid ?? 0] || row.categorias?.[0]?.nombre || (row.tipo_prenda
       ? legacyCategoryName(row.tipo_prenda)
       : 'Camisas'),
+    categoriaId: row.categoriaid ?? undefined,
     categoriaProducto,
 
     /*
@@ -248,9 +306,7 @@ async function mapInputToPersistData(
     publico: payload.publico,
   };
 
-  const categoriaid = await obtenerCategoriaId(
-    categoriaProducto.tipoPrenda
-  );
+  const categoriaid = await obtenerCategoriaId(payload.categoria);
 
   /*
    * Si disponible es false, guardamos stock 0.
@@ -261,6 +317,11 @@ async function mapInputToPersistData(
     : 0;
 
   const imagen = payload.imagen.trim();
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !authData.user) {
+    throw new Error('Debes iniciar sesion para publicar un producto.');
+  }
 
   return {
     nombre: payload.nombre.trim(),
@@ -272,9 +333,10 @@ async function mapInputToPersistData(
     imagenes: imagen ? [imagen] : [],
     talles: payload.talle,
     colores: payload.colores,
-    tipo_prenda: categoriaProducto.tipoPrenda,
+    tipo_prenda: tipoPrendaPersistido(payload.categoria, categoriaProducto.tipoPrenda),
     temporada: categoriaProducto.temporada,
     publico: categoriaProducto.publico,
+    creado_por: authData.user.id,
   };
 }
 
@@ -398,7 +460,7 @@ export async function createProducto(
     .single();
 
   if (error) {
-    throw error;
+    throw new Error(`No se pudo crear el producto: ${formatSupabaseError(error)}`);
   }
 
   return mapRowToProducto(data as ProductoRow);

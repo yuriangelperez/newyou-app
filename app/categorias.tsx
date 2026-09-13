@@ -29,12 +29,12 @@ import { Producto } from '../types';
 const CANVAS_WIDTH = 412;
 const FILTERS = ['TODO', 'TORSO', 'PIERNAS', 'INTERIOR', 'ACCESORIOS', 'CALZADO'];
 
-const PRODUCT_FILTER_BY_ID: Record<string, { categoria?: string; tipoPrenda?: CategoriaProducto['tipoPrenda'] }> = {
-  camisas: { categoria: 'Camisas', tipoPrenda: 'Torso' },
-  camperas: { categoria: 'Camperas', tipoPrenda: 'Torso' },
-  brasieres: { categoria: 'Brasieres', tipoPrenda: 'Interior' },
-  boxers: { categoria: 'Boxers', tipoPrenda: 'Interior' },
-  buzos: { categoria: 'Buzo', tipoPrenda: 'Torso' },
+const PRODUCT_FILTER_BY_ID: Record<string, { categoria?: string; categoriaId?: number; tipoPrenda?: CategoriaProducto['tipoPrenda'] }> = {
+  camisas: { categoria: 'Camisas', categoriaId: 1, tipoPrenda: 'Torso' },
+  camperas: { categoria: 'Camperas', categoriaId: 4, tipoPrenda: 'Torso' },
+  brasieres: { categoria: 'Brasieres', categoriaId: 12, tipoPrenda: 'Interior' },
+  boxers: { categoria: 'Boxers', categoriaId: 13, tipoPrenda: 'Interior' },
+  buzos: { categoria: 'Buzos', tipoPrenda: 'Torso' },
   faldas: { categoria: 'Faldas', tipoPrenda: 'Falda' },
   pantalones: { categoria: 'Jeans', tipoPrenda: 'Pantalón' },
   shorts: { categoria: 'Short', tipoPrenda: 'Short' },
@@ -47,7 +47,7 @@ const PRODUCT_FILTER_BY_ID: Record<string, { categoria?: string; tipoPrenda?: Ca
   carteras: { categoria: 'Carteras', tipoPrenda: 'Accesorio' },
   gorras: { categoria: 'Gorras', tipoPrenda: 'Accesorio' },
   lentes: { categoria: 'Lentes', tipoPrenda: 'Accesorio' },
-  mochila: { categoria: 'Mochilas', tipoPrenda: 'Accesorio' },
+  mochila: { categoria: 'Mochilas' },
 };
 
 const CATEGORY_BY_FILTER: Record<string, Array<{ id: string; label: string; image: string }>> = {
@@ -65,6 +65,7 @@ const CATEGORY_BY_FILTER: Record<string, Array<{ id: string; label: string; imag
     { id: 'carteras', label: 'CARTERAS', image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600' },
     { id: 'gorras', label: 'GORRAS', image: 'https://images.unsplash.com/photo-1521369909029-2afed882baee?w=600' },
     { id: 'lentes', label: 'LENTES', image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600' },
+    { id: 'mochila', label: 'MOCHILAS', image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600' },
     { id: 'botas', label: 'BOTAS', image: 'https://plus.unsplash.com/premium_photo-1729788891863-0d9b6f2b453b?w=600' },
     { id: 'zapatillas', label: 'ZAPATILLAS', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600' },
     { id: 'sandalias', label: 'SANDALIAS', image: 'https://images.unsplash.com/photo-1603487742131-4160ec999306?w=600' },
@@ -122,18 +123,19 @@ export default function CategoriasScreen() {
   const selectedFilter = selectedCategoryId ? PRODUCT_FILTER_BY_ID[selectedCategoryId] : null;
   const visibleProducts = selectedFilter
     ? productos.filter((item) => {
-        const matchesType = selectedFilter.tipoPrenda
-          ? item.categoriaProducto?.tipoPrenda === selectedFilter.tipoPrenda
-          : true;
-        const matchesCategory = selectedFilter.categoria
-          ? item.categoria.toLowerCase() === selectedFilter.categoria.toLowerCase()
+        const matchesCategory = selectedFilter.categoriaId
+          ? item.categoriaId === selectedFilter.categoriaId
+          : selectedFilter.categoria
+            ? item.categoria.toLowerCase() === selectedFilter.categoria.toLowerCase()
           : true;
 
-        if (item.categoriaProducto) {
-          return matchesType && matchesCategory;
+        if (selectedFilter.categoria) {
+          return matchesCategory;
         }
 
-        return matchesCategory;
+        return selectedFilter.tipoPrenda
+          ? item.categoriaProducto?.tipoPrenda === selectedFilter.tipoPrenda
+          : true;
       })
     : [];
 

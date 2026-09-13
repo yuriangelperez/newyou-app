@@ -39,6 +39,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
   precio: "0",
   stock: "1",
   imagen: "",
+  categoria: "Camisas",
   ...CATEGORIA_PRODUCTO_POR_DEFECTO,
   disponible: true,
   talle: "",
@@ -128,6 +129,7 @@ export default function NuevoProductoScreen() {
         precio: values.precio,
         stock: values.stock,
         imagen: values.imagen.trim(),
+        categoria: values.categoria,
         tipoPrenda: values.tipoPrenda,
         temporada: values.temporada,
         publico: values.publico,
@@ -151,10 +153,11 @@ export default function NuevoProductoScreen() {
         params: { id: nuevoProducto.id },
       });
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "No se pudo crear el producto.";
+      const message = error instanceof Error
+        ? error.message
+        : typeof error === "object" && error !== null && "message" in error
+          ? String(error.message)
+          : String(error || "No se pudo crear el producto.");
       Toast.show({ type: "error", text1: "Error al crear", text2: message });
     }
   });

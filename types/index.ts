@@ -7,6 +7,7 @@ export interface Producto {
   imagen: string;
   imagenes?: string[];
   categoria: string;
+  categoriaId?: number;
   categoriaProducto?: CategoriaProducto;
   disponible: boolean;
   stock: number;
