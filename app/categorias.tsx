@@ -14,49 +14,90 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomTabBar } from '../components/BottomTabBar';
+import TarjetaProducto from '../components/TarjetaProducto';
+import { ErrorView } from '../components/ui/ErrorView';
+import { SkeletonList } from '../components/ui/SkeletonList';
 import { BRANDING_LOGO, CATEGORY_DIAGONAL_CUT } from '../constants/assets';
-import { ROUTES } from '../constants/routes';
+import { CategoriaProducto } from '../constants/categoriasProductos';
 import { Colors } from '../constants/theme';
+import { ROUTES } from '../constants/routes';
+import { useProductos } from '../hooks/useProductos';
 import { selectTotalItems, useCarritoStore } from '../stores/useCarritoStore';
 import { useUsuarioStore } from '../stores/useUsuarioStore';
+import { Producto } from '../types';
 
 const CANVAS_WIDTH = 412;
-const FILTERS = ['TODO', 'TORSO', 'PIERNAS', 'ACCESORIOS', 'CALZADO'];
+const FILTERS = ['TODO', 'TORSO', 'PIERNAS', 'INTERIOR', 'ACCESORIOS', 'CALZADO'];
+
+const PRODUCT_FILTER_BY_ID: Record<string, { categoria?: string; categoriaId?: number; tipoPrenda?: CategoriaProducto['tipoPrenda'] }> = {
+  camisas: { categoria: 'Camisas', categoriaId: 1, tipoPrenda: 'Torso' },
+  camperas: { categoria: 'Camperas', categoriaId: 4, tipoPrenda: 'Torso' },
+  brasieres: { categoria: 'Brasieres', categoriaId: 12, tipoPrenda: 'Interior' },
+  boxers: { categoria: 'Boxers', categoriaId: 13, tipoPrenda: 'Interior' },
+  buzos: { categoria: 'Buzos', tipoPrenda: 'Torso' },
+  faldas: { categoria: 'Faldas', tipoPrenda: 'Falda' },
+  pantalones: { categoria: 'Jeans', tipoPrenda: 'Pantalón' },
+  shorts: { categoria: 'Short', tipoPrenda: 'Short' },
+  jeans: { categoria: 'Jeans', tipoPrenda: 'Pantalón' },
+  botas: { categoria: 'Botas', tipoPrenda: 'Calzado' },
+  zapatillas: { categoria: 'Zapatillas', tipoPrenda: 'Calzado' },
+  sandalias: { categoria: 'Sandalias', tipoPrenda: 'Calzado' },
+  mocasines: { categoria: 'Mocasines', tipoPrenda: 'Calzado' },
+  cinturones: { categoria: 'Cinturones', tipoPrenda: 'Accesorio' },
+  carteras: { categoria: 'Carteras', tipoPrenda: 'Accesorio' },
+  gorras: { categoria: 'Gorras', tipoPrenda: 'Accesorio' },
+  lentes: { categoria: 'Lentes', tipoPrenda: 'Accesorio' },
+  mochila: { categoria: 'Mochilas' },
+};
 
 const CATEGORY_BY_FILTER: Record<string, Array<{ id: string; label: string; image: string }>> = {
   TODO: [
     { id: 'camisas', label: 'CAMISAS', image: 'https://images.unsplash.com/photo-1603252109303-2751441dd157?w=600' },
     { id: 'camperas', label: 'CAMPERAS', image: 'https://images.unsplash.com/photo-1521223890158-f9f7c3d5d504?w=600' },
-    { id: 'brasieres', label: 'BRASIERES', image: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=600' },
     { id: 'buzos', label: 'BUZOS', image: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=600' },
-    { id: 'faldas', label: 'FALDAS', image: 'https://images.unsplash.com/photo-1583496661160-fb5886a13d44?w=600' },
+    { id: 'faldas', label: 'FALDAS', image: 'https://images.unsplash.com/photo-1577900232427-18219b9166a0?w=600' },
     { id: 'pantalones', label: 'PANTALONES', image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=600' },
-    { id: 'shorts', label: 'SHORTS', image: 'https://images.unsplash.com/photo-1565992441121-4367c2967103?w=600' },
-    { id: 'botas', label: 'BOTAS', image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600' },
-  ],
-  TORSO: [
-    { id: 'camisas', label: 'CAMISAS', image: 'https://images.unsplash.com/photo-1603252109303-2751441dd157?w=600' },
-    { id: 'camperas', label: 'CAMPERAS', image: 'https://images.unsplash.com/photo-1521223890158-f9f7c3d5d504?w=600' },
-    { id: 'brasieres', label: 'BRASIERES', image: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=600' },
-    { id: 'buzos', label: 'BUZOS', image: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=600' },
-  ],
-  PIERNAS: [
-    { id: 'faldas', label: 'FALDAS', image: 'https://images.unsplash.com/photo-1583496661160-fb5886a13d44?w=600' },
-    { id: 'pantalones', label: 'PANTALONES', image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=600' },
-    { id: 'shorts', label: 'SHORTS', image: 'https://images.unsplash.com/photo-1565992441121-4367c2967103?w=600' },
+    { id: 'shorts', label: 'SHORTS', image: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=600' },
     { id: 'jeans', label: 'JEANS', image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=600' },
-  ],
-  ACCESORIOS: [
-    { id: 'cinturones', label: 'CINTURONES', image: 'https://images.unsplash.com/photo-1612902456551-333ac5afa26d?w=600' },
+    { id: 'brasieres', label: 'BRASIERES', image: 'https://images.unsplash.com/photo-1610241519159-8a62634bac9a?w=600' },
+    { id: 'boxers', label: 'BOXERS', image: 'https://images.unsplash.com/photo-1640765937555-6f413ed1d936?w=600' },
+    { id: 'cinturones', label: 'CINTURONES', image: 'https://images.unsplash.com/photo-1664286074176-5206ee5dc878?w=600' },
     { id: 'carteras', label: 'CARTERAS', image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600' },
     { id: 'gorras', label: 'GORRAS', image: 'https://images.unsplash.com/photo-1521369909029-2afed882baee?w=600' },
     { id: 'lentes', label: 'LENTES', image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600' },
+    { id: 'mochila', label: 'MOCHILAS', image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600' },
+    { id: 'botas', label: 'BOTAS', image: 'https://plus.unsplash.com/premium_photo-1729788891863-0d9b6f2b453b?w=600' },
+    { id: 'zapatillas', label: 'ZAPATILLAS', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600' },
+    { id: 'sandalias', label: 'SANDALIAS', image: 'https://images.unsplash.com/photo-1603487742131-4160ec999306?w=600' },
+    { id: 'mocasines', label: 'MOCASINES', image: 'https://images.unsplash.com/photo-1616406432452-07bc5938759d?w=600' },
+    ],
+  TORSO: [
+    { id: 'camisas', label: 'CAMISAS', image: 'https://images.unsplash.com/photo-1603252109303-2751441dd157?w=600' },
+    { id: 'camperas', label: 'CAMPERAS', image: 'https://images.unsplash.com/photo-1521223890158-f9f7c3d5d504?w=600' },
+    { id: 'buzos', label: 'BUZOS', image: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=600' },
+  ],
+  PIERNAS: [
+    { id: 'faldas', label: 'FALDAS', image: 'https://images.unsplash.com/photo-1577900232427-18219b9166a0?w=600' },
+    { id: 'pantalones', label: 'PANTALONES', image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=600' },
+    { id: 'shorts', label: 'SHORTS', image: 'https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=600' },
+    { id: 'jeans', label: 'JEANS', image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=600' },
+  ],
+  'INTERIOR': [
+    { id: 'brasieres', label: 'BRASIERES', image: 'https://images.unsplash.com/photo-1610241519159-8a62634bac9a?w=600' },
+    { id: 'boxers', label: 'BOXERS', image: 'https://images.unsplash.com/photo-1640765937555-6f413ed1d936?w=600' },
+  ],
+  ACCESORIOS: [
+    { id: 'cinturones', label: 'CINTURONES', image: 'https://images.unsplash.com/photo-1664286074176-5206ee5dc878?w=600' },
+    { id: 'carteras', label: 'CARTERAS', image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600' },
+    { id: 'gorras', label: 'GORRAS', image: 'https://images.unsplash.com/photo-1521369909029-2afed882baee?w=600' },
+    { id: 'lentes', label: 'LENTES', image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600' },
+    { id: 'mochila', label: 'MOCHILAS', image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600' }
   ],
   CALZADO: [
-    { id: 'botas', label: 'BOTAS', image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600' },
+    { id: 'botas', label: 'BOTAS', image: 'https://plus.unsplash.com/premium_photo-1729788891863-0d9b6f2b453b?w=600' },
     { id: 'zapatillas', label: 'ZAPATILLAS', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600' },
-    { id: 'sandalias', label: 'SANDALIAS', image: 'https://images.unsplash.com/photo-1575537302964-96cd47c06b1b?w=600' },
-    { id: 'mocasines', label: 'MOCASINES', image: 'https://images.unsplash.com/photo-1511556532299-8f662fc26c06?w=600' },
+    { id: 'sandalias', label: 'SANDALIAS', image: 'https://images.unsplash.com/photo-1603487742131-4160ec999306?w=600' },
+    { id: 'mocasines', label: 'MOCASINES', image: 'https://images.unsplash.com/photo-1616406432452-07bc5938759d?w=600' },
   ],
 };
 
@@ -66,7 +107,10 @@ export default function CategoriasScreen() {
   const { width } = useWindowDimensions();
   const totalItems = useCarritoStore(selectTotalItems);
   const esVendedor = useUsuarioStore((state) => state.usuario?.role === 'vendedor');
+  const agregarProducto = useCarritoStore((state) => state.agregarProducto);
+  const { productos, cargando, error, refrescar } = useProductos();
   const [activeFilter, setActiveFilter] = useState('TODO');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
@@ -76,6 +120,37 @@ export default function CategoriasScreen() {
   );
 
   const categoryItems = CATEGORY_BY_FILTER[activeFilter];
+  const selectedFilter = selectedCategoryId ? PRODUCT_FILTER_BY_ID[selectedCategoryId] : null;
+  const visibleProducts = selectedFilter
+    ? productos.filter((item) => {
+        const matchesCategory = selectedFilter.categoriaId
+          ? item.categoriaId === selectedFilter.categoriaId
+          : selectedFilter.categoria
+            ? item.categoria.toLowerCase() === selectedFilter.categoria.toLowerCase()
+          : true;
+
+        if (selectedFilter.categoria) {
+          return matchesCategory;
+        }
+
+        return selectedFilter.tipoPrenda
+          ? item.categoriaProducto?.tipoPrenda === selectedFilter.tipoPrenda
+          : true;
+      })
+    : [];
+
+  const onPressAgregar = (producto: Producto) => {
+    if (!producto.disponible) {
+      return;
+    }
+
+    agregarProducto({
+      producto,
+      talle: producto.talle?.[0] ?? 'M',
+      color: producto.colores?.[0] ?? 'Marron',
+      cantidad: 1,
+    });
+  };
 
   return (
     <View style={styles.screen}>
@@ -90,7 +165,10 @@ export default function CategoriasScreen() {
           {FILTERS.map((filter) => (
             <Pressable
               key={filter}
-              onPress={() => setActiveFilter(filter)}
+              onPress={() => {
+                setActiveFilter(filter);
+                setSelectedCategoryId(null);
+              }}
               style={[styles.filterChip, filter === activeFilter && styles.filterChipActive]}
             >
               <Text style={styles.filterText}>{filter}</Text>
@@ -99,21 +177,55 @@ export default function CategoriasScreen() {
         </ScrollView>
       </View>
 
-      <FlatList
-        data={categoryItems}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.gridContent}
-        columnWrapperStyle={styles.gridRow}
-        renderItem={({ item }) => (
-          <Pressable style={styles.card}>
-            <Image source={{ uri: item.image }} style={styles.cardImage} />
-            <Image source={CATEGORY_DIAGONAL_CUT} style={styles.cardBottomCut} />
-            <Text style={styles.cardText}>{item.label}</Text>
-          </Pressable>
-        )}
-      />
+      {selectedCategoryId ? (
+        <>
+          <View style={styles.selectedHeader}>
+            <Pressable onPress={() => setSelectedCategoryId(null)}>
+              <Text style={styles.backText}>Categorias</Text>
+            </Pressable>
+            <Text style={styles.selectedTitle}>
+              {CATEGORY_BY_FILTER[activeFilter].find((item) => item.id === selectedCategoryId)?.label}
+            </Text>
+          </View>
+          {cargando ? <SkeletonList /> : null}
+          {!cargando && error ? <ErrorView message={error} onRetry={() => void refrescar()} /> : null}
+          {!cargando && !error ? (
+            <FlatList
+              data={visibleProducts}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.gridContent}
+              columnWrapperStyle={styles.gridRow}
+              ListEmptyComponent={<Text style={styles.emptyText}>No hay productos en esta categoria.</Text>}
+              renderItem={({ item }) => (
+                <TarjetaProducto
+                  producto={item}
+                  scale={scale}
+                  onPressProducto={(producto) => router.push({ pathname: ROUTES.productDetail, params: { id: producto.id } })}
+                  onPressAgregar={onPressAgregar}
+                />
+              )}
+            />
+          ) : null}
+        </>
+      ) : (
+        <FlatList
+          data={categoryItems}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.gridContent}
+          columnWrapperStyle={styles.gridRow}
+          renderItem={({ item }) => (
+            <Pressable style={styles.card} onPress={() => setSelectedCategoryId(item.id)}>
+              <Image source={{ uri: item.image }} style={styles.cardImage} />
+              <Image source={CATEGORY_DIAGONAL_CUT} style={styles.cardBottomCut} />
+              <Text style={styles.cardText}>{item.label}</Text>
+            </Pressable>
+          )}
+        />
+      )}
 
       <BottomTabBar
         activeTab="bag"
@@ -162,12 +274,13 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       alignItems: 'center',
     },
     filterChip: {
-      width: s(104),
+      minWidth: s(104),
       height: s(27),
       borderRadius: s(10),
       backgroundColor: '#D9D9D9',
       alignItems: 'center',
       justifyContent: 'center',
+      paddingHorizontal: s(10),
     },
     filterChipActive: {
       backgroundColor: Colors.tertiary,
@@ -186,6 +299,30 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       paddingHorizontal: s(19),
       justifyContent: 'space-between',
       marginTop: s(10),
+    },
+    selectedHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: s(20),
+      paddingTop: s(14),
+    },
+    backText: {
+      color: Colors.secondary,
+      fontSize: s(13),
+      fontWeight: '600',
+    },
+    selectedTitle: {
+      color: '#2D1F16',
+      fontSize: s(18),
+      fontWeight: '600',
+    },
+    emptyText: {
+      width: canvasWidth,
+      marginTop: s(50),
+      color: Colors.textMuted,
+      textAlign: 'center',
+      fontSize: s(14),
     },
     card: {
       width: s(175),
@@ -214,12 +351,15 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       resizeMode: 'cover',
     },
     cardText: {
-      marginBottom: s(18),
+      position: 'absolute',
+      right: s(6),
+      bottom: s(7),
+      maxWidth: s(150),
       color: '#000000',
       fontSize: s(17),
       lineHeight: s(18),
-      fontWeight: '400',
-      position: 'relative',
+      fontWeight: '700',
+      textAlign: 'right',
       zIndex: 1,
     },
   });

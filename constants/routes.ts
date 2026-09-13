@@ -8,4 +8,5 @@ export const ROUTES = {
   categories: '/categorias',
   cart: '/carrito',
   profile: '/perfil',
+  favorites: '/favoritos',
 } as const;

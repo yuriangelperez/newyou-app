@@ -60,6 +60,7 @@ export default function RootLayout() {
         <Stack.Screen name="categorias" />
         <Stack.Screen name="carrito" />
         <Stack.Screen name="perfil" />
+        <Stack.Screen name="favoritos" />
       </Stack>
       <Toast />
     </>
