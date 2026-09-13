@@ -1,4 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { Producto } from '../types';
 
@@ -38,131 +40,160 @@ function makeKey(productoId: string, talle: string, color: string) {
   return `${productoId}::${talle}::${color}`;
 }
 
-export const useCarritoStore = create<CarritoStore>((set) => ({
-  items: [],
+export const useCarritoStore = create<CarritoStore>()(
+  persist(
+    (set) => ({
+      items: [],
 
-  agregarProducto: ({ producto, talle, color, cantidad = 1 }) => {
-    if (!producto.disponible) {
-      return;
-    }
+      agregarProducto: ({ producto, talle, color, cantidad = 1 }) => {
+        if (!producto.disponible) {
+          return;
+        }
 
-    const stockDisponible = producto.stock ?? 0;
+        const stockDisponible = producto.stock ?? 0;
 
-    if (stockDisponible <= 0) {
-      return;
-    }
+        if (stockDisponible <= 0) {
+          return;
+        }
 
-    const key = makeKey(producto.id, talle, color);
+        const key = makeKey(producto.id, talle, color);
 
-    set((state) => {
-      const itemExistente = state.items.find((item) => item.key === key);
+        set((state) => {
+          const itemExistente = state.items.find(
+            (item) => item.key === key
+          );
 
-      if (!itemExistente) {
-        return {
-          items: [
-            ...state.items,
-            {
-              key,
-              productoId: producto.id,
-              nombre: producto.nombre,
-              precio: producto.precio,
-              imagen: producto.imagen,
-              categoria: producto.categoria,
-              disponible: producto.disponible,
-              stock: stockDisponible,
-              descripcion: producto.descripcion,
-              talle,
-              color,
-              cantidad: Math.min(Math.max(1, cantidad), stockDisponible),
-            },
-          ],
-        };
-      }
+          if (!itemExistente) {
+            return {
+              items: [
+                ...state.items,
+                {
+                  key,
+                  productoId: producto.id,
+                  nombre: producto.nombre,
+                  precio: producto.precio,
+                  imagen: producto.imagen,
+                  categoria: producto.categoria,
+                  disponible: producto.disponible,
+                  stock: stockDisponible,
+                  descripcion: producto.descripcion,
+                  talle,
+                  color,
+                  cantidad: Math.min(
+                    Math.max(1, cantidad),
+                    stockDisponible
+                  ),
+                },
+              ],
+            };
+          }
 
-      const nuevaCantidad = Math.min(
-        itemExistente.cantidad + Math.max(1, cantidad),
-        stockDisponible
-      );
+          const nuevaCantidad = Math.min(
+            itemExistente.cantidad + Math.max(1, cantidad),
+            stockDisponible
+          );
 
-      return {
-        items: state.items.map((item) =>
-          item.key === key
-            ? {
+          return {
+            items: state.items.map((item) =>
+              item.key === key
+                ? {
+                    ...item,
+                    cantidad: nuevaCantidad,
+                    stock: stockDisponible,
+                    disponible: producto.disponible,
+                  }
+                : item
+            ),
+          };
+        });
+      },
+
+      incrementarUnidad: (key) => {
+        set((state) => ({
+          items: state.items.map((item) => {
+            if (item.key !== key) {
+              return item;
+            }
+
+            if (!item.disponible || item.cantidad >= item.stock) {
+              return item;
+            }
+
+            return {
+              ...item,
+              cantidad: item.cantidad + 1,
+            };
+          }),
+        }));
+      },
+
+      restarUnidad: (key) => {
+        set((state) => ({
+          items: state.items
+            .map((item) =>
+              item.key === key
+                ? {
+                    ...item,
+                    cantidad: item.cantidad - 1,
+                  }
+                : item
+            )
+            .filter((item) => item.cantidad > 0),
+        }));
+      },
+
+      eliminarProducto: (key) => {
+        set((state) => ({
+          items: state.items.filter((item) => item.key !== key),
+        }));
+      },
+
+      actualizarCantidad: (key, cantidad) => {
+        set((state) => ({
+          items: state.items.map((item) => {
+            if (item.key !== key) {
+              return item;
+            }
+
+            if (item.stock <= 0 || !item.disponible) {
+              return {
                 ...item,
-                cantidad: nuevaCantidad,
-                stock: stockDisponible,
-                disponible: producto.disponible,
-              }
-            : item
-        ),
-      };
-    });
-  },
+                cantidad: 0,
+              };
+            }
 
-  incrementarUnidad: (key) => {
-    set((state) => ({
-      items: state.items.map((item) => {
-        if (item.key !== key) {
-          return item;
-        }
+            const nuevaCantidad = Math.min(
+              Math.max(1, cantidad),
+              item.stock
+            );
 
-        if (item.cantidad >= item.stock) {
-          return item;
-        }
+            return {
+              ...item,
+              cantidad: nuevaCantidad,
+            };
+          }).filter((item) => item.cantidad > 0),
+        }));
+      },
 
-        return {
-          ...item,
-          cantidad: item.cantidad + 1,
-        };
+      vaciarCarrito: () => {
+        set({ items: [] });
+      },
+    }),
+    {
+      name: 'newyou-carrito',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        items: state.items,
       }),
-    }));
-  },
-
-  restarUnidad: (key) => {
-    set((state) => ({
-      items: state.items
-        .map((item) =>
-          item.key === key
-            ? { ...item, cantidad: item.cantidad - 1 }
-            : item
-        )
-        .filter((item) => item.cantidad > 0),
-    }));
-  },
-
-  eliminarProducto: (key) => {
-    set((state) => ({
-      items: state.items.filter((item) => item.key !== key),
-    }));
-  },
-
-  actualizarCantidad: (key, cantidad) => {
-    set((state) => ({
-      items: state.items.map((item) => {
-        if (item.key !== key) {
-          return item;
-        }
-
-        const nuevaCantidad = Math.min(
-          Math.max(1, cantidad),
-          item.stock
-        );
-
-        return {
-          ...item,
-          cantidad: nuevaCantidad,
-        };
-      }),
-    }));
-  },
-
-  vaciarCarrito: () => {
-    set({ items: [] });
-  },
-}));
+    }
+  )
+);
 
 export const selectTotalItems = (state: CarritoStore) =>
   state.items.reduce((acc, item) => acc + item.cantidad, 0);
 
 export const selectSubtotal = (state: CarritoStore) =>
-  state.items.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
+  state.items.reduce(
+    (acc, item) => acc + item.precio * item.cantidad,
+    0
+  );

@@ -1,133 +1,553 @@
-# NEW YOU - Nuevo estilo, Nuevo Tú
+# New You
 
-NEW YOU es una aplicación móvil de moda circular desarrollada para la materia Aplicaciones Móviles y Testing (Tecnicatura Superior en Desarrollo de Software, UNP, ciclo 2026).
+Marketplace móvil de indumentaria para la compra y venta de prendas nuevas y pre-owned.
 
-Este README deja explicito:
-- el estado actual implementado en el repositorio,
-- el roadmap proximo del equipo,
-- y la visión funcional objetivo del producto.
+**Proyecto Integrador — Aplicaciones Móviles**
+**Universidad Nacional de Pilar**
+**Tecnicatura Universitaria en Desarrollo de Software**
 
-## Equipo del proyecto
+---
 
-- Yuriangel Perez (Desarrolladora / Scrum Master)
-- Daiana Lencina (Product Owner / Desarrolladora)
-- Alejandro Terzano (Diseñador / Project Manager)
-- Guillermo Nicolas Moreyra Montiel (Desarrollador)
-- Lucila Sanchez (Desarrolladora)
-- Carlos Semeco (Modelador de datos / Desarrollador)
+## Equipo de trabajo
 
-## Propuesta de valor (vision del producto)
+| Integrante            | Rol                               |
+| --------------------- | --------------------------------- |
+| **Yuriangel Pérez**   | Scrum Master / Desarrolladora     |
+| **Alejandro Terzano** | Project Manager / Diseñador UX/UI |
+| **Daiana Lencina**    | Product Owner / QA                |
+| **Carlos Semeco**     | Desarrollador                     |
 
-La aplicación propone resolver de manera mobile un modelo de negocios híbrido de moda circular de prendas de segunda mano y colecciones de tiendas de diseño:
+**Docente:** Ariel Bulacio
 
-1.  **B2C (Business to Consumer):** Tiendas de diseño locales asociadas publican y comercializan de forma directa sus colecciones de prendas nuevas en la plataforma.
-2.  **C2C (Consumer to Consumer):** Un marketplace circular donde los usuarios particulares publican prendas usadas de su propio ropero (segunda mano) fomentando la sustentabilidad, el reciclaje textil y la economía circular. Dichas publicaciones deven de pasar por una verificacion antes de ser publicadas.
-3.  **Monetización por Comisión:** La plataforma cobra un porcentaje de comisión automatizado sobre las transacciones de compra-venta C2C, garantizando la sostenibilidad financiera del servicio.
+La documentación oficial define estos cuatro roles dentro del equipo de trabajo.
 
-## Estado actual del desarrollo (real del repo)
+---
 
-### Stack realmente instalado hoy
+## Descripción
 
-- Expo SDK 57
-- React Native 0.86
-- React 19
-- TypeScript
-- Expo Router
-- Expo Asset
+**New You** es una aplicación móvil de marketplace de indumentaria que conecta dos modelos de comercialización:
 
-Dependencias confirmadas en `package.json`:
-- `expo`
-- `expo-router`
-- `react-native`
-- `typescript`
-- (entre otras basicas de Expo)
+* **B2C (Business to Consumer):** tiendas físicas y marcas locales pueden publicar sus productos y administrar su stock.
+* **C2C (Consumer to Consumer):** usuarios particulares pueden publicar y comercializar prendas nuevas o pre-owned.
 
-Aun no estan instalados en este repo:
-- Zustand
-- Firebase Auth / Firestore
-- Zod
-- React Hook Form
-- modulos de camara/geolocalizacion
+La plataforma busca ofrecer un canal digital estructurado para la compra y venta de indumentaria, incorporando categorización, búsqueda, filtros por talle, disponibilidad de stock y un carrito de compras.
 
-## Mapa de Pantallas y Arquitectura de Navegación
+El proyecto se desarrolla siguiendo el alcance establecido para el **First Delivery MVP**.
 
-El flujo de usuario de **NEW YOU** consta hoy de **6 pantallas activas** mapeadas directamente con la estructura de archivos físicos de **Expo Router**:
+---
 
-1.  **`app/(auth)/login.tsx` (Login):** Pantalla de ingreso protegida mediante Firebase Auth con inputs estilizados de usuario, contraseña y enlace para recuperar contraseña o registrarse.
-2.  **`app/(auth)/register.tsx` (Registro):** Formulario de alta de usuario con validación de coincidencia de contraseñas. Redirige al inicio tras el alta exitosa.
-3.  **`app/(tabs)/index.tsx` (Home / Catálogo):** Pantalla principal. Presenta una cabecera de marca con el logotipo del proyecto, un banner carrusel superior horizontal de prendas destacadas, y una grilla eficiente de 2 columnas (`FlatList`) que renderiza las tarjetas de prendas con pull-to-refresh nativo y conditional rendering.
-4.  **`app/producto/[id].tsx` (Detalle de Prenda):** Vista detallada de la prenda con selección de talle/color, favorito y agregar al carrito.
-5.  **`app/categorias.tsx` (Categorías):** Pantalla de exploración por filtros con tarjetas visuales por categoría.
-6.  **`app/carrito.tsx` (Carrito / Checkout):** Listado dinámico de artículos agregados con cantidad, variantes elegidas y total.
+## Objetivos del MVP
 
+El MVP tiene como objetivo validar técnicamente y funcionalmente un marketplace móvil de indumentaria mediante:
 
-Funcionalidades visibles actualmente:
-- Login y registro con navegacion basica (sin autenticacion real).
-- Home con:
-  - carrusel horizontal de destacados,
-  - grilla de productos en 2 columnas,
-  - pull-to-refresh,
-  - renderizado condicional de stock (`Agregar` / `Agotado`),
-  - opacidad reducida para productos no disponibles.
-- Barra inferior custom con navegacion funcional entre Home, Categorías y Carrito.
-- Carrito global con badge de cantidad, eliminación de ítems y subtotal dinámico.
+* Autenticación segura de usuarios.
+* Catálogo de productos.
+* Búsqueda y filtrado.
+* Publicación y gestión de prendas.
+* Control de stock.
+* Carrito de compras.
+* Flujo de checkout.
+* Integración con servicios de geolocalización.
+* Persistencia de información relevante en el dispositivo.
 
-### Datos y capas disponibles
+## La documentación establece como funcionalidades principales del MVP la autenticación, catálogo, registro de prendas y carrito, mientras que la geolocalización se clasifica como requisito Should Have.
 
-- Tipos de dominio en `types/index.ts` (`Producto`, `Usuario`).
-- Mock de catalogo en `data/mockData.ts` (6 productos).
-- Hook de negocio `hooks/useProductos.ts` con simulacion asincrona de 1 segundo.
-- Tokens visuales en `constants/theme.ts`.
+# Alcance funcional
 
-### Estado de carpetas
+## Must Have
 
-- `components/`: contiene UI reutilizable (`BottomTabBar`, `TarjetaProducto`).
-- `services/`: vacia (pendiente integraciones externas).
+### M1 — Autenticación real
 
-## Roadmap inmediato (proximo sprint)
+La aplicación utiliza **Supabase Auth** para:
 
-Se planea incorporar:
-- estado global de carrito (Zustand),
-- validacion de formularios (Zod + React Hook Form),
-- autenticacion/persistencia (Firebase),
-- acceso a camara y geolocalizacion.
+* Registro de usuarios.
+* Inicio de sesión.
+* Gestión de sesiones.
+* Asociación de publicaciones con el usuario autenticado.
+* Autenticación mediante JWT.
 
-## Sistema de diseno (alineado al codigo actual)
+La documentación establece además el uso de RLS para proteger los recursos asociados a cada usuario.
 
-Archivo fuente: `constants/theme.ts`.
+### M2 — Catálogo
 
-### Colores definidos actualmente
+El catálogo permite:
 
-*   `Colors.primary` (`#493628` - Café Chocolate): Color de marca para destaques principales, botones activos, header de la HomeScreen y títulos fuertes.
-*   `Colors.secondary` (`#AB8970` - Café con Leche): Color para subtítulos de marca, detalles secundarios, bordes activos e íconos inactivos.
-*   `Colors.background` (`#E7DEDF` - Crema Suave): Color de fondo general del viewport de la aplicación y SafeAreas.
-*   `Colors.surface` (`#D7BFB3` - Crema Medio): Color para contenedores flotantes, tarjetas de prendas, campos de texto e inputs de login/registro.
-*   `Colors.text` (`#1F1E1E` - Negro Suave): Color principal para textos de lectura, descripciones de prendas y etiquetas de contraste alto.
-*   `Colors.textMuted` (`#64748B` - Gris Neutro): Usado para subtítulos, placeholders de inputs y descripciones de soporte secundario.
-*   `Colors.border` (`#E4E0E1` - Gris Claro): Para líneas divisoras, bordes de inputs y separadores de la FlatList.
-*   `Colors.success` (`#22C55E` - Verde): Para badges interactivos de stock "Disponible" y confirmaciones de pago exitoso.
-*   `Colors.danger` (`#EF4444` - Rojo): Para warnings de stock "Agotado", validación de errores en formularios de alta y alertas de sesión.
+* Consultar productos desde Supabase PostgreSQL.
+* Visualizar publicaciones mediante `FlatList`.
+* Manejar estados de carga, vacío, error y datos.
+* Mostrar disponibilidad y stock.
+* Acceder al detalle de una publicación.
+* Actualizar el contenido mediante pull-to-refresh.
 
-### Escalas
+El requisito no funcional establece como objetivo que las consultas del catálogo respondan en menos de 1,5 segundos bajo una red móvil estándar.
 
-- Spacing: `xs=4`, `sm=8`, `md=16`, `lg=24`, `xl=32`, `xxl=48`
-- FontSize: `xs=11`, `sm=12`, `md=14`, `lg=16`, `xl=20`, `xxl=24`, `xxxl=32`
-- Radius: `sm=4`, `md=8`, `lg=12`, `full=999`
+### M3 — Registro de prendas
 
-## QA checklist para el avance actual
+Los vendedores pueden crear publicaciones mediante un formulario validado con:
 
-1. Pull-to-refresh en Home refresca con retraso simulado de 1 segundo.
-2. Producto con `disponible: false` se muestra con opacidad y boton deshabilitado.
-3. Carrusel de destacados cambia indicador de pagina al deslizar.
-4. Navegacion basica entre login, registro y home responde sin errores.
+* React Hook Form.
+* Zod.
+* Supabase PostgreSQL.
+* Supabase Storage.
 
-## Como ejecutar
+La publicación contempla:
 
-```bash
-npm install
-npm run start
+* Nombre.
+* Precio.
+* Categoría.
+* Talle.
+* Color.
+* Descripción.
+* Stock.
+* Disponibilidad.
+* Imagen opcional.
+
+La fotografía no es obligatoria para completar una publicación.
+
+### M4 — Carrito
+
+El carrito utiliza **Zustand** como estado global.
+
+Actualmente permite:
+
+* Agregar productos.
+* Aumentar cantidades.
+* Disminuir cantidades.
+* Eliminar productos.
+* Actualizar cantidades.
+* Vaciar el carrito.
+* Calcular cantidad total.
+* Calcular subtotal.
+* Respetar el stock disponible.
+* Persistir el estado mediante AsyncStorage.
+
+La documentación establece el carrito global con Zustand y el cálculo de subtotales y comisiones como parte del requisito M4.
+
+---
+
+# Funcionalidades implementadas
+
+## Autenticación
+
+* Registro mediante Supabase Auth.
+* Login mediante Supabase Auth.
+* Gestión de sesión.
+* Asociación de productos con el usuario autenticado.
+* Roles de usuario para particulares y vendedores/comercios.
+
+## Catálogo
+
+* Catálogo dinámico desde Supabase.
+* `FlatList`.
+* Pull-to-refresh.
+* Estados de carga, error, vacío y datos.
+* Indicador de productos agotados.
+* Deshabilitación de acciones cuando no existe stock.
+* Detalle dinámico de producto.
+
+## Búsqueda y filtros
+
+Home incorpora búsqueda por texto.
+
+La sección de categorías permite:
+
+* Navegar por tipo de prenda.
+* Buscar dentro de una categoría.
+* Filtrar por talle.
+* Utilizar talles específicos para indumentaria.
+* Utilizar talles numéricos específicos para calzado.
+
+Esto responde a **HU04**, que define la búsqueda y filtrado por categoría y talle como funcionalidad de la Primera Entrega.
+
+## Publicación de prendas
+
+Los vendedores pueden:
+
+* Crear publicaciones.
+* Definir stock.
+* Seleccionar categoría.
+* Seleccionar talle.
+* Seleccionar colores.
+* Agregar descripción.
+* Adjuntar una imagen opcional.
+
+Las imágenes se gestionan mediante Supabase Storage.
+
+## Gestión de publicaciones
+
+La sección **Mis publicaciones** permite al vendedor:
+
+* Consultar sus publicaciones.
+* Ver precio y stock.
+* Consultar disponibilidad.
+* Editar publicaciones.
+* Modificar stock.
+* Reemplazar imágenes.
+* Eliminar publicaciones.
+
+Estas funcionalidades corresponden a **HU08**, que establece la administración de publicaciones propias durante la Primera Entrega.
+
+## Carrito
+
+El carrito permite:
+
+* Agregar productos.
+* Seleccionar variantes de talle y color.
+* Modificar cantidades.
+* Eliminar productos.
+* Controlar cantidades según stock.
+* Calcular subtotal.
+* Persistir el contenido mediante Zustand + AsyncStorage.
+
+---
+
+# Estado del Product Backlog
+
+| ID   | Historia de usuario                         | Estado          |
+| ---- | ------------------------------------------- | --------------- |
+| HU01 | Registro                                    | Implementado    |
+| HU02 | Login                                       | Implementado    |
+| HU03 | Catálogo                                    | Implementado    |
+| HU04 | Búsqueda y filtros                          | Implementado    |
+| HU05 | Detalle de producto                         | Implementado    |
+| HU06 | Publicación particular                      | Implementado    |
+| HU07 | Publicación de tienda y stock               | Implementado    |
+| HU08 | Gestión de publicaciones                    | Implementado    |
+| HU09 | Agregar al carrito                          | Implementado    |
+| HU10 | Modificar carrito                           | Implementado    |
+| HU11 | Selección de retiro/envío                   | Pendiente       |
+| HU12 | Selección de medio de pago                  | Pendiente       |
+| HU13 | Resumen y total                             | Pendiente       |
+| HU14 | Confirmación y código de compra             | Pendiente       |
+| HU15 | Chat interno                                | Segunda entrega |
+| HU16 | Persistencia ante pérdida de conectividad   | Segunda entrega |
+| HU17 | Ubicación manual                            | Segunda entrega |
+| HU18 | Perfil                                      | Segunda entrega |
+| HU19 | Configuración, modo oscuro y notificaciones | Posterior       |
+| HU20 | Indicador de producto agotado               | Implementado    |
+
+El Product Backlog oficial contiene 20 historias de usuario y clasifica HU01–HU14 y HU20 dentro de la Primera Entrega/MVP.
+
+---
+
+# Checkout
+
+El checkout forma parte del alcance funcional definido para el MVP, pero **todavía no se encuentra implementado en la versión actual del proyecto**.
+
+El flujo previsto contempla:
+
+1. Selección de retiro en local o envío a domicilio.
+2. Selección de medio de pago.
+3. Resumen del pedido.
+4. Subtotal.
+5. Comisión de servicio.
+6. Total.
+7. Confirmación.
+8. Generación de código único de compra.
+9. Limpieza del carrito.
+10. Protección contra operaciones duplicadas mediante `operationKey`.
+
+La documentación de Etapa 2 especifica este flujo y la utilización de `operationKey` para garantizar la idempotencia de las compras.
+
+### Pago
+
+La integración de una pasarela de pago real, como Mercado Pago, queda fuera del alcance del First Delivery.
+
+El MVP utiliza un **checkout lógico** para representar el proceso de compra.
+
+---
+
+# Geolocalización
+
+La geolocalización corresponde al requisito **S1 — Should Have**.
+
+El diseño contempla:
+
+* Obtención de ubicación mediante GPS.
+* Identificación de la ubicación de comercios.
+* Fallback mediante ingreso manual de la ubicación cuando el GPS no está disponible.
+
+El fallback manual está contemplado específicamente para escenarios donde el GPS falla en interiores.
+
+La implementación completa permanece pendiente.
+
+---
+
+# Arquitectura
+
+El proyecto utiliza una arquitectura basada en Expo Router y separación por responsabilidades.
+
+```text
+newyou-app/
+│
+├── app/
+│   ├── (auth)/
+│   │   ├── login.tsx
+│   │   └── register.tsx
+│   │
+│   ├── (tabs)/
+│   │   ├── index.tsx
+│   │   ├── categorias.tsx
+│   │   ├── carrito.tsx
+│   │   └── perfil.tsx
+│   │
+│   ├── producto/
+│   │   ├── [id].tsx
+│   │   └── nuevo.tsx
+│   │
+│   ├── editar/
+│   │   └── [id].tsx
+│   │
+│   ├── mis-publicaciones.tsx
+│   └── _layout.tsx
+│
+├── components/
+│   └── TarjetaProducto.tsx
+│
+├── constants/
+│   ├── theme.ts
+│   └── routes.ts
+│
+├── hooks/
+│   ├── useProductos.ts
+│   └── useMisProductos.ts
+│
+├── schemas/
+│   └── productoSchema.ts
+│
+├── services/
+│   ├── productosService.ts
+│   └── storageService.ts
+│
+├── stores/
+│   ├── useCarritoStore.ts
+│   └── useUsuarioStore.ts
+│
+└── types/
 ```
 
-Luego abrir en Expo Go:
-- `a` para Android
-- `w` para Web
+La documentación define Expo Router como sistema de navegación, una estructura basada en archivos dentro de `app/` y Zustand como solución para el estado global del carrito.
+
+---
+
+# Stack tecnológico
+
+### Frontend
+
+* React Native
+* Expo SDK 57
+* React 19
+* TypeScript
+* Expo Router
+
+### Estado y formularios
+
+* Zustand
+* React Hook Form
+* Zod
+* AsyncStorage
+
+### Backend
+
+* Supabase
+* Supabase Auth
+* PostgreSQL
+* Supabase Storage
+* Supabase Realtime
+
+### APIs nativas
+
+* Expo Image Picker
+* Expo Location
+* NetInfo
+
+La documentación de Etapa 2 especifica este stack como el utilizado efectivamente en el proyecto.
+
+---
+
+# Modelo de datos
+
+## Usuario
+
+Los usuarios se gestionan mediante Supabase Auth.
+
+Información principal:
+
+```text
+Usuario
+├── id (UUID)
+├── email
+├── nombre
+└── rol
+```
+
+Roles contemplados:
+
+* Particular.
+* Comercio/Vendedor.
+
+## Producto
+
+```text
+Producto
+├── id
+├── vendedor_id
+├── nombre
+├── precio
+├── categoria
+├── talle
+├── descripcion
+├── imagen_url
+├── stock
+└── disponible
+```
+
+## Orden
+
+La estructura prevista para completar el flujo transaccional es:
+
+```text
+Orden
+├── id
+├── comprador_id
+├── total
+├── estado
+├── codigo_confirmacion
+├── operationKey
+└── created_at
+```
+
+La documentación define estos datos como parte del modelo de órdenes del MVP.
+
+---
+
+# Seguridad
+
+El proyecto utiliza Supabase Auth y debe implementar políticas **Row Level Security (RLS)** para garantizar que los usuarios solamente puedan modificar o eliminar sus propias publicaciones.
+
+También debe garantizarse que los endpoints públicos no expongan información personal sensible de vendedores particulares.
+
+Estos requisitos forman parte de los requisitos no funcionales del proyecto.
+
+### Estado actual
+
+* Autenticación con Supabase: implementada.
+* Asociación de publicaciones al usuario: implementada.
+* Protección completa de rutas: pendiente de verificación final.
+* Políticas RLS: pendientes de verificación/configuración final.
+
+---
+
+# Diseño y accesibilidad
+
+El proyecto utiliza un sistema centralizado de Design Tokens mediante:
+
+```text
+constants/theme.ts
+```
+
+Se contemplan:
+
+* Colores.
+* Espaciados.
+* Radios.
+* Tipografía.
+
+La documentación establece el uso unificado de estos tokens y criterios de accesibilidad basados en WCAG 2.2 AA.
+
+También se utiliza una navegación inferior mediante Bottom Tab Bar para favorecer la ergonomía móvil.
+
+---
+
+# Priorización de funcionalidades
+
+## First Delivery — MVP
+
+**Must Have**
+
+* M1 Autenticación.
+* M2 Catálogo.
+* M3 Registro de prendas.
+* M4 Carrito.
+
+**Should Have**
+
+* S1 Geolocalización.
+
+**Could Have**
+
+* C1 Dashboard de ventas.
+
+**Won't Have**
+
+* W1 Pasarela de pago real.
+* W2 Moderación automática de imágenes mediante IA.
+
+Esta priorización corresponde a la matriz MoSCoW definida en la documentación del proyecto.
+
+---
+
+# Funcionalidades posteriores
+
+Las siguientes funcionalidades no son necesarias para cerrar el First Delivery:
+
+* Chat interno.
+* Funcionalidades avanzadas offline.
+* Perfil completo.
+* Configuración avanzada.
+* Modo oscuro.
+* Notificaciones.
+* Dashboard de ventas.
+
+Estas funcionalidades corresponden a etapas posteriores o a funcionalidades clasificadas como Could/Won't dentro del alcance definido.
+
+---
+
+# Estado actual del proyecto
+
+El proyecto cuenta actualmente con una parte importante del MVP implementada:
+
+* Autenticación.
+* Catálogo.
+* Búsqueda.
+* Categorías.
+* Filtros por talle.
+* Detalle de productos.
+* Alta de prendas.
+* Imágenes opcionales.
+* Gestión de publicaciones.
+* Control de stock.
+* Carrito global con Zustand.
+* Persistencia del carrito con AsyncStorage.
+
+Los principales puntos pendientes para completar el First Delivery son:
+
+1. Protección definitiva de rutas.
+2. Verificación y configuración de RLS.
+3. Checkout.
+4. Selección de retiro/envío.
+5. Método de pago lógico.
+6. Resumen con comisión y total.
+7. Generación de órdenes.
+8. Código único de confirmación.
+9. Idempotencia mediante `operationKey`.
+10. Geolocalización y fallback manual.
+
+---
+
+# Control de versiones
+
+El proyecto utiliza Git y GitHub para el control de versiones.
+
+La estrategia definida para el equipo contempla:
+
+* `main` como rama estable.
+* Ramas independientes por funcionalidad.
+* Pull Requests para integrar cambios.
+* Revisión de código por al menos un integrante antes del merge.
+
+---
+
+# Licencia
+
+Proyecto académico desarrollado para la **Universidad Nacional de Pilar** en el marco de la Tecnicatura Universitaria en Desarrollo de Software.

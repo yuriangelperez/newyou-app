@@ -24,9 +24,12 @@ export const productoSchema = z.object({
     .int('El stock debe ser un número entero.')
     .min(0, 'El stock no puede ser negativo.'),
 
-  imagen: z
-    .string()
-    .url('Ingresa una URL de imagen valida.'),
+  // La imagen es OPCIONAL para el MVP.
+  // Si está vacía, la publicación igualmente puede guardarse.
+  imagen: z.union([
+    z.literal(''),
+    z.string().url('Ingresa una URL de imagen valida.'),
+  ]),
 
   tipoPrenda: z.enum(TIPOS_PRENDA),
 
