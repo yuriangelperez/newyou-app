@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { StatusBar } from 'expo-status-bar';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { StatusBar } from "expo-status-bar";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Animated,
   FlatList,
@@ -9,47 +9,51 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BottomTabBar } from '../../components/BottomTabBar';
-import { ErrorView } from '../../components/ui/ErrorView';
-import { SkeletonList } from '../../components/ui/SkeletonList';
-import TarjetaProducto from '../../components/TarjetaProducto';
-import { BRANDING_LOGO, HOME_HERO_IMAGES } from '../../constants/assets';
-import { ROUTES } from '../../constants/routes';
-import { Colors } from '../../constants/theme';
-import { useProductos } from '../../hooks/useProductos';
-import { selectTotalItems, useCarritoStore } from '../../stores/useCarritoStore';
-import { useUsuarioStore } from '../../stores/useUsuarioStore';
-import { Producto } from '../../types';
+import { BottomTabBar } from "../../components/BottomTabBar";
+import { ErrorView } from "../../components/ui/ErrorView";
+import { SkeletonList } from "../../components/ui/SkeletonList";
+import TarjetaProducto from "../../components/TarjetaProducto";
+import { BRANDING_LOGO, HOME_HERO_IMAGES } from "../../constants/assets";
+import { ROUTES } from "../../constants/routes";
+import { Colors } from "../../constants/theme";
+import { useProductos } from "../../hooks/useProductos";
+import {
+  selectTotalItems,
+  useCarritoStore,
+} from "../../stores/useCarritoStore";
+import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { Producto } from "../../types";
 
 const CANVAS_WIDTH = 412;
-const HOME_TAGS = ['Promociones', 'Invierno', 'Verano', 'Femenino', 'Infantil'];
+const HOME_TAGS = ["Promociones", "Invierno", "Verano", "Femenino", "Infantil"];
 
 const HOME_FILTERS: Record<string, string[]> = {
-  Promociones: ['Camisas', 'Jeans', 'Botas', 'Vestidos', 'Short', 'Camperas'],
-  Invierno: ['Camperas', 'Botas', 'Buzos'],
-  Verano: ['Short', 'Vestidos', 'Camisas'],
-  Femenino: ['Vestidos', 'Brasieres', 'Faldas', 'Camisas'],
-  Infantil: ['Infantil'],
+  Promociones: ["Camisas", "Jeans", "Botas", "Vestidos", "Short", "Camperas"],
+  Invierno: ["Camperas", "Botas", "Buzos"],
+  Verano: ["Short", "Vestidos", "Camisas"],
+  Femenino: ["Vestidos", "Brasieres", "Faldas", "Camisas"],
+  Infantil: ["Infantil"],
 };
 
 const PRODUCT_CATEGORY_ALIASES: Record<string, string[]> = {
-  Camisa: ['Camisas', 'Torso'],
-  Remera: ['Camisas', 'Torso'],
-  Campera: ['Camperas', 'Torso'],
-  Buzo: ['Buzos', 'Torso'],
-  Pantalón: ['Jeans', 'Pantalones'],
-  Torso: ['Torso'],
-  Vestido: ['Vestidos'],
-  Falda: ['Faldas', 'Vestidos'],
-  Short: ['Short', 'Shorts'],
-  Calzado: ['Botas', 'Calzado'],
-  Accesorio: ['Accesorios'],
-  Interior: ['Interior'],
+  Camisa: ["Camisas", "Torso"],
+  Remera: ["Camisas", "Torso"],
+  Campera: ["Camperas", "Torso"],
+  Buzo: ["Buzos", "Torso"],
+  Pantalón: ["Jeans", "Pantalones"],
+  Torso: ["Torso"],
+  Vestido: ["Vestidos"],
+  Falda: ["Faldas", "Vestidos"],
+  Short: ["Short", "Shorts"],
+  Calzado: ["Botas", "Calzado"],
+  Accesorio: ["Accesorios"],
+  Interior: ["Interior"],
 };
 
 export default function HomeScreen() {
@@ -66,13 +70,16 @@ export default function HomeScreen() {
   const scale = canvasWidth / CANVAS_WIDTH;
   const styles = useMemo(
     () => createStyles(scale, canvasWidth, insets.top, insets.bottom),
-    [canvasWidth, insets.bottom, insets.top, scale]
+    [canvasWidth, insets.bottom, insets.top, scale],
   );
 
   const [activeTag, setActiveTag] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [searchText, setSearchText] = useState("");
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
-  const addedTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const addedTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>(
+    {},
+  );
   const addButtonAnimationsRef = useRef<Record<string, Animated.Value>>({});
 
   useEffect(() => {
@@ -85,28 +92,52 @@ export default function HomeScreen() {
   const activeCategories = HOME_FILTERS[selectedTag];
   const selectedCategory = Array.isArray(category) ? category[0] : category;
 
-  const visibleProducts = useMemo(
-    () => {
-      return productos.filter((item) => {
-        const productType = item.categoriaProducto?.tipoPrenda ?? '';
-        const productCategories = [
-          item.categoria ?? '',
-          ...(PRODUCT_CATEGORY_ALIASES[productType] ?? []),
-        ];
+  const visibleProducts = useMemo(() => {
+    const normalizedSearch = searchText.trim().toLowerCase();
 
-        if (selectedTag === 'Infantil') {
-          return item.categoriaProducto?.publico === 'Infantil';
-        }
+    return productos.filter((item) => {
+      const productType = item.categoriaProducto?.tipoPrenda ?? "";
 
-        return selectedCategory
-          ? productCategories.some((value) => value.toLowerCase() === selectedCategory.toLowerCase())
-          : activeCategories.some((categoryName) =>
-              productCategories.some((value) => value.includes(categoryName))
-            );
-      });
-    },
-    [activeCategories, productos, selectedCategory, selectedTag]
-  );
+      const productCategories = [
+        item.categoria ?? "",
+        ...(PRODUCT_CATEGORY_ALIASES[productType] ?? []),
+      ];
+
+      // Filtro por búsqueda
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        item.nombre.toLowerCase().includes(normalizedSearch) ||
+        item.descripcion.toLowerCase().includes(normalizedSearch) ||
+        item.categoria.toLowerCase().includes(normalizedSearch);
+
+      if (!matchesSearch) {
+        return false;
+      }
+
+      // Filtro infantil
+      if (selectedTag === "Infantil") {
+        return item.categoriaProducto?.publico === "Infantil";
+      }
+
+      // Filtro por categoría proveniente de navegación
+      if (selectedCategory) {
+        return productCategories.some(
+          (value) => value.toLowerCase() === selectedCategory.toLowerCase(),
+        );
+      }
+
+      // Filtros visuales de Home
+      return activeCategories.some((categoryName) =>
+        productCategories.some((value) => value.includes(categoryName)),
+      );
+    });
+  }, [
+    activeCategories,
+    productos,
+    searchText,
+    selectedCategory,
+    selectedTag,
+  ]);
 
   const getAddButtonAnimation = (productId: string) => {
     if (!addButtonAnimationsRef.current[productId]) {
@@ -122,8 +153,8 @@ export default function HomeScreen() {
 
     agregarProducto({
       producto: item,
-      talle: item.talle?.[0] ?? 'M',
-      color: 'Marron',
+      talle: item.talle?.[0] ?? "M",
+      color: "Marron",
       cantidad: 1,
     });
 
@@ -135,8 +166,16 @@ export default function HomeScreen() {
     }
 
     Animated.sequence([
-      Animated.timing(animation, { toValue: 1.08, duration: 100, useNativeDriver: true }),
-      Animated.timing(animation, { toValue: 1, duration: 140, useNativeDriver: true }),
+      Animated.timing(animation, {
+        toValue: 1.08,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(animation, {
+        toValue: 1,
+        duration: 140,
+        useNativeDriver: true,
+      }),
     ]).start();
 
     addedTimersRef.current[item.id] = setTimeout(() => {
@@ -154,7 +193,12 @@ export default function HomeScreen() {
         scale={scale}
         isAdded={isAdded}
         addButtonScale={buttonAnimation}
-        onPressProducto={(producto) => router.push({ pathname: ROUTES.productDetail, params: { id: producto.id } })}
+        onPressProducto={(producto) =>
+          router.push({
+            pathname: ROUTES.productDetail,
+            params: { id: producto.id },
+          })
+        }
         onPressAgregar={onPressAgregar}
       />
     );
@@ -165,13 +209,21 @@ export default function HomeScreen() {
       <StatusBar style="dark" />
 
       <View style={styles.header}>
-        <Text style={styles.userLabel}>{usuario ? `Hola, ${usuario.nombre}` : 'Hola, invitado'}</Text>
-        <Image accessibilityLabel="New You" source={BRANDING_LOGO} style={styles.logo} />
+        <Text style={styles.userLabel}>
+          {usuario ? `Hola, ${usuario.nombre}` : "Hola, invitado"}
+        </Text>
+        <Image
+          accessibilityLabel="New You"
+          source={BRANDING_LOGO}
+          style={styles.logo}
+        />
       </View>
 
       {cargando ? <SkeletonList /> : null}
 
-      {!cargando && error ? <ErrorView message={error} onRetry={() => void refrescar()} /> : null}
+      {!cargando && error ? (
+        <ErrorView message={error} onRetry={() => void refrescar()} />
+      ) : null}
 
       {!cargando && !error ? (
         <FlatList
@@ -187,11 +239,24 @@ export default function HomeScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No hay prendas disponibles</Text>
-              <Text style={styles.emptyText}>Publica una nueva prenda con el boton +.</Text>
+              <Text style={styles.emptyText}>
+                Publica una nueva prenda con el boton +.
+              </Text>
             </View>
           }
           ListHeaderComponent={
             <>
+              <View style={styles.searchContainer}>
+                <TextInput
+                  value={searchText}
+                  onChangeText={setSearchText}
+                  placeholder="Buscar prendas..."
+                  placeholderTextColor={Colors.textMuted}
+                  style={styles.searchInput}
+                  returnKeyType="search"
+                />
+              </View>
+
               <View style={styles.heroContainer}>
                 <ScrollView
                   horizontal
@@ -199,30 +264,49 @@ export default function HomeScreen() {
                   showsHorizontalScrollIndicator={false}
                   bounces={false}
                   onMomentumScrollEnd={(event) => {
-                    const nextIndex = Math.round(event.nativeEvent.contentOffset.x / canvasWidth);
+                    const nextIndex = Math.round(
+                      event.nativeEvent.contentOffset.x / canvasWidth,
+                    );
                     setHeroIndex(nextIndex);
                   }}
                 >
                   {HOME_HERO_IMAGES.map((image, index) => (
-                    <Image key={index} source={image} style={styles.heroImage} />
+                    <Image
+                      key={index}
+                      source={image}
+                      style={styles.heroImage}
+                    />
                   ))}
                 </ScrollView>
                 <View style={styles.heroDots}>
                   {HOME_HERO_IMAGES.map((_, index) => (
-                    <View key={index} style={[styles.heroDot, index === heroIndex && styles.heroDotActive]} />
+                    <View
+                      key={index}
+                      style={[
+                        styles.heroDot,
+                        index === heroIndex && styles.heroDotActive,
+                      ]}
+                    />
                   ))}
                 </View>
               </View>
 
               <View style={styles.promoBarContainer}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.promoBarContent}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.promoBarContent}
+                >
                   {HOME_TAGS.map((tag, index) => {
                     const selected = index === activeTag;
                     return (
                       <Pressable
                         key={tag}
                         onPress={() => setActiveTag(index)}
-                        style={[styles.promoTag, selected && styles.promoTagActive]}
+                        style={[
+                          styles.promoTag,
+                          selected && styles.promoTagActive,
+                        ]}
                       >
                         <Text style={styles.promoTagText}>{tag}</Text>
                       </Pressable>
@@ -241,7 +325,7 @@ export default function HomeScreen() {
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
-          esVendedor={usuario?.role === 'vendedor'}
+        esVendedor={usuario?.role === "vendedor"}
         onPressCreate={() => router.push(ROUTES.newProduct)}
         onPressBag={() => router.push(ROUTES.categories)}
         onPressCart={() => router.push(ROUTES.cart)}
@@ -251,7 +335,12 @@ export default function HomeScreen() {
   );
 }
 
-function createStyles(scale: number, canvasWidth: number, topInset: number, bottomInset: number) {
+function createStyles(
+  scale: number,
+  canvasWidth: number,
+  topInset: number,
+  bottomInset: number,
+) {
   const s = (value: number) => value * scale;
 
   return StyleSheet.create({
@@ -262,8 +351,8 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
     header: {
       paddingTop: topInset,
       minHeight: topInset + s(76),
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
       backgroundColor: Colors.background,
       borderBottomWidth: 2,
       borderBottomColor: Colors.secondary,
@@ -271,73 +360,88 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
     logo: {
       width: s(105),
       height: s(60),
-      resizeMode: 'contain',
+      resizeMode: "contain",
     },
     userLabel: {
-      position: 'absolute',
+      position: "absolute",
       left: s(18),
       top: topInset + s(12),
       color: Colors.textMuted,
       fontSize: s(11),
-      fontFamily: 'Montserrat_500Medium',
+      fontFamily: "Montserrat_500Medium",
       maxWidth: s(120),
+    },
+    searchContainer: {
+      paddingHorizontal: s(20),
+      paddingTop: s(10),
+      paddingBottom: s(8),
+    },
+
+    searchInput: {
+      height: s(42),
+      borderRadius: s(12),
+      backgroundColor: "#E4E0E1",
+      paddingHorizontal: s(16),
+      color: "#2D1F16",
+      fontSize: s(13),
+      fontFamily: "Montserrat_400Regular",
     },
     heroContainer: {
       width: canvasWidth,
       height: s(146),
       backgroundColor: Colors.secondary,
-      overflow: 'hidden',
-      position: 'relative',
+      overflow: "hidden",
+      position: "relative",
     },
     heroImage: {
       width: canvasWidth,
       height: s(146),
-      resizeMode: 'cover',
+      resizeMode: "cover",
     },
     heroDots: {
-      position: 'absolute',
+      position: "absolute",
       bottom: s(8),
-      alignSelf: 'center',
-      flexDirection: 'row',
+      alignSelf: "center",
+      flexDirection: "row",
       columnGap: s(6),
     },
     heroDot: {
       width: s(6),
       height: s(6),
       borderRadius: s(3),
-      backgroundColor: 'rgba(255, 255, 255, 0.5)',
+      backgroundColor: "rgba(255, 255, 255, 0.5)",
     },
     heroDotActive: {
-      backgroundColor: '#FFFFFF',
+      backgroundColor: "#FFFFFF",
     },
     promoBarContainer: {
       marginTop: s(8),
       height: s(50),
-      justifyContent: 'center',
+      justifyContent: "center",
       backgroundColor: Colors.background,
     },
     promoBarContent: {
       paddingHorizontal: s(20),
       columnGap: s(8),
-      alignItems: 'center',
+      alignItems: "center",
     },
     promoTag: {
       minWidth: s(104),
       height: s(27),
       borderRadius: s(10),
-      backgroundColor: '#D9D9D9',
-      alignItems: 'center',
-      justifyContent: 'center',
+      backgroundColor: "#D9D9D9",
+      alignItems: "center",
+      justifyContent: "center",
       paddingHorizontal: s(12),
     },
     promoTagActive: {
       backgroundColor: Colors.tertiary,
     },
     promoTagText: {
-      color: '#000000',
+      color: "#000000",
       fontSize: s(12),
       lineHeight: s(14),
-      fontWeight: '400',
+      fontWeight: "400",
     },
     content: {
       paddingBottom: s(24) + s(78) + bottomInset,
@@ -345,27 +449,27 @@ function createStyles(scale: number, canvasWidth: number, topInset: number, bott
       flexGrow: 1,
     },
     productRow: {
-      justifyContent: 'space-between',
+      justifyContent: "space-between",
       paddingHorizontal: s(20),
       marginTop: s(10),
     },
     emptyState: {
       marginTop: s(60),
-      alignItems: 'center',
+      alignItems: "center",
       rowGap: s(8),
       paddingHorizontal: s(24),
     },
     emptyTitle: {
-      color: '#2D1F16',
+      color: "#2D1F16",
       fontSize: s(22),
-      fontFamily: 'Montserrat_600SemiBold',
-      textAlign: 'center',
+      fontFamily: "Montserrat_600SemiBold",
+      textAlign: "center",
     },
     emptyText: {
       color: Colors.textMuted,
       fontSize: s(13),
-      textAlign: 'center',
-      fontFamily: 'Montserrat_400Regular',
+      textAlign: "center",
+      fontFamily: "Montserrat_400Regular",
     },
   });
 }
