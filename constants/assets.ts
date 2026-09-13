@@ -1,9 +1,9 @@
 export const BRANDING_LOGO = require('../assets/images/branding/logo.png');
 
 export const HOME_HERO_IMAGES = [
-  require('../assets/images/home-hero/figma-1.jpg'),
-  require('../assets/images/home-hero/figma-2.jpg'),
-  require('../assets/images/home-hero/figma-3.jpg'),
+  require('../assets/images/home-hero/hero-primavera/1.png'),
+  require('../assets/images/home-hero/hero-primavera/2.png'),
+  require('../assets/images/home-hero/hero-primavera/3.png'),
 ];
 
 export const CATEGORY_DIAGONAL_CUT = require('../assets/images/categories/diagonal-cut.png');
