@@ -86,7 +86,7 @@ export default function PerfilScreen() {
 
       <BottomTabBar
         activeTab="menu"
-        canvasWidth={canvasWidth}
+        canvasWidth={Math.min(width, 560)}
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
@@ -111,6 +111,9 @@ function createStyles(scale: number, bottomInset: number) {
     },
     content: {
       flex: 1,
+      width: "100%",
+      maxWidth: 600,
+      alignSelf: "center",
       paddingHorizontal: s(20),
       paddingTop: s(40),
       paddingBottom: s(26) + s(78) + bottomInset,

@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBar } from '../components/BottomTabBar';
 import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from '../constants/assets';
 import { ROUTES } from '../constants/routes';
-import { Colors } from '../constants/theme';
+import { Colors, Radius } from '../constants/theme';
 import { selectSubtotal, selectTotalItems, useCarritoStore } from '../stores/useCarritoStore';
 import { useUsuarioStore } from '../stores/useUsuarioStore';
 
@@ -45,11 +45,13 @@ export default function CarritoScreen() {
       <StatusBar style="dark" />
 
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Image source={PRODUCT_DETAIL_ICONS.back} style={styles.backIcon} />
-        </Pressable>
-        <Image source={BRANDING_LOGO} style={styles.logo} />
-        <View style={styles.backButton} />
+        <View style={styles.headerInner}>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Image source={PRODUCT_DETAIL_ICONS.back} style={styles.backIcon} />
+          </Pressable>
+          <Image source={BRANDING_LOGO} style={styles.logo} />
+          <View style={styles.backButton} />
+        </View>
       </View>
 
       <FlatList
@@ -102,15 +104,17 @@ export default function CarritoScreen() {
       />
 
       <View style={styles.checkoutBar}>
-        <Text style={styles.totalText}>TOTAL: ${subtotal.toLocaleString('es-AR')}</Text>
-        <Pressable disabled={items.length === 0} style={[styles.checkoutButton, items.length === 0 && styles.checkoutButtonDisabled]}>
-          <Text style={styles.checkoutText}>COMPLETAR COMPRA</Text>
-        </Pressable>
+        <View style={styles.checkoutBarInner}>
+          <Text style={styles.totalText}>TOTAL: ${subtotal.toLocaleString('es-AR')}</Text>
+          <Pressable disabled={items.length === 0} style={[styles.checkoutButton, items.length === 0 && styles.checkoutButtonDisabled]}>
+            <Text style={styles.checkoutText}>COMPLETAR COMPRA</Text>
+          </Pressable>
+        </View>
       </View>
 
       <BottomTabBar
         activeTab="cart"
-        canvasWidth={canvasWidth}
+        canvasWidth={Math.min(width, 560)}
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
@@ -133,10 +137,17 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       backgroundColor: Colors.background,
     },
     header: {
+      width: '100%',
       paddingTop: topInset,
       height: topInset + s(76),
       borderBottomWidth: 2,
       borderBottomColor: Colors.secondary,
+      alignItems: 'center',
+    },
+    headerInner: {
+      width: '100%',
+      maxWidth: 800,
+      height: '100%',
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -159,10 +170,14 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       resizeMode: 'contain',
     },
     listContent: {
+      width: '100%',
+      maxWidth: 800,
+      alignSelf: 'center',
       paddingTop: s(20),
       paddingHorizontal: s(16),
       paddingBottom: s(24) + s(78) + s(70) + bottomInset,
       minHeight: s(540),
+      flexGrow: 1,
     },
     itemSpacing: {
       height: s(20),
@@ -183,18 +198,23 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
     },
     cartRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
+      justifyContent: 'flex-start',
+      alignItems: 'center',
       columnGap: s(16),
+      backgroundColor: Colors.surface,
+      borderRadius: Radius.lg,
+      padding: s(12),
+      borderWidth: 1,
+      borderColor: Colors.border,
     },
     productImage: {
-      width: s(165),
+      width: s(130),
       height: s(130),
       borderRadius: s(10),
       backgroundColor: Colors.secondary,
     },
     rightColumn: {
-      width: s(185),
+      flex: 1,
       minHeight: s(130),
       justifyContent: 'space-between',
     },
@@ -294,10 +314,16 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       borderTopWidth: 1,
       borderBottomWidth: 1,
       borderColor: '#E4E4E4',
-      paddingHorizontal: s(28),
+      alignItems: 'center',
+    },
+    checkoutBarInner: {
+      width: '100%',
+      maxWidth: 800,
+      height: '100%',
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      paddingHorizontal: s(24),
     },
     totalText: {
       color: Colors.secondary,

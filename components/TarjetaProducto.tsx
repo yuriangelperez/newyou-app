@@ -19,6 +19,8 @@ interface TarjetaProductoProps {
   addButtonScale?: Animated.Value;
   onPressProducto: (producto: Producto) => void;
   onPressAgregar: (producto: Producto) => void;
+  cardWidth?: number;
+  imageHeight?: number;
 }
 
 export default function TarjetaProducto({
@@ -28,6 +30,8 @@ export default function TarjetaProducto({
   addButtonScale,
   onPressProducto,
   onPressAgregar,
+  cardWidth,
+  imageHeight,
 }: TarjetaProductoProps) {
   const styles = useMemo(() => createStyles(scale), [scale]);
   const productoEnCarrito = useCarritoStore((state) =>
@@ -52,12 +56,24 @@ export default function TarjetaProducto({
     <Pressable
       accessibilityLabel={`Ver ${producto.nombre}`}
       onPress={() => onPressProducto(producto)}
-      style={[styles.card, !producto.disponible && styles.cardDisabled]}
+      style={[
+        styles.card,
+        cardWidth ? { width: cardWidth } : undefined,
+        !producto.disponible && styles.cardDisabled,
+      ]}
     >
       {producto.imagen ? (
-        <Image source={{ uri: producto.imagen }} style={styles.image} />
+        <Image
+          source={{ uri: producto.imagen }}
+          style={[styles.image, imageHeight ? { height: imageHeight } : undefined]}
+        />
       ) : (
-        <View style={styles.imagePlaceholder} />
+        <View
+          style={[
+            styles.imagePlaceholder,
+            imageHeight ? { height: imageHeight } : undefined,
+          ]}
+        />
       )}
 
       <Text numberOfLines={2} style={styles.title}>

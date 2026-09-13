@@ -13,13 +13,34 @@ import { useFavoritosStore } from '../stores/useFavoritosStore';
 import { useUsuarioStore } from '../stores/useUsuarioStore';
 import { Producto } from '../types';
 
+const MAX_CONTENT_WIDTH = 1160;
+
 export default function FavoritosScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const isDesktop = width >= 768;
+  const containerWidth = Math.min(width, MAX_CONTENT_WIDTH);
   const canvasWidth = Math.min(width, 412);
   const scale = canvasWidth / 412;
-  const styles = useMemo(() => createStyles(scale, insets.bottom), [insets.bottom, scale]);
+
+  const numColumns = useMemo(() => {
+    if (width >= 960) return 4;
+    if (width >= 640) return 3;
+    return 2;
+  }, [width]);
+
+  const cardGap = 16;
+  const horizontalPadding = isDesktop ? 20 : 16;
+  const availableGridWidth =
+    containerWidth - horizontalPadding * 2 - (numColumns - 1) * cardGap;
+  const cardWidth = Math.max(Math.floor(availableGridWidth / numColumns), 150);
+  const cardImageHeight = width >= 960 ? 160 : width >= 640 ? 140 : 110;
+
+  const styles = useMemo(
+    () => createStyles(scale, insets.bottom, horizontalPadding, cardGap),
+    [cardGap, horizontalPadding, insets.bottom, scale]
+  );
   const favoritos = useFavoritosStore((state) => state.favoritos);
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
   const totalItems = useCarritoStore(selectTotalItems);
@@ -42,16 +63,19 @@ export default function FavoritosScreen() {
     <View style={styles.screen}>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.backText}>Volver</Text>
-        </Pressable>
-        <Text style={styles.title}>Favoritos</Text>
+        <View style={styles.headerInner}>
+          <Pressable onPress={() => router.back()}>
+            <Text style={styles.backText}>Volver</Text>
+          </Pressable>
+          <Text style={styles.title}>Favoritos</Text>
+        </View>
       </View>
 
       <FlatList
+        key={`fav-grid-${numColumns}`}
         data={favoritos}
         keyExtractor={(item) => item.id}
-        numColumns={2}
+        numColumns={numColumns}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
         columnWrapperStyle={styles.row}
@@ -60,6 +84,8 @@ export default function FavoritosScreen() {
           <TarjetaProducto
             producto={item}
             scale={scale}
+            cardWidth={cardWidth}
+            imageHeight={cardImageHeight}
             onPressProducto={(producto) => router.push({ pathname: ROUTES.productDetail, params: { id: producto.id } })}
             onPressAgregar={onPressAgregar}
           />
@@ -68,7 +94,7 @@ export default function FavoritosScreen() {
 
       <BottomTabBar
         activeTab="menu"
-        canvasWidth={canvasWidth}
+        canvasWidth={Math.min(width, 560)}
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
@@ -83,25 +109,44 @@ export default function FavoritosScreen() {
   );
 }
 
-function createStyles(scale: number, bottomInset: number) {
+function createStyles(scale: number, bottomInset: number, horizontalPadding: number, cardGap: number) {
   const s = (value: number) => value * scale;
 
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: Colors.background },
     header: {
+      width: '100%',
       paddingTop: s(42),
-      paddingHorizontal: s(20),
       paddingBottom: s(14),
+      borderBottomWidth: 2,
+      borderBottomColor: Colors.secondary,
+      alignItems: 'center',
+    },
+    headerInner: {
+      width: '100%',
+      maxWidth: MAX_CONTENT_WIDTH,
+      paddingHorizontal: horizontalPadding,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      borderBottomWidth: 2,
-      borderBottomColor: Colors.secondary,
     },
     backText: { color: Colors.secondary, fontSize: s(14), fontFamily: 'Montserrat_600SemiBold' },
     title: { color: Colors.primary, fontSize: s(24), fontFamily: 'Montserrat_700Bold' },
-    content: { paddingTop: s(10), paddingBottom: s(24) + s(78) + bottomInset, flexGrow: 1 },
-    row: { justifyContent: 'space-between', paddingHorizontal: s(20), marginTop: s(10) },
+    content: {
+      width: '100%',
+      maxWidth: MAX_CONTENT_WIDTH,
+      alignSelf: 'center',
+      paddingTop: s(10),
+      paddingBottom: s(24) + s(78) + bottomInset,
+      flexGrow: 1,
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'flex-start',
+      gap: cardGap,
+      paddingHorizontal: horizontalPadding,
+      marginTop: s(12),
+    },
     emptyText: { marginTop: s(70), paddingHorizontal: s(24), color: Colors.textMuted, textAlign: 'center', fontSize: s(14) },
   });
 }

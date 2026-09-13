@@ -459,7 +459,7 @@ export default function ProductDetailScreen() {
 
       <BottomTabBar
         activeTab="bag"
-        canvasWidth={canvasWidth}
+        canvasWidth={Math.min(width, 560)}
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
@@ -489,7 +489,8 @@ function createStyles(
     },
     canvas: {
       flex: 1,
-      width: canvasWidth,
+      width: "100%",
+      maxWidth: 600,
       alignSelf: "center",
       backgroundColor: Colors.background,
     },

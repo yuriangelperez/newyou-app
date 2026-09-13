@@ -157,7 +157,8 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   inputContainer: {
-    width: '80%',
+    width: '85%',
+    maxWidth: 400,
     gap: 18,
     marginBottom: 41,
   },
