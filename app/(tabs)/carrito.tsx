@@ -12,12 +12,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BottomTabBar } from '../components/BottomTabBar';
-import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from '../constants/assets';
-import { ROUTES } from '../constants/routes';
-import { Colors, Radius } from '../constants/theme';
-import { selectSubtotal, selectTotalItems, useCarritoStore } from '../stores/useCarritoStore';
-import { useUsuarioStore } from '../stores/useUsuarioStore';
+import { BottomTabBar } from '../../components/BottomTabBar';
+import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from '../../constants/assets';
+import { ROUTES } from '../../constants/routes';
+import { Colors, Radius } from '../../constants/theme';
+import { selectSubtotal, selectTotalItems, useCarritoStore } from '../../stores/useCarritoStore';
+import { useUsuarioStore } from '../../stores/useUsuarioStore';
 
 const CANVAS_WIDTH = 412;
 

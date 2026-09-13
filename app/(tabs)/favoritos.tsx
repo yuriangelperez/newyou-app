@@ -4,14 +4,14 @@ import { StatusBar } from 'expo-status-bar';
 import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import TarjetaProducto from '../components/TarjetaProducto';
-import { BottomTabBar } from '../components/BottomTabBar';
-import { ROUTES } from '../constants/routes';
-import { Colors } from '../constants/theme';
-import { useCarritoStore, selectTotalItems } from '../stores/useCarritoStore';
-import { useFavoritosStore } from '../stores/useFavoritosStore';
-import { useUsuarioStore } from '../stores/useUsuarioStore';
-import { Producto } from '../types';
+import TarjetaProducto from '../../components/TarjetaProducto';
+import { BottomTabBar } from '../../components/BottomTabBar';
+import { ROUTES } from '../../constants/routes';
+import { Colors } from '../../constants/theme';
+import { useCarritoStore, selectTotalItems } from '../../stores/useCarritoStore';
+import { useFavoritosStore } from '../../stores/useFavoritosStore';
+import { useUsuarioStore } from '../../stores/useUsuarioStore';
+import { Producto } from '../../types';
 
 const MAX_CONTENT_WIDTH = 1160;
 

@@ -10,12 +10,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BottomTabBar } from "../components/BottomTabBar";
-import { ROUTES } from "../constants/routes";
-import { Colors, Radius } from "../constants/theme";
-import { supabase } from "../services/supabase";
-import { selectTotalItems, useCarritoStore } from "../stores/useCarritoStore";
-import { useUsuarioStore } from "../stores/useUsuarioStore";
+import { BottomTabBar } from "../../components/BottomTabBar";
+import { ROUTES } from "../../constants/routes";
+import { Colors, Radius } from "../../constants/theme";
+import { supabase } from "../../services/supabase";
+import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
+import { useUsuarioStore } from "../../stores/useUsuarioStore";
 
 export default function PerfilScreen() {
   const router = useRouter();

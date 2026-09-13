@@ -57,10 +57,7 @@ export default function RootLayout() {
         <Stack.Screen name="producto/[id]" />
         <Stack.Screen name="producto/nuevo" />
         <Stack.Screen name="editar/[id]" />
-        <Stack.Screen name="categorias" />
-        <Stack.Screen name="carrito" />
-        <Stack.Screen name="perfil" />
-        <Stack.Screen name="favoritos" />
+        <Stack.Screen name="mis-publicaciones" />
       </Stack>
       <Toast />
     </>

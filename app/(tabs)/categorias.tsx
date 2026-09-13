@@ -14,18 +14,18 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BottomTabBar } from "../components/BottomTabBar";
-import TarjetaProducto from "../components/TarjetaProducto";
-import { ErrorView } from "../components/ui/ErrorView";
-import { SkeletonList } from "../components/ui/SkeletonList";
-import { BRANDING_LOGO, CATEGORY_DIAGONAL_CUT } from "../constants/assets";
-import { CategoriaProducto } from "../constants/categoriasProductos";
-import { Colors } from "../constants/theme";
-import { ROUTES } from "../constants/routes";
-import { useProductos } from "../hooks/useProductos";
-import { selectTotalItems, useCarritoStore } from "../stores/useCarritoStore";
-import { useUsuarioStore } from "../stores/useUsuarioStore";
-import { Producto } from "../types";
+import { BottomTabBar } from "../../components/BottomTabBar";
+import TarjetaProducto from "../../components/TarjetaProducto";
+import { ErrorView } from "../../components/ui/ErrorView";
+import { SkeletonList } from "../../components/ui/SkeletonList";
+import { BRANDING_LOGO, CATEGORY_DIAGONAL_CUT } from "../../constants/assets";
+import { CategoriaProducto } from "../../constants/categoriasProductos";
+import { Colors } from "../../constants/theme";
+import { ROUTES } from "../../constants/routes";
+import { useProductos } from "../../hooks/useProductos";
+import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
+import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { Producto } from "../../types";
 
 const CANVAS_WIDTH = 412;
 const MAX_CONTENT_WIDTH = 1160;
