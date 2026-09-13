@@ -28,6 +28,7 @@ import { useUsuarioStore } from "../stores/useUsuarioStore";
 import { Producto } from "../types";
 
 const CANVAS_WIDTH = 412;
+const MAX_CONTENT_WIDTH = 1160;
 const FILTERS = [
   "TODO",
   "TORSO",
@@ -332,11 +333,45 @@ export default function CategoriasScreen() {
   const [searchText, setSearchText] = useState("");
   const [selectedSize, setSelectedSize] = useState("Todos");
 
+  const isDesktop = width >= 768;
+  const containerWidth = Math.min(width, MAX_CONTENT_WIDTH);
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
+
+  const numColumns = useMemo(() => {
+    if (width >= 960) return 4;
+    if (width >= 640) return 3;
+    return 2;
+  }, [width]);
+
+  const cardGap = 16;
+  const horizontalPadding = isDesktop ? 20 : 16;
+  const availableGridWidth =
+    containerWidth - horizontalPadding * 2 - (numColumns - 1) * cardGap;
+  const cardWidth = Math.max(Math.floor(availableGridWidth / numColumns), 150);
+  const cardImageHeight = width >= 960 ? 160 : width >= 640 ? 140 : 110;
+  const categoryCardHeight = isDesktop ? 130 : Math.round(cardWidth * 0.56);
+
   const styles = useMemo(
-    () => createStyles(scale, canvasWidth, insets.top, insets.bottom),
-    [canvasWidth, insets.bottom, insets.top, scale],
+    () =>
+      createStyles({
+        scale,
+        containerWidth,
+        horizontalPadding,
+        cardGap,
+        isDesktop,
+        topInset: insets.top,
+        bottomInset: insets.bottom,
+      }),
+    [
+      cardGap,
+      containerWidth,
+      horizontalPadding,
+      insets.bottom,
+      insets.top,
+      isDesktop,
+      scale,
+    ],
   );
 
   const categoryItems = CATEGORY_BY_FILTER[activeFilter];
@@ -493,9 +528,10 @@ export default function CategoriasScreen() {
           ) : null}
           {!cargando && !error ? (
             <FlatList
+              key={`cat-products-${numColumns}`}
               data={visibleProducts}
               keyExtractor={(item) => item.id}
-              numColumns={2}
+              numColumns={numColumns}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.gridContent}
               columnWrapperStyle={styles.gridRow}
@@ -508,6 +544,8 @@ export default function CategoriasScreen() {
                 <TarjetaProducto
                   producto={item}
                   scale={scale}
+                  cardWidth={cardWidth}
+                  imageHeight={cardImageHeight}
                   onPressProducto={(producto) =>
                     router.push({
                       pathname: ROUTES.productDetail,
@@ -522,15 +560,19 @@ export default function CategoriasScreen() {
         </>
       ) : (
         <FlatList
+          key={`cat-tiles-${numColumns}`}
           data={categoryItems}
           keyExtractor={(item) => item.id}
-          numColumns={2}
+          numColumns={numColumns}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.gridContent}
           columnWrapperStyle={styles.gridRow}
           renderItem={({ item }) => (
             <Pressable
-              style={styles.card}
+              style={[
+                styles.card,
+                { width: cardWidth, height: categoryCardHeight },
+              ]}
               onPress={() => setSelectedCategoryId(item.id)}
             >
               <Image source={{ uri: item.image }} style={styles.cardImage} />
@@ -546,7 +588,7 @@ export default function CategoriasScreen() {
 
       <BottomTabBar
         activeTab="bag"
-        canvasWidth={canvasWidth}
+        canvasWidth={Math.min(width, 560)}
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
@@ -560,12 +602,25 @@ export default function CategoriasScreen() {
   );
 }
 
-function createStyles(
-  scale: number,
-  canvasWidth: number,
-  topInset: number,
-  bottomInset: number,
-) {
+interface CreateStylesParams {
+  scale: number;
+  containerWidth: number;
+  horizontalPadding: number;
+  cardGap: number;
+  isDesktop: boolean;
+  topInset: number;
+  bottomInset: number;
+}
+
+function createStyles({
+  scale,
+  containerWidth,
+  horizontalPadding,
+  cardGap,
+  isDesktop,
+  topInset,
+  bottomInset,
+}: CreateStylesParams) {
   const s = (value: number) => value * scale;
 
   return StyleSheet.create({
@@ -574,6 +629,7 @@ function createStyles(
       backgroundColor: Colors.background,
     },
     header: {
+      width: "100%",
       paddingTop: topInset,
       height: topInset + s(76),
       justifyContent: "center",
@@ -587,12 +643,18 @@ function createStyles(
       resizeMode: "contain",
     },
     categoryFilters: {
-      paddingHorizontal: s(20),
+      width: "100%",
+      maxWidth: MAX_CONTENT_WIDTH,
+      alignSelf: "center",
+      paddingHorizontal: horizontalPadding,
       paddingTop: s(12),
       paddingBottom: s(4),
     },
 
     searchInput: {
+      width: "100%",
+      maxWidth: 640,
+      alignSelf: isDesktop ? "center" : "stretch",
       height: s(42),
       borderRadius: s(12),
       backgroundColor: "#E4E0E1",
@@ -607,10 +669,13 @@ function createStyles(
       color: "#2D1F16",
       fontSize: s(12),
       fontWeight: "600",
+      alignSelf: isDesktop ? "center" : "flex-start",
     },
 
     sizeFiltersContent: {
       columnGap: s(6),
+      justifyContent: isDesktop ? "center" : "flex-start",
+      flexGrow: isDesktop ? 1 : 0,
     },
 
     sizeChip: {
@@ -639,11 +704,14 @@ function createStyles(
     filtersWrap: {
       marginTop: s(14),
       height: s(34),
+      width: "100%",
     },
     filtersContent: {
-      paddingHorizontal: s(20),
-      columnGap: s(4),
+      paddingHorizontal: horizontalPadding,
+      columnGap: s(6),
       alignItems: "center",
+      justifyContent: isDesktop ? "center" : "flex-start",
+      flexGrow: isDesktop ? 1 : 0,
     },
     filterChip: {
       minWidth: s(104),
@@ -664,19 +732,28 @@ function createStyles(
       fontWeight: "400",
     },
     gridContent: {
+      width: "100%",
+      maxWidth: MAX_CONTENT_WIDTH,
+      alignSelf: "center",
       paddingTop: s(10),
       paddingBottom: s(26) + s(78) + bottomInset,
+      flexGrow: 1,
     },
     gridRow: {
-      paddingHorizontal: s(19),
-      justifyContent: "space-between",
-      marginTop: s(10),
+      flexDirection: "row",
+      justifyContent: "flex-start",
+      gap: cardGap,
+      paddingHorizontal: horizontalPadding,
+      marginTop: s(12),
     },
     selectedHeader: {
+      width: "100%",
+      maxWidth: MAX_CONTENT_WIDTH,
+      alignSelf: "center",
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: s(20),
+      paddingHorizontal: horizontalPadding,
       paddingTop: s(14),
     },
     backText: {
@@ -690,15 +767,12 @@ function createStyles(
       fontWeight: "600",
     },
     emptyText: {
-      width: canvasWidth,
       marginTop: s(50),
       color: Colors.textMuted,
       textAlign: "center",
       fontSize: s(14),
     },
     card: {
-      width: s(175),
-      height: s(99),
       borderRadius: s(10),
       backgroundColor: Colors.secondary,
       overflow: "hidden",

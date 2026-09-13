@@ -31,6 +31,7 @@ import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { Producto } from "../../types";
 
 const CANVAS_WIDTH = 412;
+const MAX_CONTENT_WIDTH = 1160;
 const HOME_TAGS = ["Promociones", "Invierno", "Verano", "Femenino", "Infantil"];
 
 const HOME_FILTERS: Record<string, string[]> = {
@@ -66,11 +67,57 @@ export default function HomeScreen() {
   const totalItems = useCarritoStore(selectTotalItems);
   const usuario = useUsuarioStore((state) => state.usuario);
 
+  const isDesktop = width >= 768;
+  const containerWidth = Math.min(width, MAX_CONTENT_WIDTH);
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
+
+  const numColumns = useMemo(() => {
+    if (width >= 960) return 4;
+    if (width >= 640) return 3;
+    return 2;
+  }, [width]);
+
+  const cardGap = 16;
+  const horizontalPadding = isDesktop ? 20 : 16;
+  const availableGridWidth =
+    containerWidth - horizontalPadding * 2 - (numColumns - 1) * cardGap;
+  const cardWidth = Math.max(Math.floor(availableGridWidth / numColumns), 150);
+  const cardImageHeight = width >= 960 ? 160 : width >= 640 ? 140 : 110;
+
+  const bannerWidth = isDesktop
+    ? containerWidth - horizontalPadding * 2
+    : containerWidth;
+  const bannerHeight = isDesktop
+    ? Math.min(Math.round(bannerWidth * 0.32), 290)
+    : 150;
+
+  const heroScrollRef = useRef<ScrollView>(null);
+
   const styles = useMemo(
-    () => createStyles(scale, canvasWidth, insets.top, insets.bottom),
-    [canvasWidth, insets.bottom, insets.top, scale],
+    () =>
+      createStyles({
+        scale,
+        containerWidth,
+        bannerWidth,
+        bannerHeight,
+        horizontalPadding,
+        cardGap,
+        isDesktop,
+        topInset: insets.top,
+        bottomInset: insets.bottom,
+      }),
+    [
+      bannerHeight,
+      bannerWidth,
+      cardGap,
+      containerWidth,
+      horizontalPadding,
+      insets.bottom,
+      insets.top,
+      isDesktop,
+      scale,
+    ],
   );
 
   const [activeTag, setActiveTag] = useState(0);
@@ -193,6 +240,8 @@ export default function HomeScreen() {
         scale={scale}
         isAdded={isAdded}
         addButtonScale={buttonAnimation}
+        cardWidth={cardWidth}
+        imageHeight={cardImageHeight}
         onPressProducto={(producto) =>
           router.push({
             pathname: ROUTES.productDetail,
@@ -209,14 +258,19 @@ export default function HomeScreen() {
       <StatusBar style="dark" />
 
       <View style={styles.header}>
-        <Text style={styles.userLabel}>
-          {usuario ? `Hola, ${usuario.nombre}` : "Hola, invitado"}
-        </Text>
-        <Image
-          accessibilityLabel="New You"
-          source={BRANDING_LOGO}
-          style={styles.logo}
-        />
+        <View style={styles.headerInner}>
+          <View style={styles.headerSide}>
+            <Text numberOfLines={1} style={styles.userLabel}>
+              {usuario ? `Hola, ${usuario.nombre}` : "Hola, invitado"}
+            </Text>
+          </View>
+          <Image
+            accessibilityLabel="New You"
+            source={BRANDING_LOGO}
+            style={styles.logo}
+          />
+          <View style={[styles.headerSide, styles.headerRightSide]} />
+        </View>
       </View>
 
       {cargando ? <SkeletonList /> : null}
@@ -227,10 +281,11 @@ export default function HomeScreen() {
 
       {!cargando && !error ? (
         <FlatList
+          key={`product-grid-${numColumns}`}
           data={visibleProducts}
           renderItem={renderProductCard}
           keyExtractor={(item) => item.id}
-          numColumns={2}
+          numColumns={numColumns}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
           columnWrapperStyle={styles.productRow}
@@ -246,48 +301,61 @@ export default function HomeScreen() {
           }
           ListHeaderComponent={
             <>
-              <View style={styles.searchContainer}>
-                <TextInput
-                  value={searchText}
-                  onChangeText={setSearchText}
-                  placeholder="Buscar prendas..."
-                  placeholderTextColor={Colors.textMuted}
-                  style={styles.searchInput}
-                  returnKeyType="search"
-                />
+              <View style={styles.searchOuter}>
+                <View style={styles.searchContainer}>
+                  <TextInput
+                    value={searchText}
+                    onChangeText={setSearchText}
+                    placeholder="Buscar prendas..."
+                    placeholderTextColor={Colors.textMuted}
+                    style={styles.searchInput}
+                    returnKeyType="search"
+                  />
+                </View>
               </View>
 
-              <View style={styles.heroContainer}>
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  bounces={false}
-                  onMomentumScrollEnd={(event) => {
-                    const nextIndex = Math.round(
-                      event.nativeEvent.contentOffset.x / canvasWidth,
-                    );
-                    setHeroIndex(nextIndex);
-                  }}
-                >
-                  {HOME_HERO_IMAGES.map((image, index) => (
-                    <Image
-                      key={index}
-                      source={image}
-                      style={styles.heroImage}
-                    />
-                  ))}
-                </ScrollView>
-                <View style={styles.heroDots}>
-                  {HOME_HERO_IMAGES.map((_, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.heroDot,
-                        index === heroIndex && styles.heroDotActive,
-                      ]}
-                    />
-                  ))}
+              <View style={styles.heroOuter}>
+                <View style={styles.heroContainer}>
+                  <ScrollView
+                    ref={heroScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    bounces={false}
+                    onMomentumScrollEnd={(event) => {
+                      const nextIndex = Math.round(
+                        event.nativeEvent.contentOffset.x / bannerWidth,
+                      );
+                      setHeroIndex(nextIndex);
+                    }}
+                  >
+                    {HOME_HERO_IMAGES.map((image, index) => (
+                      <Image
+                        key={index}
+                        source={image}
+                        style={styles.heroImage}
+                      />
+                    ))}
+                  </ScrollView>
+                  <View style={styles.heroDots}>
+                    {HOME_HERO_IMAGES.map((_, index) => (
+                      <Pressable
+                        key={index}
+                        accessibilityLabel={`Ir a la imagen ${index + 1}`}
+                        onPress={() => {
+                          heroScrollRef.current?.scrollTo({
+                            x: index * bannerWidth,
+                            animated: true,
+                          });
+                          setHeroIndex(index);
+                        }}
+                        style={[
+                          styles.heroDot,
+                          index === heroIndex && styles.heroDotActive,
+                        ]}
+                      />
+                    ))}
+                  </View>
                 </View>
               </View>
 
@@ -321,7 +389,7 @@ export default function HomeScreen() {
 
       <BottomTabBar
         activeTab="home"
-        canvasWidth={canvasWidth}
+        canvasWidth={Math.min(width, 560)}
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
@@ -335,12 +403,29 @@ export default function HomeScreen() {
   );
 }
 
-function createStyles(
-  scale: number,
-  canvasWidth: number,
-  topInset: number,
-  bottomInset: number,
-) {
+interface CreateStylesParams {
+  scale: number;
+  containerWidth: number;
+  bannerWidth: number;
+  bannerHeight: number;
+  horizontalPadding: number;
+  cardGap: number;
+  isDesktop: boolean;
+  topInset: number;
+  bottomInset: number;
+}
+
+function createStyles({
+  scale,
+  containerWidth,
+  bannerWidth,
+  bannerHeight,
+  horizontalPadding,
+  cardGap,
+  isDesktop,
+  topInset,
+  bottomInset,
+}: CreateStylesParams) {
   const s = (value: number) => value * scale;
 
   return StyleSheet.create({
@@ -349,13 +434,28 @@ function createStyles(
       backgroundColor: Colors.background,
     },
     header: {
+      width: "100%",
       paddingTop: topInset,
-      minHeight: topInset + s(76),
-      alignItems: "center",
-      justifyContent: "center",
       backgroundColor: Colors.background,
       borderBottomWidth: 2,
       borderBottomColor: Colors.secondary,
+      alignItems: "center",
+    },
+    headerInner: {
+      width: "100%",
+      maxWidth: MAX_CONTENT_WIDTH,
+      paddingHorizontal: horizontalPadding,
+      minHeight: s(76),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    headerSide: {
+      flex: 1,
+      justifyContent: "center",
+    },
+    headerRightSide: {
+      alignItems: "flex-end",
     },
     logo: {
       width: s(105),
@@ -363,20 +463,21 @@ function createStyles(
       resizeMode: "contain",
     },
     userLabel: {
-      position: "absolute",
-      left: s(18),
-      top: topInset + s(12),
       color: Colors.textMuted,
-      fontSize: s(11),
+      fontSize: s(12),
       fontFamily: "Montserrat_500Medium",
-      maxWidth: s(120),
     },
-    searchContainer: {
-      paddingHorizontal: s(20),
+    searchOuter: {
+      width: "100%",
+      alignItems: "center",
+      paddingHorizontal: horizontalPadding,
       paddingTop: s(10),
       paddingBottom: s(8),
     },
-
+    searchContainer: {
+      width: "100%",
+      maxWidth: 640,
+    },
     searchInput: {
       height: s(42),
       borderRadius: s(12),
@@ -386,53 +487,64 @@ function createStyles(
       fontSize: s(13),
       fontFamily: "Montserrat_400Regular",
     },
+    heroOuter: {
+      width: "100%",
+      alignItems: "center",
+      paddingHorizontal: isDesktop ? horizontalPadding : 0,
+    },
     heroContainer: {
-      width: canvasWidth,
-      height: s(146),
+      width: bannerWidth,
+      height: bannerHeight,
       backgroundColor: Colors.secondary,
       overflow: "hidden",
+      borderRadius: isDesktop ? s(14) : 0,
       position: "relative",
     },
     heroImage: {
-      width: canvasWidth,
-      height: s(146),
+      width: bannerWidth,
+      height: bannerHeight,
       resizeMode: "cover",
     },
     heroDots: {
       position: "absolute",
-      bottom: s(8),
+      bottom: s(10),
       alignSelf: "center",
       flexDirection: "row",
       columnGap: s(6),
+      zIndex: 10,
     },
     heroDot: {
-      width: s(6),
-      height: s(6),
-      borderRadius: s(3),
+      width: s(8),
+      height: s(8),
+      borderRadius: s(4),
       backgroundColor: "rgba(255, 255, 255, 0.5)",
     },
     heroDotActive: {
       backgroundColor: "#FFFFFF",
+      width: s(18),
     },
     promoBarContainer: {
       marginTop: s(8),
       height: s(50),
       justifyContent: "center",
       backgroundColor: Colors.background,
+      width: "100%",
     },
     promoBarContent: {
-      paddingHorizontal: s(20),
+      paddingHorizontal: horizontalPadding,
       columnGap: s(8),
       alignItems: "center",
+      justifyContent: isDesktop ? "center" : "flex-start",
+      flexGrow: isDesktop ? 1 : 0,
     },
     promoTag: {
       minWidth: s(104),
-      height: s(27),
+      height: s(28),
       borderRadius: s(10),
       backgroundColor: "#D9D9D9",
       alignItems: "center",
       justifyContent: "center",
-      paddingHorizontal: s(12),
+      paddingHorizontal: s(14),
     },
     promoTagActive: {
       backgroundColor: Colors.tertiary,
@@ -444,14 +556,19 @@ function createStyles(
       fontWeight: "400",
     },
     content: {
+      width: "100%",
+      maxWidth: MAX_CONTENT_WIDTH,
+      alignSelf: "center",
       paddingBottom: s(24) + s(78) + bottomInset,
       paddingTop: s(10),
       flexGrow: 1,
     },
     productRow: {
-      justifyContent: "space-between",
-      paddingHorizontal: s(20),
-      marginTop: s(10),
+      flexDirection: "row",
+      justifyContent: "flex-start",
+      gap: cardGap,
+      paddingHorizontal: horizontalPadding,
+      marginTop: s(12),
     },
     emptyState: {
       marginTop: s(60),

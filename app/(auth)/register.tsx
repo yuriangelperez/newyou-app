@@ -242,7 +242,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_600SemiBold',
   },
   inputContainer: {
-    width: '80%',
+    width: '85%',
+    maxWidth: 420,
     gap: 18,
     marginBottom: 35,
   },
@@ -327,7 +328,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   registerButton: {
-    width: '80%',
+    width: '85%',
+    maxWidth: 420,
     height: 46,
     backgroundColor: Colors.tertiary,
     borderRadius: Radius.md,

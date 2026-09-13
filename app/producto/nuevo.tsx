@@ -310,6 +310,9 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat_700Bold",
   },
   content: {
+    width: "100%",
+    maxWidth: 680,
+    alignSelf: "center",
     paddingHorizontal: 20,
     paddingVertical: 24,
     paddingBottom: 40,
