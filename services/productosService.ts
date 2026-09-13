@@ -7,6 +7,30 @@ const TABLA_PRODUCTOS = 'productos';
 const IMAGE_FALLBACK =
   'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=500';
 
+const CATEGORY_NAME_BY_ID: Record<number, string> = {
+  1: 'Camisas',
+  2: 'Jeans',
+  3: 'Camisas',
+  4: 'Camperas',
+  5: 'Buzos',
+  6: 'Vestidos',
+  7: 'Faldas',
+  8: 'Short',
+  9: 'Zapatillas',
+  10: 'Gorras',
+  11: 'Mochilas',
+  31: 'Brasieres',
+  32: 'Boxers',
+  33: 'Cinturones',
+  34: 'Carteras',
+  35: 'Gorras',
+  36: 'Lentes',
+  37: 'Botas',
+  38: 'Zapatillas',
+  39: 'Sandalias',
+  40: 'Mocasines',
+};
+
 interface ProductoRow {
   productoid: number;
   nombre: string;
@@ -21,6 +45,7 @@ interface ProductoRow {
   tipo_prenda: CategoriaProducto['tipoPrenda'] | null;
   temporada: CategoriaProducto['temporada'] | null;
   publico: CategoriaProducto['publico'] | null;
+  categorias?: { nombre: string }[] | null;
 }
 
 interface ProductoPersistData {
@@ -69,20 +94,43 @@ function assertSupabaseConfigured() {
 function legacyCategoryName(
   tipoPrenda: CategoriaProducto['tipoPrenda']
 ) {
-  const names: Record<CategoriaProducto['tipoPrenda'], string> = {
-    Camisa: 'Camisas',
-    Pantalón: 'Jeans',
-    Campera: 'Camperas',
-    Remera: 'Camisas',
-    Buzo: 'Camperas',
-    Vestido: 'Vestidos',
-    Falda: 'Vestidos',
-    Short: 'Short',
-    Calzado: 'Botas',
-    Accesorio: 'Camisas',
+  const names: Record<string, string> = {
+      Camisa: 'Camisas',
+      Remera: 'Camisas',
+      Pantalón: 'Jeans',
+      Campera: 'Camperas',
+      Buzo: 'Buzos',
+      Vestido: 'Vestidos',
+      Falda: 'Faldas',
+      Short: 'Short',
+      Calzado: 'Botas',
+      Accesorio: 'Accesorios',
+      Torso: 'Camisas',
+      Interior: 'Interior',
+      Equipamiento: 'Equipamiento',
   };
 
-  return names[tipoPrenda];
+  return names[tipoPrenda] ?? tipoPrenda;
+  }
+
+  function normalizeTipoPrenda(tipoPrenda: string): CategoriaProducto['tipoPrenda'] {
+    const types: Record<string, CategoriaProducto['tipoPrenda']> = {
+      Camisa: 'Torso',
+      Remera: 'Torso',
+      Campera: 'Torso',
+      Buzo: 'Torso',
+      Pantalón: 'Pantalón',
+      Torso: 'Torso',
+      Vestido: 'Vestido',
+      Falda: 'Falda',
+      Short: 'Short',
+      Calzado: 'Calzado',
+      Accesorio: 'Accesorio',
+      Interior: 'Interior',
+      Equipamiento: 'Equipamiento',
+    };
+
+    return types[tipoPrenda] ?? 'Torso';
 }
 
 /*
@@ -153,7 +201,7 @@ function mapRowToProducto(row: ProductoRow): Producto {
     row.temporada &&
     row.publico
       ? {
-          tipoPrenda: row.tipo_prenda,
+          tipoPrenda: normalizeTipoPrenda(row.tipo_prenda),
           temporada: row.temporada,
           publico: row.publico,
         }
@@ -165,9 +213,9 @@ function mapRowToProducto(row: ProductoRow): Producto {
     precio: Number(row.precio),
     imagen: imagenPrincipal,
     imagenes,
-    categoria: row.tipo_prenda
+    categoria: CATEGORY_NAME_BY_ID[row.categoriaid ?? 0] || row.categorias?.[0]?.nombre || (row.tipo_prenda
       ? legacyCategoryName(row.tipo_prenda)
-      : 'Camisas',
+      : 'Camisas'),
     categoriaProducto,
 
     /*
@@ -253,6 +301,7 @@ export async function getProductos() {
         tipo_prenda,
         temporada,
         publico
+        ,categorias ( nombre )
       `
     )
     .order('productoid', {
@@ -297,6 +346,7 @@ export async function getProductoById(id: string) {
         tipo_prenda,
         temporada,
         publico
+        ,categorias ( nombre )
       `
     )
     .eq('productoid', productoid)
@@ -342,6 +392,7 @@ export async function createProducto(
         tipo_prenda,
         temporada,
         publico
+        ,categorias ( nombre )
       `
     )
     .single();
@@ -390,6 +441,7 @@ export async function updateProducto(
         tipo_prenda,
         temporada,
         publico
+        ,categorias ( nombre )
       `
     )
     .single();

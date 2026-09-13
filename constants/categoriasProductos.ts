@@ -1,14 +1,13 @@
 export const TIPOS_PRENDA = [
-  'Camisa',
   'Pantalón',
-  'Campera',
-  'Remera',
-  'Buzo',
+  'Torso',
   'Vestido',
   'Falda',
   'Short',
   'Calzado',
   'Accesorio',
+  'Interior',
+  'Equipamiento',
 ] as const;
 
 export const TEMPORADAS = ['Todo el año', 'Primavera', 'Verano', 'Otoño', 'Invierno'] as const;
@@ -26,7 +25,7 @@ export interface CategoriaProducto {
 }
 
 export const CATEGORIA_PRODUCTO_POR_DEFECTO: CategoriaProducto = {
-  tipoPrenda: 'Camisa',
+  tipoPrenda: 'Torso',
   temporada: 'Todo el año',
   publico: 'Adulto',
 };
