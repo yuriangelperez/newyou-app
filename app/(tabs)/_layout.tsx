@@ -17,7 +17,31 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Inicio',
+        }}
+      />
+      <Tabs.Screen
+        name="categorias"
+        options={{
+          title: 'Categorías',
+        }}
+      />
+      <Tabs.Screen
+        name="carrito"
+        options={{
+          title: 'Carrito',
           tabBarBadge: totalItems > 0 ? (totalItems > 99 ? '99+' : totalItems) : undefined,
+        }}
+      />
+      <Tabs.Screen
+        name="perfil"
+        options={{
+          title: 'Perfil',
+        }}
+      />
+      <Tabs.Screen
+        name="favoritos"
+        options={{
+          title: 'Favoritos',
         }}
       />
     </Tabs>
