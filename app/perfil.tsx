@@ -1,26 +1,35 @@
-import { useMemo } from 'react';
-import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useMemo } from "react";
+import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BottomTabBar } from '../components/BottomTabBar';
-import { ROUTES } from '../constants/routes';
-import { Colors, Radius } from '../constants/theme';
-import { supabase } from '../services/supabase';
-import { selectTotalItems, useCarritoStore } from '../stores/useCarritoStore';
-import { useUsuarioStore } from '../stores/useUsuarioStore';
+import { BottomTabBar } from "../components/BottomTabBar";
+import { ROUTES } from "../constants/routes";
+import { Colors, Radius } from "../constants/theme";
+import { supabase } from "../services/supabase";
+import { selectTotalItems, useCarritoStore } from "../stores/useCarritoStore";
+import { useUsuarioStore } from "../stores/useUsuarioStore";
 
 export default function PerfilScreen() {
   const router = useRouter();
   const usuario = useUsuarioStore((state) => state.usuario);
   const totalItems = useCarritoStore(selectTotalItems);
-  const esVendedor = usuario?.role === 'vendedor';
+  const esVendedor = usuario?.role === "vendedor";
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const canvasWidth = Math.min(width, 412);
   const scale = canvasWidth / 412;
-  const styles = useMemo(() => createStyles(scale, insets.bottom), [insets.bottom, scale]);
+  const styles = useMemo(
+    () => createStyles(scale, insets.bottom),
+    [insets.bottom, scale],
+  );
 
   const cerrarSesion = async () => {
     if (!supabase) {
@@ -39,20 +48,38 @@ export default function PerfilScreen() {
 
         <View style={styles.card}>
           <Text style={styles.label}>Nombre</Text>
-          <Text style={styles.value}>{usuario?.nombre ?? 'Invitado'}</Text>
+          <Text style={styles.value}>{usuario?.nombre ?? "Invitado"}</Text>
 
           <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{usuario?.email ?? 'Sin sesion activa'}</Text>
+          <Text style={styles.value}>
+            {usuario?.email ?? "Sin sesion activa"}
+          </Text>
 
           <Text style={styles.label}>Tipo de cuenta</Text>
-          <Text style={styles.value}>{esVendedor ? 'Vendedor' : 'Comprador'}</Text>
+          <Text style={styles.value}>
+            {esVendedor ? "Vendedor" : "Comprador"}
+          </Text>
         </View>
+        {esVendedor ? (
+          <Pressable
+            onPress={() => router.push(ROUTES.myProducts)}
+            style={styles.myProductsButton}
+          >
+            <Text style={styles.myProductsText}>Mis publicaciones</Text>
+          </Pressable>
+        ) : null}
 
-        <Pressable onPress={() => router.push(ROUTES.favorites)} style={styles.favoritesButton}>
+        <Pressable
+          onPress={() => router.push(ROUTES.favorites)}
+          style={styles.favoritesButton}
+        >
           <Text style={styles.favoritesText}>Favoritos</Text>
         </Pressable>
 
-        <Pressable onPress={() => void cerrarSesion()} style={styles.logoutButton}>
+        <Pressable
+          onPress={() => void cerrarSesion()}
+          style={styles.logoutButton}
+        >
           <Text style={styles.logoutText}>Cerrar Sesion</Text>
         </Pressable>
       </View>
@@ -92,7 +119,7 @@ function createStyles(scale: number, bottomInset: number) {
       fontSize: s(28),
       color: Colors.primary,
       marginBottom: s(20),
-      fontFamily: 'Montserrat_700Bold',
+      fontFamily: "Montserrat_700Bold",
     },
     card: {
       backgroundColor: Colors.surface,
@@ -105,39 +132,54 @@ function createStyles(scale: number, bottomInset: number) {
     label: {
       color: Colors.textMuted,
       fontSize: s(12),
-      fontFamily: 'Montserrat_500Medium',
+      fontFamily: "Montserrat_500Medium",
     },
     value: {
       color: Colors.text,
       fontSize: s(16),
       marginBottom: s(8),
-      fontFamily: 'Montserrat_600SemiBold',
+      fontFamily: "Montserrat_600SemiBold",
     },
     logoutButton: {
       marginTop: s(20),
       minHeight: s(46),
       borderRadius: Radius.md,
-      backgroundColor: '#E9B4B4',
-      alignItems: 'center',
-      justifyContent: 'center',
+      backgroundColor: "#E9B4B4",
+      alignItems: "center",
+      justifyContent: "center",
     },
+    myProductsButton: {
+      marginTop: s(16),
+      minHeight: s(46),
+      borderRadius: Radius.md,
+      backgroundColor: Colors.secondary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    myProductsText: {
+      color: "#2D1F16",
+      fontSize: s(15),
+      fontFamily: "Montserrat_700Bold",
+    },
+
     favoritesButton: {
       marginTop: s(16),
       minHeight: s(46),
       borderRadius: Radius.md,
       backgroundColor: Colors.tertiary,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
     },
     favoritesText: {
-      color: '#2D1F16',
+      color: "#2D1F16",
       fontSize: s(15),
-      fontFamily: 'Montserrat_700Bold',
+      fontFamily: "Montserrat_700Bold",
     },
     logoutText: {
-      color: '#2D1F16',
+      color: "#2D1F16",
       fontSize: s(15),
-      fontFamily: 'Montserrat_700Bold',
+      fontFamily: "Montserrat_700Bold",
     },
   });
 }
