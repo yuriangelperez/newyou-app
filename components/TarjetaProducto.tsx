@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '../constants/theme';
+import { useCarritoStore } from '../stores/useCarritoStore';
 import { Producto } from '../types';
 
 interface TarjetaProductoProps {
@@ -22,6 +23,23 @@ export default function TarjetaProducto({
   onPressAgregar,
 }: TarjetaProductoProps) {
   const styles = useMemo(() => createStyles(scale), [scale]);
+  const productoEnCarrito = useCarritoStore((state) =>
+    state.items.some((item) => item.productoId === producto.id)
+  );
+  const eliminarProducto = useCarritoStore((state) => state.eliminarProducto);
+  const agregado = productoEnCarrito;
+
+  const onPressAccion = () => {
+    if (productoEnCarrito) {
+      useCarritoStore
+        .getState()
+        .items.filter((item) => item.productoId === producto.id)
+        .forEach((item) => eliminarProducto(item.key));
+      return;
+    }
+
+    onPressAgregar(producto);
+  };
 
   return (
     <Pressable
@@ -39,20 +57,20 @@ export default function TarjetaProducto({
         <Text style={styles.price}>${producto.precio.toLocaleString('es-AR')}</Text>
 
         <Pressable
-          accessibilityLabel={`Agregar ${producto.nombre}`}
+          accessibilityLabel={agregado ? `Quitar ${producto.nombre}` : `Agregar ${producto.nombre}`}
           disabled={!producto.disponible}
-          onPress={() => onPressAgregar(producto)}
+          onPress={onPressAccion}
         >
           <Animated.View
             style={[
               styles.action,
               !producto.disponible && styles.actionDisabled,
-              isAdded && styles.actionAdded,
+              agregado && styles.actionAdded,
               addButtonScale ? { transform: [{ scale: addButtonScale }] } : undefined,
             ]}
           >
             <Text style={styles.actionText}>
-              {producto.disponible ? (isAdded ? 'Agregado' : 'Agregar') : 'Agotado'}
+              {producto.disponible ? (agregado ? 'Agregado' : 'Agregar') : 'Agotado'}
             </Text>
           </Animated.View>
         </Pressable>

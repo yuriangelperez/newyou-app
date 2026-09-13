@@ -1,7 +1,7 @@
 import { Control, useController } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { PUBLICOS, TEMPORADAS, TIPOS_PRENDA } from '../../constants/categoriasProductos';
+import { CATEGORIAS_PRODUCTO, PUBLICOS, TEMPORADAS, tipoPrendaPorCategoria } from '../../constants/categoriasProductos';
 import { Colors, Radius } from '../../constants/theme';
 import { ProductoFormValues } from '../../schemas/productoSchema';
 
@@ -11,13 +11,22 @@ interface CategoriaProductoSelectorProps {
 
 export function CategoriaProductoSelector({ control }: CategoriaProductoSelectorProps) {
   const tipoPrenda = useController({ control, name: 'tipoPrenda' });
+  const categoria = useController({ control, name: 'categoria' });
   const temporada = useController({ control, name: 'temporada' });
   const publico = useController({ control, name: 'publico' });
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Categoría de la prenda</Text>
-      <OptionGroup label="Tipo de prenda" options={TIPOS_PRENDA} value={tipoPrenda.field.value} onChange={tipoPrenda.field.onChange} />
+      <OptionGroup
+        label="Tipo de prenda"
+        options={CATEGORIAS_PRODUCTO}
+        value={categoria.field.value}
+        onChange={(value) => {
+          categoria.field.onChange(value);
+          tipoPrenda.field.onChange(tipoPrendaPorCategoria(value as (typeof CATEGORIAS_PRODUCTO)[number]));
+        }}
+      />
       <OptionGroup label="Temporada" options={TEMPORADAS} value={temporada.field.value} onChange={temporada.field.onChange} />
       <OptionGroup label="Público" options={PUBLICOS} value={publico.field.value} onChange={publico.field.onChange} />
     </View>

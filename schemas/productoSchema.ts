@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   PUBLICOS,
+  CATEGORIAS_PRODUCTO,
   TEMPORADAS,
   TIPOS_PRENDA,
 } from '../constants/categoriasProductos';
@@ -28,6 +29,8 @@ export const productoSchema = z.object({
     .url('Ingresa una URL de imagen valida.'),
 
   tipoPrenda: z.enum(TIPOS_PRENDA),
+
+  categoria: z.enum(CATEGORIAS_PRODUCTO),
 
   temporada: z.enum(TEMPORADAS),
 

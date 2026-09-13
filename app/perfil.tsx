@@ -48,6 +48,10 @@ export default function PerfilScreen() {
           <Text style={styles.value}>{esVendedor ? 'Vendedor' : 'Comprador'}</Text>
         </View>
 
+        <Pressable onPress={() => router.push(ROUTES.favorites)} style={styles.favoritesButton}>
+          <Text style={styles.favoritesText}>Favoritos</Text>
+        </Pressable>
+
         <Pressable onPress={() => void cerrarSesion()} style={styles.logoutButton}>
           <Text style={styles.logoutText}>Cerrar Sesion</Text>
         </Pressable>
@@ -116,6 +120,19 @@ function createStyles(scale: number, bottomInset: number) {
       backgroundColor: '#E9B4B4',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    favoritesButton: {
+      marginTop: s(16),
+      minHeight: s(46),
+      borderRadius: Radius.md,
+      backgroundColor: Colors.tertiary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    favoritesText: {
+      color: '#2D1F16',
+      fontSize: s(15),
+      fontFamily: 'Montserrat_700Bold',
     },
     logoutText: {
       color: '#2D1F16',

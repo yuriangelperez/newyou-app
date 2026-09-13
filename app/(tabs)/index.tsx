@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Animated,
   FlatList,
@@ -37,8 +37,24 @@ const HOME_FILTERS: Record<string, string[]> = {
   Infantil: ['Infantil'],
 };
 
+const PRODUCT_CATEGORY_ALIASES: Record<string, string[]> = {
+  Camisa: ['Camisas', 'Torso'],
+  Remera: ['Camisas', 'Torso'],
+  Campera: ['Camperas', 'Torso'],
+  Buzo: ['Buzos', 'Torso'],
+  Pantalón: ['Jeans', 'Pantalones'],
+  Torso: ['Torso'],
+  Vestido: ['Vestidos'],
+  Falda: ['Faldas', 'Vestidos'],
+  Short: ['Short', 'Shorts'],
+  Calzado: ['Botas', 'Calzado'],
+  Accesorio: ['Accesorios'],
+  Interior: ['Interior'],
+};
+
 export default function HomeScreen() {
   const router = useRouter();
+  const { category } = useLocalSearchParams<{ category?: string | string[] }>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { productos, cargando, error, refreshing, refrescar } = useProductos();
@@ -67,10 +83,29 @@ export default function HomeScreen() {
 
   const selectedTag = HOME_TAGS[activeTag];
   const activeCategories = HOME_FILTERS[selectedTag];
+  const selectedCategory = Array.isArray(category) ? category[0] : category;
 
   const visibleProducts = useMemo(
-    () => productos.filter((item) => activeCategories.some((category) => item.categoria.includes(category))),
-    [activeCategories, productos]
+    () => {
+      return productos.filter((item) => {
+        const productType = item.categoriaProducto?.tipoPrenda ?? '';
+        const productCategories = [
+          item.categoria ?? '',
+          ...(PRODUCT_CATEGORY_ALIASES[productType] ?? []),
+        ];
+
+        if (selectedTag === 'Infantil') {
+          return item.categoriaProducto?.publico === 'Infantil';
+        }
+
+        return selectedCategory
+          ? productCategories.some((value) => value.toLowerCase() === selectedCategory.toLowerCase())
+          : activeCategories.some((categoryName) =>
+              productCategories.some((value) => value.includes(categoryName))
+            );
+      });
+    },
+    [activeCategories, productos, selectedCategory, selectedTag]
   );
 
   const getAddButtonAnimation = (productId: string) => {
