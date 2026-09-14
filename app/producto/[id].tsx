@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Animated,
@@ -32,6 +32,7 @@ import {
 } from "../../stores/useCarritoStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { useFavoritosStore } from "../../stores/useFavoritosStore";
+import { calcularPrecioFinal } from "../../types";
 
 const CANVAS_WIDTH = 412;
 
@@ -43,6 +44,10 @@ export default function ProductDetailScreen() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
+  const eliminarProductoDelCarrito = useCarritoStore(
+    (state) => state.eliminarProducto,
+  );
+  const itemsDelCarrito = useCarritoStore((state) => state.items);
   const totalItems = useCarritoStore(selectTotalItems);
   const esVendedor = useUsuarioStore(
     (state) => state.usuario?.role === "vendedor",
@@ -89,9 +94,12 @@ export default function ProductDetailScreen() {
     producto ? state.favoritos.some((item) => item.id === producto.id) : false,
   );
   const toggleFavorito = useFavoritosStore((state) => state.toggleFavorito);
-  const [purchaseFeedback, setPurchaseFeedback] = useState(false);
+  const productoEnCarrito = useCarritoStore((state) =>
+    producto
+      ? state.items.some((item) => item.productoId === producto.id)
+      : false,
+  );
   const favoriteScale = useState(() => new Animated.Value(1))[0];
-  const purchaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!producto) {
@@ -103,15 +111,6 @@ export default function ProductDetailScreen() {
     setSelectedColor(colores[0]);
     setQuantity(1);
   }, [colores, producto, talles]);
-
-  useEffect(
-    () => () => {
-      if (purchaseTimerRef.current) {
-        clearTimeout(purchaseTimerRef.current);
-      }
-    },
-    [],
-  );
 
   const toggleFavorite = () => {
     if (producto) {
@@ -133,7 +132,39 @@ export default function ProductDetailScreen() {
   };
 
   const onPressComprar = () => {
+    if (!producto || !producto.disponible || producto.stock <= 0) {
+      return;
+    }
+
+    const varianteEnCarrito = itemsDelCarrito.some(
+      (item) =>
+        item.productoId === producto.id &&
+        item.talle === selectedSize &&
+        item.color === selectedColor,
+    );
+
+    if (!varianteEnCarrito) {
+      agregarProducto({
+        producto,
+        talle: selectedSize,
+        color: selectedColor,
+        cantidad: quantity,
+      });
+    }
+
+    router.push(ROUTES.checkout);
+  };
+
+  const onPressAgregarAlCarrito = () => {
     if (!producto || !producto.disponible) {
+      return;
+    }
+
+    if (productoEnCarrito) {
+      useCarritoStore
+        .getState()
+        .items.filter((item) => item.productoId === producto.id)
+        .forEach((item) => eliminarProductoDelCarrito(item.key));
       return;
     }
 
@@ -156,15 +187,6 @@ export default function ProductDetailScreen() {
       color: selectedColor,
       cantidad: quantity,
     });
-
-    setPurchaseFeedback(true);
-    if (purchaseTimerRef.current) {
-      clearTimeout(purchaseTimerRef.current);
-    }
-    purchaseTimerRef.current = setTimeout(
-      () => setPurchaseFeedback(false),
-      900,
-    );
   };
 
   const onPressEliminar = () => {
@@ -306,8 +328,18 @@ export default function ProductDetailScreen() {
             <Text numberOfLines={2} style={styles.productName}>
               {producto.nombre}
             </Text>
+            {producto.descuentoPorcentaje > 0 ? (
+              <Text style={styles.discountLabel}>
+                -{producto.descuentoPorcentaje}% de descuento
+              </Text>
+            ) : null}
+            {producto.descuentoPorcentaje > 0 ? (
+              <Text style={styles.originalPrice}>
+                ${producto.precio.toLocaleString("es-AR")}
+              </Text>
+            ) : null}
             <Text style={styles.price}>
-              ${producto.precio.toLocaleString("es-AR")}
+              ${calcularPrecioFinal(producto).toLocaleString("es-AR")}
             </Text>
 
             <View style={styles.sizeSelector}>
@@ -435,24 +467,51 @@ export default function ProductDetailScreen() {
               </View>
             ) : null}
 
-            <Pressable
-              accessibilityLabel="Comprar producto"
-              onPress={onPressComprar}
-              disabled={!producto.disponible}
-              style={[
-                styles.buyButton,
-                !producto.disponible && styles.buyButtonDisabled,
-                purchaseFeedback && styles.buyButtonAdded,
-              ]}
-            >
-              <Text style={styles.buyButtonText}>
-                {producto.disponible
-                  ? purchaseFeedback
-                    ? "AGREGADO"
-                    : "COMPRAR"
-                  : "AGOTADO"}
-              </Text>
-            </Pressable>
+            <View style={styles.purchaseActions}>
+              <Pressable
+                accessibilityLabel="Comprar producto"
+                onPress={onPressComprar}
+                disabled={!producto.disponible}
+                style={[
+                  styles.buyButton,
+                  !producto.disponible && styles.buyButtonDisabled,
+                ]}
+              >
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                  numberOfLines={1}
+                  style={styles.buyButtonText}
+                >
+                  {producto.disponible ? "COMPRAR" : "AGOTADO"}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityLabel="Agregar producto al carrito"
+                onPress={onPressAgregarAlCarrito}
+                disabled={!producto.disponible}
+                style={[
+                  styles.buyButton,
+                  styles.cartButton,
+                  !producto.disponible && styles.buyButtonDisabled,
+                  productoEnCarrito && styles.buyButtonAdded,
+                ]}
+              >
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                  numberOfLines={1}
+                  style={styles.cartButtonText}
+                >
+                  {producto.disponible
+                    ? productoEnCarrito
+                      ? "AGREGADO"
+                      : "AGREGAR AL CARRITO"
+                    : "AGOTADO"}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </ScrollView>
       </View>
@@ -577,6 +636,19 @@ function createStyles(
       fontSize: s(30),
       lineHeight: s(36),
       fontWeight: "700",
+    },
+    discountLabel: {
+      marginTop: s(8),
+      color: "#B84A39",
+      fontSize: s(14),
+      fontWeight: "700",
+    },
+    originalPrice: {
+      marginTop: s(8),
+      color: "#8A7B73",
+      fontSize: s(16),
+      lineHeight: s(20),
+      textDecorationLine: "line-through",
     },
     sizeSelector: {
       marginTop: s(18),
@@ -733,16 +805,24 @@ function createStyles(
       fontSize: s(13),
       fontFamily: "Montserrat_700Bold",
     },
-    buyButton: {
-      width: s(225),
-      minHeight: s(48),
+    purchaseActions: {
       marginTop: s(18),
-      marginBottom: s(8),
+      alignItems: "center",
+      rowGap: s(10),
+    },
+    buyButton: {
+      width: s(280),
+      minHeight: s(58),
       borderRadius: s(10),
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: Colors.secondary,
       paddingVertical: s(8),
+    },
+    cartButton: {
+      width: s(225),
+      minHeight: s(48),
+      backgroundColor: Colors.tertiary,
     },
     buyButtonDisabled: {
       opacity: 0.7,
@@ -752,10 +832,17 @@ function createStyles(
     },
     buyButtonText: {
       color: "#2D1F16",
-      fontSize: s(22),
-      lineHeight: s(27),
+      fontSize: s(20),
+      lineHeight: s(24),
       fontWeight: "600",
-      letterSpacing: s(0.4),
+      textAlign: "center",
+    },
+    cartButtonText: {
+      color: "#2D1F16",
+      fontSize: s(13),
+      lineHeight: s(16),
+      fontWeight: "600",
+      textAlign: "center",
     },
   });
 }

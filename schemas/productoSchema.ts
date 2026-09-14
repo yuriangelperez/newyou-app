@@ -18,6 +18,14 @@ export const productoSchema = z.object({
     .number()
     .positive('El precio debe ser mayor a 0.'),
 
+  descuentoActivo: z.boolean(),
+
+  descuentoPorcentaje: z
+    .coerce
+    .number()
+    .min(0, 'El descuento no puede ser negativo.')
+    .max(100, 'El descuento no puede superar el 100%.'),
+
   stock: z
     .coerce
     .number()
@@ -55,6 +63,14 @@ export const productoSchema = z.object({
     .string()
     .trim()
     .min(10, 'La descripcion debe tener al menos 10 caracteres.'),
+}).superRefine((values, context) => {
+  if (values.descuentoActivo && values.descuentoPorcentaje <= 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['descuentoPorcentaje'],
+      message: 'Ingresa un descuento mayor a 0%.',
+    });
+  }
 });
 
 export type ProductoFormValues = z.input<typeof productoSchema>;

@@ -37,6 +37,8 @@ import { useUsuarioStore } from "../../stores/useUsuarioStore";
 const DEFAULT_VALUES: ProductoFormValues = {
   nombre: "",
   precio: "0",
+  descuentoActivo: false,
+  descuentoPorcentaje: "0",
   stock: "1",
   imagen: "",
   categoria: "Camisas",
@@ -68,6 +70,7 @@ export default function NuevoProductoScreen() {
   });
 
   const disponible = watch("disponible");
+  const descuentoActivo = watch("descuentoActivo");
   const imageField = watch("imagen");
 
   if (!esVendedor) {
@@ -127,6 +130,9 @@ export default function NuevoProductoScreen() {
       const nuevoProducto = await createProducto({
         nombre: values.nombre.trim(),
         precio: values.precio,
+        descuentoPorcentaje: values.descuentoActivo
+          ? values.descuentoPorcentaje
+          : 0,
         stock: values.stock,
         imagen: values.imagen.trim(),
         categoria: values.categoria,
@@ -188,6 +194,27 @@ export default function NuevoProductoScreen() {
           placeholder="35000"
           textInputProps={{ keyboardType: "numeric" }}
         />
+
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>Aplicar descuento</Text>
+          <Switch
+            value={descuentoActivo}
+            onValueChange={(value) =>
+              setValue("descuentoActivo", value, { shouldValidate: true })
+            }
+            trackColor={{ true: Colors.secondary, false: "#CFCFCF" }}
+          />
+        </View>
+
+        {descuentoActivo ? (
+          <InputField
+            control={control}
+            name="descuentoPorcentaje"
+            label="Descuento (%)"
+            placeholder="10"
+            textInputProps={{ keyboardType: "numeric" }}
+          />
+        ) : null}
 
         <InputField
           control={control}
