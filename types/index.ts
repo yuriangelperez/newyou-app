@@ -4,6 +4,7 @@ export interface Producto {
   id: string;
   nombre: string;
   precio: number;
+  descuentoPorcentaje: number;
   imagen: string;
   imagenes?: string[];
   categoria: string;
@@ -14,6 +15,10 @@ export interface Producto {
   talle?: string[];
   colores?: string[];
   descripcion: string;
+}
+
+export function calcularPrecioFinal(producto: Pick<Producto, 'precio' | 'descuentoPorcentaje'>) {
+  return Math.round(producto.precio * (1 - producto.descuentoPorcentaje / 100));
 }
 
 export interface Usuario {

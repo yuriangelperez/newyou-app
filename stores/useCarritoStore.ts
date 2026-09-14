@@ -2,13 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { Producto } from '../types';
+import { calcularPrecioFinal, Producto } from '../types';
 
 export interface CarritoItem {
   key: string;
   productoId: string;
   nombre: string;
   precio: number;
+  precioOriginal?: number;
+  descuentoPorcentaje?: number;
   imagen: string;
   categoria: string;
   disponible: boolean;
@@ -71,7 +73,9 @@ export const useCarritoStore = create<CarritoStore>()(
                   key,
                   productoId: producto.id,
                   nombre: producto.nombre,
-                  precio: producto.precio,
+                  precio: calcularPrecioFinal(producto),
+                  precioOriginal: producto.precio,
+                  descuentoPorcentaje: producto.descuentoPorcentaje,
                   imagen: producto.imagen,
                   categoria: producto.categoria,
                   disponible: producto.disponible,

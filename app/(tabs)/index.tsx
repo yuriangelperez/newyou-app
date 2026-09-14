@@ -32,15 +32,15 @@ import { Producto } from "../../types";
 
 const CANVAS_WIDTH = 412;
 const MAX_CONTENT_WIDTH = 1160;
-const HOME_TAGS = ["Promociones", "Invierno", "Verano", "Femenino", "Infantil"];
-
-const HOME_FILTERS: Record<string, string[]> = {
-  Promociones: ["Camisas", "Jeans", "Botas", "Vestidos", "Short", "Camperas"],
-  Invierno: ["Camperas", "Botas", "Buzos"],
-  Verano: ["Short", "Vestidos", "Camisas"],
-  Femenino: ["Vestidos", "Brasieres", "Faldas", "Camisas"],
-  Infantil: ["Infantil"],
-};
+const HOME_TAGS = [
+  "Todo",
+  "Promociones",
+  "Invierno",
+  "Verano",
+  "Otoño",
+  "Primavera",
+  "Todo el año",
+];
 
 const PRODUCT_CATEGORY_ALIASES: Record<string, string[]> = {
   Camisa: ["Camisas", "Torso"],
@@ -136,7 +136,6 @@ export default function HomeScreen() {
   }, []);
 
   const selectedTag = HOME_TAGS[activeTag];
-  const activeCategories = HOME_FILTERS[selectedTag];
   const selectedCategory = Array.isArray(category) ? category[0] : category;
 
   const visibleProducts = useMemo(() => {
@@ -161,25 +160,28 @@ export default function HomeScreen() {
         return false;
       }
 
-      // Filtro infantil
-      if (selectedTag === "Infantil") {
-        return item.categoriaProducto?.publico === "Infantil";
-      }
-
       // Filtro por categoría proveniente de navegación
       if (selectedCategory) {
-        return productCategories.some(
+        const matchesCategory = productCategories.some(
           (value) => value.toLowerCase() === selectedCategory.toLowerCase(),
         );
+
+        if (!matchesCategory) {
+          return false;
+        }
       }
 
-      // Filtros visuales de Home
-      return activeCategories.some((categoryName) =>
-        productCategories.some((value) => value.includes(categoryName)),
-      );
+      if (selectedTag === "Todo") {
+        return true;
+      }
+
+      if (selectedTag === "Promociones") {
+        return item.descuentoPorcentaje > 0;
+      }
+
+      return item.categoriaProducto?.temporada === selectedTag;
     });
   }, [
-    activeCategories,
     productos,
     searchText,
     selectedCategory,
@@ -469,10 +471,12 @@ function createStyles({
     },
     searchOuter: {
       width: "100%",
+      height: s(66),
       alignItems: "center",
+      justifyContent: "center",
       paddingHorizontal: horizontalPadding,
-      paddingTop: s(10),
-      paddingBottom: s(8),
+      paddingTop: s(6),
+      paddingBottom: s(15),
     },
     searchContainer: {
       width: "100%",

@@ -77,6 +77,20 @@ export default function PerfilScreen() {
         </Pressable>
 
         <Pressable
+          onPress={() => router.push(ROUTES.myPurchases)}
+          style={styles.purchasesButton}
+        >
+          <Text style={styles.purchasesText}>Mis compras</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push(ROUTES.settings)}
+          style={styles.settingsButton}
+        >
+          <Text style={styles.settingsText}>Ajustes</Text>
+        </Pressable>
+
+        <Pressable
           onPress={() => void cerrarSesion()}
           style={styles.logoutButton}
         >
@@ -175,6 +189,32 @@ function createStyles(scale: number, bottomInset: number) {
       justifyContent: "center",
     },
     favoritesText: {
+      color: "#2D1F16",
+      fontSize: s(15),
+      fontFamily: "Montserrat_700Bold",
+    },
+    purchasesButton: {
+      marginTop: s(16),
+      minHeight: s(46),
+      borderRadius: Radius.md,
+      backgroundColor: Colors.tertiary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    purchasesText: {
+      color: "#2D1F16",
+      fontSize: s(15),
+      fontFamily: "Montserrat_700Bold",
+    },
+    settingsButton: {
+      marginTop: s(16),
+      minHeight: s(46),
+      borderRadius: Radius.md,
+      backgroundColor: Colors.tertiary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    settingsText: {
       color: "#2D1F16",
       fontSize: s(15),
       fontFamily: "Montserrat_700Bold",

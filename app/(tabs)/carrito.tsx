@@ -106,7 +106,11 @@ export default function CarritoScreen() {
       <View style={styles.checkoutBar}>
         <View style={styles.checkoutBarInner}>
           <Text style={styles.totalText}>TOTAL: ${subtotal.toLocaleString('es-AR')}</Text>
-          <Pressable disabled={items.length === 0} style={[styles.checkoutButton, items.length === 0 && styles.checkoutButtonDisabled]}>
+          <Pressable
+            disabled={items.length === 0}
+            onPress={() => router.push(ROUTES.checkout)}
+            style={[styles.checkoutButton, items.length === 0 && styles.checkoutButtonDisabled]}
+          >
             <Text style={styles.checkoutText}>COMPLETAR COMPRA</Text>
           </Pressable>
         </View>
