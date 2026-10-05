@@ -7,11 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/app-icons/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/app-icons/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F4F4F4"
-    },
     "ios": {
       "supportsTablet": true,
       "icon": "./assets/app-icons/icon.png"
@@ -38,7 +33,21 @@
           "photosPermission": "Permite que NewYou acceda a tus fotos para publicar prendas.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/app-icons/splash-icon.png",
+          "backgroundColor": "#F4F4F4",
+          "resizeMode": "contain"
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f1bf8b99-89e4-4dff-90aa-f1679c492a07"
+      }
+    }
   }
 }
