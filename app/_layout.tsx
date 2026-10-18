@@ -1,14 +1,34 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import Toast from 'react-native-toast-message';
+import NetInfo from '@react-native-community/netinfo';
+import { useEffect, useState } from 'react';
+import Toast, { BaseToast, ToastConfig } from 'react-native-toast-message';
 
+import { Colors } from '../constants/theme';
+import { ROUTES } from '../constants/routes';
+import { sincronizarBorradores } from '../services/offlineService';
 import { supabase } from '../services/supabase';
 import { useUsuarioStore } from '../stores/useUsuarioStore';
 
+// Toast ámbar para avisos de modo offline.
+const toastConfig: ToastConfig = {
+  offline: (props) => (
+    <BaseToast
+      {...props}
+      style={{ borderLeftColor: Colors.warning }}
+      text1NumberOfLines={2}
+      text2NumberOfLines={2}
+    />
+  ),
+};
+
 export default function RootLayout() {
   const hidratarDesdeAuthUser = useUsuarioStore((state) => state.hidratarDesdeAuthUser);
+  const router = useRouter();
+  const segments = useSegments();
+  // `undefined` = aún se está resolviendo la sesión inicial.
+  const [haySesion, setHaySesion] = useState<boolean | undefined>(undefined);
 
   const [fontsLoaded] = useFonts({
     Montserrat_400Regular: require('@expo-google-fonts/montserrat/400Regular/Montserrat_400Regular.ttf'),
@@ -20,21 +40,25 @@ export default function RootLayout() {
   useEffect(() => {
     if (!supabase) {
       hidratarDesdeAuthUser(null);
+      setHaySesion(false);
       return;
     }
 
     supabase.auth
       .getSession()
       .then(({ data }) => {
+        setHaySesion(Boolean(data.session));
         hidratarDesdeAuthUser(data.session?.user ?? null);
       })
       .catch(() => {
+        setHaySesion(false);
         hidratarDesdeAuthUser(null);
       });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      setHaySesion(Boolean(session));
       hidratarDesdeAuthUser(session?.user ?? null);
     });
 
@@ -43,7 +67,50 @@ export default function RootLayout() {
     };
   }, [hidratarDesdeAuthUser]);
 
-  if (!fontsLoaded) {
+  // Al recuperar la red (y con sesión) se suben los borradores de `ny_drafts`.
+  useEffect(() => {
+    if (!haySesion) {
+      return;
+    }
+
+    const unsubscribe = NetInfo.addEventListener((estado) => {
+      if (!estado.isConnected || estado.isInternetReachable === false) {
+        return;
+      }
+
+      sincronizarBorradores()
+        .then((cantidad) => {
+          if (cantidad > 0) {
+            Toast.show({
+              type: 'success',
+              text1: 'Borradores sincronizados',
+              text2: `Se subieron ${cantidad} operación(es) pendientes.`,
+            });
+          }
+        })
+        .catch(() => {});
+    });
+
+    return unsubscribe;
+  }, [haySesion]);
+
+  // Guardia de rutas: sin sesión sólo se permiten las pantallas de (auth);
+  // con sesión activa, (auth) redirige al home.
+  useEffect(() => {
+    if (haySesion === undefined) {
+      return;
+    }
+
+    const enAuth = segments[0] === '(auth)';
+
+    if (!haySesion && !enAuth) {
+      router.replace(ROUTES.login);
+    } else if (haySesion && enAuth) {
+      router.replace(ROUTES.home);
+    }
+  }, [haySesion, segments, router]);
+
+  if (!fontsLoaded || haySesion === undefined) {
     return null;
   }
 
@@ -58,8 +125,12 @@ export default function RootLayout() {
         <Stack.Screen name="producto/nuevo" />
         <Stack.Screen name="editar/[id]" />
         <Stack.Screen name="mis-publicaciones" />
+        <Stack.Screen name="mis-compras" />
+        <Stack.Screen name="mis-ventas" />
+        <Stack.Screen name="direcciones" />
+        <Stack.Screen name="checkout/index" />
       </Stack>
-      <Toast />
+      <Toast config={toastConfig} />
     </>
   );
 }

@@ -19,6 +19,7 @@ export const CATEGORIAS_PRODUCTO = [
   'Camperas',
   'Buzos',
   'Faldas',
+  'Vestidos',
   'Pantalones',
   'Jeans',
   'Short',
@@ -59,6 +60,10 @@ export function tipoPrendaPorCategoria(categoria: CategoriaProductoNombre): Tipo
 
   if (['Cinturones', 'Carteras', 'Gorras', 'Lentes', 'Mochilas'].includes(categoria)) {
     return 'Accesorio';
+  }
+
+  if (categoria === 'Vestidos') {
+    return 'Vestido';
   }
 
   if (categoria === 'Faldas') {

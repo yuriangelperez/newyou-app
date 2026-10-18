@@ -31,7 +31,14 @@
         "expo-image-picker",
         {
           "photosPermission": "Permite que NewYou acceda a tus fotos para publicar prendas.",
+          "cameraPermission": "Permite que NewYou use la cámara para fotografiar tus prendas.",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permite que NewYou use tu ubicación para completar la dirección de tu tienda."
         }
       ],
       [

@@ -3,11 +3,13 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar } from "../../components/BottomTabBar";
@@ -21,29 +23,69 @@ export default function PerfilScreen() {
   const router = useRouter();
   const usuario = useUsuarioStore((state) => state.usuario);
   const totalItems = useCarritoStore(selectTotalItems);
+  const setUsuario = useUsuarioStore((state) => state.setUsuario);
   const esVendedor = usuario?.role === "vendedor";
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const canvasWidth = Math.min(width, 412);
   const scale = canvasWidth / 412;
   const styles = useMemo(
-    () => createStyles(scale, insets.bottom),
-    [insets.bottom, scale],
+    () => createStyles(scale, insets.bottom, insets.top),
+    [insets.bottom, insets.top, scale],
   );
 
+  const clearUsuario = useUsuarioStore((state) => state.clearUsuario);
+
   const cerrarSesion = async () => {
-    if (!supabase) {
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "No se pudo cerrar la sesión",
+        text2: "Revisa tu conexión e intenta nuevamente.",
+      });
       return;
     }
 
-    await supabase.auth.signOut();
+    clearUsuario();
     router.replace(ROUTES.login);
+  };
+
+  const convertirseEnVendedor = async () => {
+    if (!usuario) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ role: "vendedor" })
+        .eq("id", usuario.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setUsuario({ ...usuario, role: "vendedor" });
+      Toast.show({ type: "success", text1: "Ahora sos vendedor" });
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "No se pudo cambiar el tipo de cuenta",
+        text2: "Intenta nuevamente en unos minutos.",
+      });
+    }
   };
 
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.title}>Perfil</Text>
 
         <View style={styles.card}>
@@ -60,12 +102,42 @@ export default function PerfilScreen() {
             {esVendedor ? "Vendedor" : "Comprador"}
           </Text>
         </View>
+        <Pressable
+          onPress={() => router.push(ROUTES.myPurchases)}
+          style={styles.favoritesButton}
+        >
+          <Text style={styles.favoritesText}>Mis compras</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push(ROUTES.addresses)}
+          style={styles.favoritesButton}
+        >
+          <Text style={styles.favoritesText}>Direcciones</Text>
+        </Pressable>
+
         {esVendedor ? (
+          <>
+            <Pressable
+              onPress={() => router.push(ROUTES.myProducts)}
+              style={styles.myProductsButton}
+            >
+              <Text style={styles.myProductsText}>Mis publicaciones</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push(ROUTES.mySales)}
+              style={styles.myProductsButton}
+            >
+              <Text style={styles.myProductsText}>Mis ventas</Text>
+            </Pressable>
+
+          </>
+        ) : usuario ? (
           <Pressable
-            onPress={() => router.push(ROUTES.myProducts)}
+            onPress={() => void convertirseEnVendedor()}
             style={styles.myProductsButton}
           >
-            <Text style={styles.myProductsText}>Mis publicaciones</Text>
+            <Text style={styles.myProductsText}>Quiero vender prendas</Text>
           </Pressable>
         ) : null}
 
@@ -82,7 +154,7 @@ export default function PerfilScreen() {
         >
           <Text style={styles.logoutText}>Cerrar Sesion</Text>
         </Pressable>
-      </View>
+      </ScrollView>
 
       <BottomTabBar
         activeTab="menu"
@@ -101,7 +173,7 @@ export default function PerfilScreen() {
   );
 }
 
-function createStyles(scale: number, bottomInset: number) {
+function createStyles(scale: number, bottomInset: number, topInset: number) {
   const s = (value: number) => value * scale;
 
   return StyleSheet.create({
@@ -110,12 +182,12 @@ function createStyles(scale: number, bottomInset: number) {
       backgroundColor: Colors.background,
     },
     content: {
-      flex: 1,
+      flexGrow: 1,
       width: "100%",
-      maxWidth: 600,
+      maxWidth: 800,
       alignSelf: "center",
-      paddingHorizontal: s(20),
-      paddingTop: s(40),
+      paddingHorizontal: s(16),
+      paddingTop: topInset + s(24),
       paddingBottom: s(26) + s(78) + bottomInset,
     },
     title: {
@@ -127,8 +199,8 @@ function createStyles(scale: number, bottomInset: number) {
     card: {
       backgroundColor: Colors.surface,
       borderWidth: 1,
-      borderColor: Colors.border,
-      borderRadius: Radius.lg,
+      borderColor: Colors.secondary,
+      borderRadius: Radius.md,
       padding: s(16),
       rowGap: s(6),
     },
@@ -142,6 +214,13 @@ function createStyles(scale: number, bottomInset: number) {
       fontSize: s(16),
       marginBottom: s(8),
       fontFamily: "Montserrat_600SemiBold",
+    },
+    chevron: {
+      position: "absolute",
+      right: s(16),
+      color: Colors.secondary,
+      fontSize: s(20),
+      fontFamily: "Montserrat_700Bold",
     },
     logoutButton: {
       marginTop: s(20),
@@ -161,7 +240,7 @@ function createStyles(scale: number, bottomInset: number) {
     },
 
     myProductsText: {
-      color: "#2D1F16",
+      color: Colors.white,
       fontSize: s(15),
       fontFamily: "Montserrat_700Bold",
     },
@@ -170,7 +249,9 @@ function createStyles(scale: number, bottomInset: number) {
       marginTop: s(16),
       minHeight: s(46),
       borderRadius: Radius.md,
-      backgroundColor: Colors.tertiary,
+      borderWidth: 1,
+      borderColor: Colors.secondary,
+      backgroundColor: Colors.surface,
       alignItems: "center",
       justifyContent: "center",
     },

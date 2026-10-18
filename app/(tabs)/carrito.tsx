@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBar } from '../../components/BottomTabBar';
 import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
-import { Colors, Radius } from '../../constants/theme';
+import { Colors, Radius, Shadow } from '../../constants/theme';
 import { selectSubtotal, selectTotalItems, useCarritoStore } from '../../stores/useCarritoStore';
 import { useUsuarioStore } from '../../stores/useUsuarioStore';
 
@@ -106,7 +106,7 @@ export default function CarritoScreen() {
       <View style={styles.checkoutBar}>
         <View style={styles.checkoutBarInner}>
           <Text style={styles.totalText}>TOTAL: ${subtotal.toLocaleString('es-AR')}</Text>
-          <Pressable disabled={items.length === 0} style={[styles.checkoutButton, items.length === 0 && styles.checkoutButtonDisabled]}>
+          <Pressable disabled={items.length === 0} onPress={() => router.push(ROUTES.checkout)} style={[styles.checkoutButton, items.length === 0 && styles.checkoutButtonDisabled]}>
             <Text style={styles.checkoutText}>COMPLETAR COMPRA</Text>
           </Pressable>
         </View>
@@ -202,10 +202,10 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       alignItems: 'center',
       columnGap: s(16),
       backgroundColor: Colors.surface,
-      borderRadius: Radius.lg,
+      borderRadius: Radius.md,
       padding: s(12),
       borderWidth: 1,
-      borderColor: Colors.border,
+      borderColor: Colors.secondary,
     },
     productImage: {
       width: s(130),
@@ -310,10 +310,10 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       right: 0,
       bottom: s(78) + bottomInset,
       height: s(70),
-      backgroundColor: '#FFFFFF',
-      borderTopWidth: 1,
-      borderBottomWidth: 1,
-      borderColor: '#E4E4E4',
+      backgroundColor: Colors.surface,
+      borderTopLeftRadius: Radius.lg,
+      borderTopRightRadius: Radius.lg,
+      ...Shadow.panel,
       alignItems: 'center',
     },
     checkoutBarInner: {
@@ -333,8 +333,8 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
     },
     checkoutButton: {
       width: s(172),
-      height: s(27),
-      borderRadius: s(10),
+      height: s(34),
+      borderRadius: Radius.md,
       backgroundColor: Colors.secondary,
       alignItems: 'center',
       justifyContent: 'center',

@@ -34,6 +34,7 @@ const CATEGORY_ID_BY_NAME: Record<string, number> = {
   Pantalones: 2,
   Camperas: 4,
   Buzos: 5,
+  Vestidos: 6,
   Faldas: 7,
   Short: 8,
   Shorts: 8,
@@ -81,6 +82,7 @@ interface ProductoPersistData {
   temporada: CategoriaProducto["temporada"];
   publico: CategoriaProducto["publico"];
   creado_por: string;
+  direccion_retiro?: string;
 }
 
 export interface ProductoInput {
@@ -96,6 +98,8 @@ export interface ProductoInput {
   talle: string[];
   colores: string[];
   descripcion: string;
+  /** Dirección de retiro; si falta, la base usa la principal del vendedor. */
+  direccionRetiro?: string;
 }
 
 function assertSupabaseConfigured() {
@@ -341,6 +345,9 @@ async function mapInputToPersistData(
     temporada: categoriaProducto.temporada,
     publico: categoriaProducto.publico,
     creado_por: authData.user.id,
+    ...(payload.direccionRetiro?.trim()
+      ? { direccion_retiro: payload.direccionRetiro.trim() }
+      : {}),
   };
 }
 

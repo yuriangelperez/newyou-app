@@ -51,6 +51,9 @@ export const productoSchema = z.object({
     .trim()
     .min(1, 'Ingresa al menos un color.'),
 
+  // Dirección de la tienda: GPS o carga manual. Opcional.
+  direccion: z.string().trim().optional(),
+
   descripcion: z
     .string()
     .trim()

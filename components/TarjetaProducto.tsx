@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 
-import { Colors } from "../constants/theme";
+import { Colors, Radius } from "../constants/theme";
 import { useCarritoStore } from "../stores/useCarritoStore";
 import { Producto } from "../types";
 
@@ -76,6 +76,12 @@ export default function TarjetaProducto({
         />
       )}
 
+      {!producto.disponible ? (
+        <View style={styles.soldOutBadge}>
+          <Text style={styles.soldOutText}>AGOTADO</Text>
+        </View>
+      ) : null}
+
       <Text numberOfLines={2} style={styles.title}>
         {producto.nombre}
       </Text>
@@ -125,11 +131,26 @@ function createStyles(scale: number) {
     card: {
       width: s(175),
       minHeight: s(180),
-      borderRadius: s(10),
-      backgroundColor: "#E4E0E1",
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Colors.secondary,
+      backgroundColor: Colors.surface,
       paddingHorizontal: s(12),
       paddingTop: s(10),
       paddingBottom: s(12),
+    },
+    soldOutBadge: {
+      alignSelf: "flex-start",
+      marginTop: s(4),
+      paddingHorizontal: s(6),
+      paddingVertical: s(2),
+      borderRadius: s(4),
+      backgroundColor: Colors.danger,
+    },
+    soldOutText: {
+      color: Colors.white,
+      fontSize: s(8),
+      fontFamily: "Montserrat_700Bold",
     },
     cardDisabled: {
       opacity: 0.62,
@@ -182,7 +203,7 @@ function createStyles(scale: number) {
       backgroundColor: "#9C928D",
     },
     actionText: {
-      color: "#2D1F16",
+      color: Colors.white,
       fontSize: s(8),
       lineHeight: s(10),
       fontWeight: "700",

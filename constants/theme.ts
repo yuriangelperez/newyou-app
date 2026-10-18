@@ -66,3 +66,21 @@ export const Size = {
   height60: 60,
   height88: 88,
 };
+
+// Elevaciones del estilo "checkout": sombra terra en lo seleccionado y panel inferior.
+export const Shadow = {
+  selected: {
+    shadowColor: Colors.secondary,
+    shadowOffset: { width: 3, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  panel: {
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+};

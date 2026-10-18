@@ -286,6 +286,10 @@ export default function HomeScreen() {
           renderItem={renderProductCard}
           keyExtractor={(item) => item.id}
           numColumns={numColumns}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
           columnWrapperStyle={styles.productRow}

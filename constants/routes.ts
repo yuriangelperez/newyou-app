@@ -8,9 +8,13 @@ export const ROUTES = {
   newProduct: '/producto/nuevo',
   editProduct: '/editar/[id]',
   myProducts: '/mis-publicaciones',
+  myPurchases: '/mis-compras',
+  mySales: '/mis-ventas',
+  addresses: '/direcciones',
 
   categories: '/categorias',
   cart: '/carrito',
+  checkout: '/checkout',
   profile: '/perfil',
   favorites: '/favoritos',
 } as const;

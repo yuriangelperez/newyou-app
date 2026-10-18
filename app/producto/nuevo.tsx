@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -14,24 +14,30 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
+import { SelectorDireccion } from "../../components/ui/SelectorDireccion";
 import { InputField } from "../../components/ui/InputField";
 import { CategoriaProductoSelector } from "../../components/ui/CategoriaProductoSelector";
 import { ColoresSelector } from "../../components/ui/ColoresSelector";
 import { CATEGORIA_PRODUCTO_POR_DEFECTO } from "../../constants/categoriasProductos";
 import { ROUTES } from "../../constants/routes";
-import { Colors, Radius } from "../../constants/theme";
+import { Colors, Radius, Spacing } from "../../constants/theme";
 import {
   ProductoFormOutput,
   ProductoFormValues,
   productoSchema,
 } from "../../schemas/productoSchema";
 import { createProducto } from "../../services/productosService";
+import { useDirecciones } from "../../hooks/useDirecciones";
+import { guardarSiEsNueva } from "../../services/direccionesService";
+import { encolarBorrador, hayConexion } from "../../services/offlineService";
 import {
+  pickImageFromCamera,
   pickImageFromLibrary,
-  uploadProductImage,
 } from "../../services/storageService";
+import { subirImagenProducto } from "../../services/supabase";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
 
 const DEFAULT_VALUES: ProductoFormValues = {
@@ -44,11 +50,13 @@ const DEFAULT_VALUES: ProductoFormValues = {
   disponible: true,
   talle: "",
   colores: "",
+  direccion: "",
   descripcion: "",
 };
 
 export default function NuevoProductoScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const esVendedor = useUsuarioStore(
     (state) => state.usuario?.role === "vendedor",
   );
@@ -66,6 +74,13 @@ export default function NuevoProductoScreen() {
     mode: "onChange",
     defaultValues: DEFAULT_VALUES,
   });
+
+  const { direcciones } = useDirecciones();
+  const direccionElegida = watch("direccion") ?? "";
+  const setDireccion = useCallback(
+    (valor: string) => setValue("direccion", valor, { shouldDirty: true }),
+    [setValue],
+  );
 
   const disponible = watch("disponible");
   const imageField = watch("imagen");
@@ -87,17 +102,20 @@ export default function NuevoProductoScreen() {
     );
   }
 
-  const onPickAndUploadImage = async () => {
+  const onPickAndUploadImage = async (source: "camera" | "library") => {
     try {
       setUploadingImage(true);
-      const image = await pickImageFromLibrary();
+      const image =
+        source === "camera"
+          ? await pickImageFromCamera()
+          : await pickImageFromLibrary();
 
       if (!image) {
         return;
       }
 
       setImagePreview(image.uri);
-      const publicUrl = await uploadProductImage(image);
+      const publicUrl = await subirImagenProducto(image.base64, image.mimeType);
       setValue("imagen", publicUrl, {
         shouldValidate: true,
         shouldDirty: true,
@@ -124,7 +142,7 @@ export default function NuevoProductoScreen() {
         .map((item) => item.trim())
         .filter(Boolean);
 
-      const nuevoProducto = await createProducto({
+      const payload = {
         nombre: values.nombre.trim(),
         precio: values.precio,
         stock: values.stock,
@@ -140,7 +158,24 @@ export default function NuevoProductoScreen() {
           .map((item) => item.trim())
           .filter(Boolean),
         descripcion: values.descripcion.trim(),
-      });
+        direccionRetiro: values.direccion?.trim() || undefined,
+      };
+
+      if (!(await hayConexion())) {
+        await encolarBorrador({ tipo: "producto", payload });
+        Toast.show({
+          type: "offline",
+          text1: "Sin conexión. Guardado en borradores locales.",
+          text2: "La publicación se subirá al recuperar la red.",
+        });
+        router.replace(ROUTES.home);
+        return;
+      }
+
+      const nuevoProducto = await createProducto(payload);
+
+      // Si escribió una dirección nueva, queda guardada en sus direcciones.
+      guardarSiEsNueva(payload.direccionRetiro ?? "", direcciones).catch(() => {});
 
       Toast.show({
         type: "success",
@@ -169,7 +204,7 @@ export default function NuevoProductoScreen() {
       keyboardVerticalOffset={Platform.OS === "ios" ? 84 : 0}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 24 }]}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>Nueva Publicacion</Text>
@@ -199,28 +234,45 @@ export default function NuevoProductoScreen() {
           }}
         />
 
-        <Pressable
-          onPress={() => void onPickAndUploadImage()}
-          disabled={uploadingImage || isSubmitting}
-          style={[
-            styles.uploadButton,
-            (uploadingImage || isSubmitting) && styles.submitDisabled,
-          ]}
-        >
-          {uploadingImage ? (
-            <ActivityIndicator color="#2D1F16" />
-          ) : (
-            <Text style={styles.uploadButtonText}>
-              Seleccionar imagen desde la galería
-            </Text>
-          )}
-        </Pressable>
+        <View style={styles.photoRow}>
+          {(["camera", "library"] as const).map((source) => (
+            <Pressable
+              key={source}
+              onPress={() => void onPickAndUploadImage(source)}
+              disabled={uploadingImage || isSubmitting}
+              style={[
+                styles.uploadButton,
+                styles.photoButton,
+                (uploadingImage || isSubmitting) && styles.submitDisabled,
+              ]}
+            >
+              {uploadingImage ? (
+                <ActivityIndicator color={Colors.primary} />
+              ) : (
+                <Text style={styles.uploadButtonText}>
+                  {source === "camera" ? "Tomar foto" : "Galería"}
+                </Text>
+              )}
+            </Pressable>
+          ))}
+        </View>
 
         {imagePreview || imageField ? (
-          <Image
-            source={{ uri: imagePreview ?? imageField }}
-            style={styles.previewImage}
-          />
+          <>
+            <Image
+              source={{ uri: imagePreview ?? imageField }}
+              style={styles.previewImage}
+            />
+            <Pressable
+              onPress={() => {
+                setImagePreview(null);
+                setValue("imagen", "", { shouldValidate: true, shouldDirty: true });
+              }}
+              style={styles.removePhotoButton}
+            >
+              <Text style={styles.removePhotoText}>Quitar foto</Text>
+            </Pressable>
+          </>
         ) : null}
 
         <CategoriaProductoSelector control={control} />
@@ -234,6 +286,13 @@ export default function NuevoProductoScreen() {
         />
 
         <ColoresSelector control={control} />
+
+        <Text style={styles.addressTitle}>Dirección de retiro</Text>
+        <SelectorDireccion
+          direcciones={direcciones}
+          value={direccionElegida}
+          onChange={setDireccion}
+        />
 
         <InputField
           control={control}
@@ -311,9 +370,9 @@ const styles = StyleSheet.create({
   },
   content: {
     width: "100%",
-    maxWidth: 680,
+    maxWidth: 800,
     alignSelf: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 24,
     paddingBottom: 40,
   },
@@ -360,6 +419,34 @@ const styles = StyleSheet.create({
     color: "#2D1F16",
     fontSize: 14,
     fontFamily: "Montserrat_600SemiBold",
+  },
+  removePhotoButton: {
+    marginTop: Spacing.sm,
+    minHeight: 40,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.danger,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  removePhotoText: {
+    color: Colors.danger,
+    fontSize: 14,
+    fontFamily: "Montserrat_600SemiBold",
+  },
+  addressTitle: {
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+    color: Colors.primary,
+    fontSize: 14,
+    fontFamily: "Montserrat_600SemiBold",
+  },
+  photoRow: {
+    flexDirection: "row",
+    columnGap: Spacing.sm,
+  },
+  photoButton: {
+    flex: 1,
   },
   previewImage: {
     width: "100%",

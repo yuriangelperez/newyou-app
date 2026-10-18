@@ -43,6 +43,7 @@ export default function ProductDetailScreen() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
+  const setCompraDirecta = useCarritoStore((state) => state.setCompraDirecta);
   const totalItems = useCarritoStore(selectTotalItems);
   const esVendedor = useUsuarioStore(
     (state) => state.usuario?.role === "vendedor",
@@ -132,14 +133,15 @@ export default function ProductDetailScreen() {
     ]).start();
   };
 
-  const onPressComprar = () => {
+  // Valida stock/cantidad antes de agregar al carrito o comprar directo.
+  const puedeComprar = () => {
     if (!producto || !producto.disponible) {
-      return;
+      return false;
     }
 
     if (producto.stock <= 0) {
       Alert.alert("Sin stock", "Este producto no tiene unidades disponibles.");
-      return;
+      return false;
     }
 
     if (quantity > producto.stock) {
@@ -147,6 +149,14 @@ export default function ProductDetailScreen() {
         "Stock insuficiente",
         `Solo quedan ${producto.stock} unidades disponibles.`,
       );
+      return false;
+    }
+
+    return true;
+  };
+
+  const onPressAgregarAlCarrito = () => {
+    if (!producto || !puedeComprar()) {
       return;
     }
 
@@ -165,6 +175,29 @@ export default function ProductDetailScreen() {
       () => setPurchaseFeedback(false),
       900,
     );
+  };
+
+  // Compra sólo esta prenda (y cantidad), sin tocar el carrito.
+  const onPressComprarAhora = () => {
+    if (!producto || !puedeComprar()) {
+      return;
+    }
+
+    setCompraDirecta({
+      key: `directa::${producto.id}::${selectedSize}::${selectedColor}`,
+      productoId: producto.id,
+      nombre: producto.nombre,
+      precio: producto.precio,
+      imagen: producto.imagen,
+      categoria: producto.categoria,
+      disponible: producto.disponible,
+      stock: producto.stock,
+      descripcion: producto.descripcion,
+      talle: selectedSize,
+      color: selectedColor,
+      cantidad: quantity,
+    });
+    router.push(ROUTES.checkout);
   };
 
   const onPressEliminar = () => {
@@ -436,22 +469,35 @@ export default function ProductDetailScreen() {
             ) : null}
 
             <Pressable
-              accessibilityLabel="Comprar producto"
-              onPress={onPressComprar}
+              accessibilityLabel="Agregar al carrito"
+              onPress={onPressAgregarAlCarrito}
               disabled={!producto.disponible}
               style={[
                 styles.buyButton,
+                styles.cartButton,
                 !producto.disponible && styles.buyButtonDisabled,
                 purchaseFeedback && styles.buyButtonAdded,
               ]}
             >
-              <Text style={styles.buyButtonText}>
+              <Text style={[styles.buyButtonText, styles.cartButtonText]}>
                 {producto.disponible
                   ? purchaseFeedback
                     ? "AGREGADO"
-                    : "COMPRAR"
+                    : "AGREGAR AL CARRITO"
                   : "AGOTADO"}
               </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityLabel="Comprar ahora"
+              onPress={onPressComprarAhora}
+              disabled={!producto.disponible}
+              style={[
+                styles.buyButton,
+                !producto.disponible && styles.buyButtonDisabled,
+              ]}
+            >
+              <Text style={styles.buyButtonText}>COMPRAR AHORA</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -736,13 +782,25 @@ function createStyles(
     buyButton: {
       width: s(225),
       minHeight: s(48),
-      marginTop: s(18),
+      marginTop: s(10),
       marginBottom: s(8),
       borderRadius: s(10),
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: Colors.secondary,
       paddingVertical: s(8),
+    },
+    cartButton: {
+      marginTop: s(18),
+      marginBottom: 0,
+      backgroundColor: Colors.surface,
+      borderWidth: 1,
+      borderColor: Colors.secondary,
+    },
+    cartButtonText: {
+      color: Colors.primary,
+      fontSize: s(16),
+      lineHeight: s(20),
     },
     buyButtonDisabled: {
       opacity: 0.7,
@@ -751,10 +809,10 @@ function createStyles(
       backgroundColor: "#87B279",
     },
     buyButtonText: {
-      color: "#2D1F16",
+      color: Colors.white,
       fontSize: s(22),
       lineHeight: s(27),
-      fontWeight: "600",
+      fontFamily: "Montserrat_700Bold",
       letterSpacing: s(0.4),
     },
   });

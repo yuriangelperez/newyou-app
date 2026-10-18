@@ -14,6 +14,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { ErrorView } from "../../components/ui/ErrorView";
@@ -52,6 +53,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
 
 export default function EditarProductoScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const esVendedor = useUsuarioStore(
     (state) => state.usuario?.role === "vendedor",
   );
@@ -218,7 +220,7 @@ export default function EditarProductoScreen() {
       keyboardVerticalOffset={Platform.OS === "ios" ? 84 : 0}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 24 }]}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>Editar Publicacion</Text>
@@ -355,9 +357,9 @@ const styles = StyleSheet.create({
   },
   content: {
     width: "100%",
-    maxWidth: 680,
+    maxWidth: 800,
     alignSelf: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 24,
     paddingBottom: 40,
   },

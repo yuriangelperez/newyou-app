@@ -28,6 +28,10 @@ interface AgregarAlCarritoPayload {
 
 interface CarritoStore {
   items: CarritoItem[];
+  /** Compra de un solo producto ("Comprar ahora"): no pasa por el carrito ni se persiste. */
+  compraDirecta: CarritoItem[] | null;
+  setCompraDirecta: (item: CarritoItem) => void;
+  limpiarCompraDirecta: () => void;
   agregarProducto: (payload: AgregarAlCarritoPayload) => void;
   incrementarUnidad: (key: string) => void;
   restarUnidad: (key: string) => void;
@@ -44,6 +48,11 @@ export const useCarritoStore = create<CarritoStore>()(
   persist(
     (set) => ({
       items: [],
+      compraDirecta: null,
+
+      setCompraDirecta: (item) => set({ compraDirecta: [item] }),
+
+      limpiarCompraDirecta: () => set({ compraDirecta: null }),
 
       agregarProducto: ({ producto, talle, color, cantidad = 1 }) => {
         if (!producto.disponible) {

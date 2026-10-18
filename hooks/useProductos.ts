@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getProductos, subscribeToProductos } from '../services/productosService';
 import { Producto } from '../types';
@@ -47,6 +48,20 @@ export function useProductos(): UseProductosResult {
   useEffect(() => {
     void cargar('loading');
   }, [cargar]);
+
+  // Al volver a la pantalla (p. ej. tras editar stock en "Mis publicaciones")
+  // se recarga el catálogo sin spinner. La primera carga ya la hace el efecto de arriba.
+  const primerFoco = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (primerFoco.current) {
+        primerFoco.current = false;
+        return;
+      }
+
+      void cargar('silent');
+    }, [cargar]),
+  );
 
   useEffect(() => {
     let unsubscribe = () => {};
