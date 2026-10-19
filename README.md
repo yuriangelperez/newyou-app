@@ -15,7 +15,6 @@ Marketplace móvil de indumentaria para la compra y venta de prendas nuevas y pr
 | **Yuriangel Pérez**   | Scrum Master / Desarrolladora     |
 | **Alejandro Terzano** | Project Manager / Diseñador UX/UI |
 | **Daiana Lencina**    | Product Owner / QA                |
-| **Carlos Semeco**     | Desarrollador                     |
 
 **Docente:** Ariel Bulacio
 
