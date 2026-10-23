@@ -1,8 +1,10 @@
+import * as Location from 'expo-location';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import { Colors, FontSize, Radius, Spacing } from '../../constants/theme';
+import { usePermission } from '../../hooks/usePermission';
 import { abrirDireccionEnMapa, obtenerDireccionActual } from '../../services/locationService';
 
 // Más de este margen (en metros) ya no sirve para ubicar un domicilio o un local.
@@ -29,8 +31,16 @@ export function BotonGps({ onDireccion }: BotonGpsProps) {
     soloCoordenadas: boolean;
     precisionMetros: number | null;
   } | null>(null);
+  const permisoUbicacion = usePermission(
+    Location.requestForegroundPermissionsAsync,
+    'Sin acceso a la ubicación, ingresá la dirección manualmente.',
+  );
 
   const onPress = async () => {
+    if (!(await permisoUbicacion.request())) {
+      return;
+    }
+
     setBuscando(true);
     const resultado = await obtenerDireccionActual();
     setBuscando(false);
