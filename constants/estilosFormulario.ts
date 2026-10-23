@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import { Colors, FontSize, Radius, Spacing } from "./theme";
+import { Colors, FontSize, Radius, Shadow, Spacing } from "./theme";
 
 /** Estilos compartidos por las pantallas de empresa (mismo look que Mis direcciones). */
 export const estilosFormulario = StyleSheet.create({
@@ -15,10 +15,11 @@ export const estilosFormulario = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: Colors.secondary,
-    borderRadius: Radius.md,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
     padding: Spacing.md,
     rowGap: Spacing.sm,
+    ...Shadow.card,
   },
   cardRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", columnGap: Spacing.sm },
   cardTitle: {
@@ -43,8 +44,12 @@ export const estilosFormulario = StyleSheet.create({
     fontFamily: "Montserrat_700Bold",
   },
   sectionTitle: {
-    color: Colors.primary,
-    fontSize: FontSize.lg,
+    marginTop: Spacing.sm,
+    marginLeft: Spacing.xs,
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
     fontFamily: "Montserrat_700Bold",
   },
   label: {
@@ -53,11 +58,11 @@ export const estilosFormulario = StyleSheet.create({
     fontFamily: "Montserrat_700Bold",
   },
   input: {
-    minHeight: 44,
+    minHeight: 46,
     paddingHorizontal: Spacing.md,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.secondary,
+    borderColor: Colors.tertiary,
     backgroundColor: Colors.surface,
     color: Colors.text,
     fontSize: FontSize.md,
@@ -90,8 +95,8 @@ export const estilosFormulario = StyleSheet.create({
   chipTexto: { color: Colors.secondary, fontSize: FontSize.sm, fontFamily: "Montserrat_600SemiBold" },
   chipTextoActivo: { color: Colors.white },
   saveButton: {
-    minHeight: 46,
-    borderRadius: Radius.md,
+    minHeight: 48,
+    borderRadius: Radius.lg,
     backgroundColor: Colors.secondary,
     alignItems: "center",
     justifyContent: "center",
@@ -103,7 +108,9 @@ export const estilosFormulario = StyleSheet.create({
     fontFamily: "Montserrat_700Bold",
   },
   aviso: {
-    backgroundColor: Colors.tertiary,
+    backgroundColor: Colors.surface,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.secondary,
     borderRadius: Radius.md,
     padding: Spacing.md,
     color: Colors.primary,

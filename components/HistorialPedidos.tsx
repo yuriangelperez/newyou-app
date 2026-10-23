@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -10,10 +9,11 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
-import { Colors, FontSize, Radius, Spacing } from "../constants/theme";
+import { Colors, FontSize, Radius, Shadow, Spacing } from "../constants/theme";
+import { EncabezadoPantalla } from "./ui/EncabezadoPantalla";
 import { Estrellas } from "./ui/Estrellas";
 import { confirmar } from "../services/confirmar";
 import {
@@ -79,7 +79,7 @@ export function HistorialPedidos({
   puedeCambiar = () => false,
   pendientes = 0,
 }: HistorialPedidosProps) {
-  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -387,13 +387,8 @@ export function HistorialPedidos({
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backText}>Volver</Text>
-        </Pressable>
-        <Text style={styles.title}>{titulo}</Text>
-      </View>
+    <View style={styles.screen}>
+      <EncabezadoPantalla titulo={titulo.toUpperCase()} />
 
       {pendientes > 0 ? (
         <Text style={styles.pendientes}>
@@ -424,41 +419,24 @@ export function HistorialPedidos({
         <FlatList
           data={visibles}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + Spacing.xl }]}
           ListEmptyComponent={<Text style={styles.empty}>{pedidos.length === 0 ? textoVacio : "No hay pedidos en este estado."}</Text>}
           renderItem={renderPedido}
         />
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    columnGap: Spacing.md,
-    padding: Spacing.md,
-  },
-  backButton: { paddingVertical: Spacing.sm },
-  backText: {
-    color: Colors.secondary,
-    fontSize: FontSize.md,
-    fontFamily: "Montserrat_600SemiBold",
-  },
-  title: {
-    color: Colors.primary,
-    fontSize: FontSize.xl,
-    fontFamily: "Montserrat_700Bold",
-  },
   pendientes: {
     marginHorizontal: Spacing.md,
     color: Colors.warning,
     fontSize: FontSize.sm,
     fontFamily: "Montserrat_600SemiBold",
   },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, paddingHorizontal: Spacing.md },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, paddingHorizontal: Spacing.md, paddingTop: Spacing.md },
   chip: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs + 2,
@@ -486,10 +464,11 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: Colors.secondary,
-    borderRadius: Radius.md,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
     padding: Spacing.md,
     rowGap: Spacing.xs,
+    ...Shadow.card,
   },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   orden: {

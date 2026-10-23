@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useMemo } from "react";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -14,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar } from "../../components/BottomTabBar";
 import { ROUTES } from "../../constants/routes";
-import { Colors, Radius } from "../../constants/theme";
+import { Colors, Radius, Shadow } from "../../constants/theme";
 import { supabase } from "../../services/supabase";
 import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
 import { puede, selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
@@ -82,6 +83,55 @@ export default function PerfilScreen() {
     }
   };
 
+  const inicial = (usuario?.nombre ?? "?").trim().charAt(0).toUpperCase() || "?";
+  const tipoCuenta = usuario?.role === "particular" ? "Vendedor particular" : "Comprador";
+
+  // Fila de menú: ícono, texto y flecha. `destacada` para la acción principal de una sección.
+  const fila = (
+    icono: keyof typeof Ionicons.glyphMap,
+    texto: string,
+    onPress: () => void,
+    opciones: { destacada?: boolean; detalle?: string } = {},
+  ) => (
+    <Pressable
+      key={texto}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+    >
+      <View style={[styles.rowIcon, opciones.destacada && styles.rowIconAccent]}>
+        <Ionicons name={icono} size={18} color={opciones.destacada ? Colors.white : Colors.primary} />
+      </View>
+      <View style={styles.rowTexts}>
+        <Text style={styles.rowText}>{texto}</Text>
+        {opciones.detalle ? <Text style={styles.rowDetail}>{opciones.detalle}</Text> : null}
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+    </Pressable>
+  );
+
+  const ventas = esVendedor
+    ? [
+        fila("pricetags-outline", "Mis publicaciones", () => router.push(ROUTES.myProducts)),
+        fila("receipt-outline", empresaActiva ? `Ventas de ${empresaActiva.nombre}` : "Mis ventas", () =>
+          router.push(ROUTES.mySales),
+        ),
+        ...(!empresaActiva || puede(empresaActiva, "metricas.ver")
+          ? [fila("stats-chart-outline", "Métricas", () => router.push(ROUTES.metrics))]
+          : []),
+      ]
+    : puede(empresaActiva, "pedidos.ver")
+      ? // Por ejemplo, el rol Envíos: no publica, pero gestiona los pedidos de la empresa.
+        [fila("receipt-outline", `Ventas de ${empresaActiva?.nombre}`, () => router.push(ROUTES.mySales))]
+      : usuario?.role === "comprador"
+        ? [
+            fila("storefront-outline", "Quiero vender prendas", () => void convertirseEnVendedor(), {
+              destacada: true,
+              detalle: "Publicá tus prendas como particular",
+            }),
+          ]
+        : [];
+
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
@@ -92,130 +142,94 @@ export default function PerfilScreen() {
       >
         <Text style={styles.title}>Perfil</Text>
 
-        <View style={styles.card}>
-          <Text style={styles.label}>Nombre</Text>
-          <Text style={styles.value}>{usuario?.nombre ?? "Invitado"}</Text>
-
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>
-            {usuario?.email ?? "Sin sesion activa"}
-          </Text>
-
-          <Text style={styles.label}>Tipo de cuenta</Text>
-          <Text style={styles.value}>
-            {usuario?.role === "particular" ? "Vendedor particular" : "Comprador"}
-          </Text>
+        <View style={[styles.card, styles.profileCard]}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{inicial}</Text>
+          </View>
+          <View style={styles.profileTexts}>
+            <Text numberOfLines={1} style={styles.profileName}>
+              {usuario?.nombre ?? "Invitado"}
+            </Text>
+            <Text numberOfLines={1} style={styles.profileEmail}>
+              {usuario?.email ?? "Sin sesión activa"}
+            </Text>
+            <View style={styles.badgeRow}>
+              <Text style={styles.badge}>{tipoCuenta}</Text>
+              {empresaActiva ? <Text style={[styles.badge, styles.badgeAccent]}>{empresaActiva.nombre}</Text> : null}
+              {usuario?.esAdmin ? <Text style={styles.badge}>Administrador</Text> : null}
+            </View>
+          </View>
         </View>
-        <Pressable
-          onPress={() => router.push(ROUTES.myPurchases)}
-          style={styles.favoritesButton}
-        >
-          <Text style={styles.favoritesText}>Mis compras</Text>
-        </Pressable>
 
-        <Pressable
-          onPress={() => router.push(ROUTES.addresses)}
-          style={styles.favoritesButton}
-        >
-          <Text style={styles.favoritesText}>Direcciones</Text>
-        </Pressable>
+        <Text style={styles.sectionTitle}>Mi cuenta</Text>
+        <View style={styles.card}>
+          {fila("bag-handle-outline", "Mis compras", () => router.push(ROUTES.myPurchases))}
+          {fila("heart-outline", "Favoritos", () => router.push(ROUTES.favorites))}
+          {fila("location-outline", "Direcciones", () => router.push(ROUTES.addresses))}
+        </View>
 
-        {usuario?.esAdmin ? (
-          <Pressable onPress={() => router.push(ROUTES.admin)} style={styles.myProductsButton}>
-            <Text style={styles.myProductsText}>Panel de administrador</Text>
-          </Pressable>
+        {ventas.length > 0 ? (
+          <>
+            <Text style={styles.sectionTitle}>Ventas</Text>
+            <View style={styles.card}>{ventas}</View>
+          </>
         ) : null}
 
         {usuario ? (
-          <View style={[styles.card, styles.companyCard]}>
-            <Text style={styles.label}>Modo empresa</Text>
-            {membresias.length > 0 ? (
-              <>
-                <Text style={styles.value}>Actuar como</Text>
-                <View style={styles.chips}>
-                  {[{ id: null, nombre: "Yo" }, ...membresias.map((m) => ({ id: m.empresaId, nombre: m.nombre }))].map(
-                    (opcion) => {
-                      const activa = (empresaActiva?.empresaId ?? null) === opcion.id;
-                      return (
-                        <Pressable
-                          key={opcion.id ?? "yo"}
-                          onPress={() => void setEmpresaActiva(opcion.id)}
-                          style={[styles.chip, activa && styles.chipActive]}
-                        >
-                          <Text style={[styles.chipText, activa && styles.chipTextActive]}>{opcion.nombre}</Text>
-                        </Pressable>
-                      );
-                    },
-                  )}
-                </View>
-                {empresaActiva ? (
-                  <Pressable onPress={() => router.push(ROUTES.companyPanel)} style={styles.myProductsButton}>
-                    <Text style={styles.myProductsText}>Panel de {empresaActiva.nombre}</Text>
-                  </Pressable>
-                ) : null}
-              </>
-            ) : (
-              <Text style={styles.value}>Vendé como tienda, con sedes y equipo.</Text>
-            )}
-            <Pressable onPress={() => router.push(ROUTES.newCompany)} style={styles.favoritesButton}>
-              <Text style={styles.favoritesText}>Crear empresa</Text>
-            </Pressable>
-            <Pressable onPress={() => router.push(ROUTES.invitation)} style={styles.favoritesButton}>
-              <Text style={styles.favoritesText}>Tengo un código de invitación</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        {esVendedor ? (
           <>
-            <Pressable
-              onPress={() => router.push(ROUTES.myProducts)}
-              style={styles.myProductsButton}
-            >
-              <Text style={styles.myProductsText}>Mis publicaciones</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push(ROUTES.mySales)}
-              style={styles.myProductsButton}
-            >
-              <Text style={styles.myProductsText}>Mis ventas</Text>
-            </Pressable>
-            {!empresaActiva || puede(empresaActiva, "metricas.ver") ? (
-              <Pressable
-                onPress={() => router.push(ROUTES.metrics)}
-                style={styles.myProductsButton}
-              >
-                <Text style={styles.myProductsText}>Métricas</Text>
-              </Pressable>
-            ) : null}
-
+            <Text style={styles.sectionTitle}>Modo empresa</Text>
+            <View style={styles.card}>
+              {membresias.length > 0 ? (
+                <View style={styles.contextBox}>
+                  <Text style={styles.label}>Actuar como</Text>
+                  <View style={styles.chips}>
+                    {[{ id: null, nombre: "Yo" }, ...membresias.map((m) => ({ id: m.empresaId, nombre: m.nombre }))].map(
+                      (opcion) => {
+                        const activa = (empresaActiva?.empresaId ?? null) === opcion.id;
+                        return (
+                          <Pressable
+                            key={opcion.id ?? "yo"}
+                            onPress={() => void setEmpresaActiva(opcion.id)}
+                            style={[styles.chip, activa && styles.chipActive]}
+                          >
+                            <Text style={[styles.chipText, activa && styles.chipTextActive]}>{opcion.nombre}</Text>
+                          </Pressable>
+                        );
+                      },
+                    )}
+                  </View>
+                </View>
+              ) : (
+                <Text style={styles.helper}>Vendé como tienda, con sedes y equipo.</Text>
+              )}
+              {empresaActiva
+                ? fila("business-outline", `Panel de ${empresaActiva.nombre}`, () => router.push(ROUTES.companyPanel), {
+                    destacada: true,
+                  })
+                : null}
+              {fila("add-circle-outline", "Crear empresa", () => router.push(ROUTES.newCompany))}
+              {fila("key-outline", "Tengo un código de invitación", () => router.push(ROUTES.invitation))}
+            </View>
           </>
-        ) : puede(empresaActiva, "pedidos.ver") ? (
-          // Por ejemplo, el rol Envíos: no publica, pero gestiona los pedidos de la empresa.
-          <Pressable onPress={() => router.push(ROUTES.mySales)} style={styles.myProductsButton}>
-            <Text style={styles.myProductsText}>Ventas de {empresaActiva?.nombre}</Text>
-          </Pressable>
-        ) : usuario?.role === "comprador" ? (
-          <Pressable
-            onPress={() => void convertirseEnVendedor()}
-            style={styles.myProductsButton}
-          >
-            <Text style={styles.myProductsText}>Quiero vender prendas</Text>
-          </Pressable>
         ) : null}
 
-        <Pressable
-          onPress={() => router.push(ROUTES.favorites)}
-          style={styles.favoritesButton}
-        >
-          <Text style={styles.favoritesText}>Favoritos</Text>
-        </Pressable>
+        {usuario?.esAdmin ? (
+          <>
+            <Text style={styles.sectionTitle}>Administración</Text>
+            <View style={styles.card}>
+              {fila("shield-checkmark-outline", "Panel de administrador", () => router.push(ROUTES.admin), {
+                detalle: "Verificar y suspender empresas",
+              })}
+            </View>
+          </>
+        ) : null}
 
         <Pressable
           onPress={() => void cerrarSesion()}
-          style={styles.logoutButton}
+          style={({ pressed }) => [styles.logoutButton, pressed && styles.rowPressed]}
         >
-          <Text style={styles.logoutText}>Cerrar Sesion</Text>
+          <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
+          <Text style={styles.logoutText}>Cerrar sesión</Text>
         </Pressable>
       </ScrollView>
 
@@ -256,75 +270,117 @@ function createStyles(scale: number, bottomInset: number, topInset: number) {
     title: {
       fontSize: s(28),
       color: Colors.primary,
-      marginBottom: s(20),
+      marginBottom: s(16),
       fontFamily: "Montserrat_700Bold",
     },
     card: {
       backgroundColor: Colors.surface,
       borderWidth: 1,
-      borderColor: Colors.secondary,
-      borderRadius: Radius.md,
-      padding: s(16),
-      rowGap: s(6),
+      borderColor: Colors.border,
+      borderRadius: Radius.lg,
+      overflow: "hidden",
+      ...Shadow.card,
     },
-    label: {
-      color: Colors.textMuted,
-      fontSize: s(12),
-      fontFamily: "Montserrat_500Medium",
-    },
-    value: {
-      color: Colors.text,
-      fontSize: s(16),
-      marginBottom: s(8),
-      fontFamily: "Montserrat_600SemiBold",
-    },
-    chevron: {
-      position: "absolute",
-      right: s(16),
-      color: Colors.secondary,
-      fontSize: s(20),
-      fontFamily: "Montserrat_700Bold",
-    },
-    logoutButton: {
-      marginTop: s(20),
-      minHeight: s(46),
-      borderRadius: Radius.md,
-      backgroundColor: "#E9B4B4",
+    profileCard: {
+      flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
+      columnGap: s(14),
+      padding: s(16),
     },
-    myProductsButton: {
-      marginTop: s(16),
-      minHeight: s(46),
-      borderRadius: Radius.md,
+    avatar: {
+      width: s(56),
+      height: s(56),
+      borderRadius: Radius.full,
       backgroundColor: Colors.secondary,
       alignItems: "center",
       justifyContent: "center",
     },
-
-    myProductsText: {
+    avatarText: {
       color: Colors.white,
-      fontSize: s(15),
+      fontSize: s(24),
       fontFamily: "Montserrat_700Bold",
     },
-
-    favoritesButton: {
-      marginTop: s(16),
-      minHeight: s(46),
+    profileTexts: { flex: 1, rowGap: s(2) },
+    profileName: {
+      color: Colors.primary,
+      fontSize: s(18),
+      fontFamily: "Montserrat_700Bold",
+    },
+    profileEmail: {
+      color: Colors.textMuted,
+      fontSize: s(13),
+      fontFamily: "Montserrat_500Medium",
+    },
+    badgeRow: { flexDirection: "row", flexWrap: "wrap", gap: s(6), marginTop: s(6) },
+    badge: {
+      paddingHorizontal: s(8),
+      paddingVertical: s(2),
+      borderRadius: Radius.full,
+      backgroundColor: Colors.background,
+      color: Colors.primary,
+      fontSize: s(11),
+      overflow: "hidden",
+      fontFamily: "Montserrat_600SemiBold",
+    },
+    badgeAccent: { backgroundColor: Colors.tertiary },
+    sectionTitle: {
+      marginTop: s(22),
+      marginBottom: s(8),
+      marginLeft: s(4),
+      color: Colors.textMuted,
+      fontSize: s(12),
+      letterSpacing: 0.8,
+      textTransform: "uppercase",
+      fontFamily: "Montserrat_700Bold",
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      columnGap: s(12),
+      minHeight: s(56),
+      paddingHorizontal: s(14),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: Colors.border,
+    },
+    rowPressed: { backgroundColor: Colors.background },
+    rowIcon: {
+      width: s(34),
+      height: s(34),
       borderRadius: Radius.md,
-      borderWidth: 1,
-      borderColor: Colors.secondary,
-      backgroundColor: Colors.surface,
+      backgroundColor: Colors.background,
       alignItems: "center",
       justifyContent: "center",
     },
-    favoritesText: {
-      color: "#2D1F16",
+    rowIconAccent: { backgroundColor: Colors.secondary },
+    rowTexts: { flex: 1, paddingVertical: s(10) },
+    rowText: {
+      color: Colors.text,
       fontSize: s(15),
-      fontFamily: "Montserrat_700Bold",
+      fontFamily: "Montserrat_600SemiBold",
     },
-    companyCard: {
-      marginTop: s(16),
+    rowDetail: {
+      color: Colors.textMuted,
+      fontSize: s(12),
+      fontFamily: "Montserrat_500Medium",
+    },
+    contextBox: {
+      padding: s(14),
+      rowGap: s(8),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: Colors.border,
+    },
+    label: {
+      color: Colors.textMuted,
+      fontSize: s(12),
+      fontFamily: "Montserrat_600SemiBold",
+    },
+    helper: {
+      padding: s(14),
+      color: Colors.textMuted,
+      fontSize: s(13),
+      fontFamily: "Montserrat_500Medium",
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: Colors.border,
     },
     chips: {
       flexDirection: "row",
@@ -349,8 +405,20 @@ function createStyles(scale: number, bottomInset: number, topInset: number) {
     chipTextActive: {
       color: Colors.white,
     },
+    logoutButton: {
+      marginTop: s(24),
+      minHeight: s(48),
+      flexDirection: "row",
+      columnGap: s(8),
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      backgroundColor: Colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     logoutText: {
-      color: "#2D1F16",
+      color: Colors.danger,
       fontSize: s(15),
       fontFamily: "Montserrat_700Bold",
     },

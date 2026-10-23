@@ -69,6 +69,14 @@ export const Size = {
 
 // Elevaciones del estilo "checkout": sombra terra en lo seleccionado y panel inferior.
 export const Shadow = {
+  // Elevación suave para tarjetas y listas.
+  card: {
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   selected: {
     shadowColor: Colors.secondary,
     shadowOffset: { width: 3, height: 4 },

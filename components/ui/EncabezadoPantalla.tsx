@@ -27,9 +27,10 @@ export function EncabezadoPantalla({ titulo }: { titulo: string }) {
 const styles = StyleSheet.create({
   header: {
     width: "100%",
-    paddingBottom: Spacing.sm,
-    borderBottomWidth: 2,
-    borderBottomColor: Colors.secondary,
+    paddingBottom: Spacing.xs,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
     alignItems: "center",
   },
   headerInner: {
@@ -46,7 +47,8 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     color: Colors.primary,
-    fontSize: FontSize.xl,
-    fontFamily: "Montserrat_500Medium",
+    fontSize: FontSize.lg,
+    letterSpacing: 0.6,
+    fontFamily: "Montserrat_700Bold",
   },
 });
