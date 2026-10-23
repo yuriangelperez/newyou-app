@@ -1,6 +1,8 @@
 export const ROUTES = {
   login: '/login',
   register: '/register',
+  forgotPassword: '/recuperar',
+  newPassword: '/nueva-contrasena',
 
   home: '/(tabs)',
 

@@ -300,6 +300,9 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
    9. `09-imagenes.sql`: hasta 5 imágenes por prenda (`CHECK` en la base; completa `imagenes` con `imagen_url` en publicaciones viejas y recorta las que tengan más de 5).
    10. `10-pedidos.sql`: pedidos con estados. Cada compra se divide en un pedido por vendedor (particular o sede de empresa) con estado (pendiente, confirmado, preparando, listo para retirar o enviado, entregado, cancelado) e historial en `pedido_eventos`. `confirmar_compra` calcula el envío con el costo de cada sede, `cambiar_estado_pedido` valida la transición y el permiso y repone el stock al cancelar, y `mis_compras_pedidos` / `pedidos_venta` reemplazan a `mis_ventas`. Las compras anteriores se convierten en pedidos. Publicarlo junto con la versión de la app que usa pedidos.
    11. `11-envios-metricas.sql`: gestor de envíos (correo, código de seguimiento y fechas de envío y entrega en cada pedido, con `marcar_pedido_enviado`) y `metricas_ventas` (ingresos, pedidos, unidades, por día, más vendidos, por sede y stock bajo; las de empresa exigen `metricas.ver`).
+   12. `12-calificaciones.sql`: el comprador califica cada pedido entregado (1 a 5 estrellas y comentario, una vez) y el vendedor puede responder; `reputacion` (tienda o particular) y `reputacion_producto` son públicas.
+
+Para recuperar la contraseña, en Supabase > Authentication > URL Configuration agregar a *Redirect URLs* `newyou://**` (app) y `http://localhost:8081/**` (web en desarrollo). El enlace del correo abre la pantalla *Nueva contraseña*.
 
 Para versionar las políticas, funciones y triggers que hoy sólo están en Supabase, ejecutar [`supabase/consultas/exportar-esquema.sql`](supabase/consultas/exportar-esquema.sql). El resultado del 2026-10-23 quedó en `supabase/migraciones/00-base.sql` (referencia, no se ejecuta).
 

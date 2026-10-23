@@ -112,10 +112,12 @@ export default function RootLayout() {
     }
 
     const enAuth = segments[0] === '(auth)';
+    // El enlace de recuperación abre una sesión antes de elegir la contraseña nueva.
+    const enNuevaContrasena = (segments as string[])[1] === 'nueva-contrasena';
 
     if (!haySesion && !enAuth) {
       router.replace(ROUTES.login);
-    } else if (haySesion && enAuth) {
+    } else if (haySesion && enAuth && !enNuevaContrasena) {
       router.replace(ROUTES.home);
     }
   }, [haySesion, segments, router]);
@@ -130,6 +132,8 @@ export default function RootLayout() {
       <Stack initialRouteName="(auth)/login" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)/login" />
         <Stack.Screen name="(auth)/register" />
+        <Stack.Screen name="(auth)/recuperar" />
+        <Stack.Screen name="(auth)/nueva-contrasena" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="producto/[id]" />
         <Stack.Screen name="producto/nuevo" />

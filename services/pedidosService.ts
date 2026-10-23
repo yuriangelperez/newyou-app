@@ -57,8 +57,17 @@ export interface Pedido {
   codigoSeguimiento: string | null;
   vendedor: string | null;
   comprador: string | null;
+  /** Opinión del comprador (migración 12); null si todavía no calificó. */
+  calificacion: Calificacion | null;
   items: ItemPedido[];
   eventos: EventoPedido[];
+}
+
+export interface Calificacion {
+  id: number;
+  puntaje: number;
+  comentario: string | null;
+  respuesta: string | null;
 }
 
 interface PedidoJson {
@@ -79,6 +88,7 @@ interface PedidoJson {
   codigo_seguimiento?: string | null;
   vendedor: string | null;
   comprador: string | null;
+  calificacion?: Calificacion | null;
   items: ItemPedido[];
   eventos: EventoPedido[];
 }
@@ -101,6 +111,7 @@ export const mapPedido = (row: PedidoJson): Pedido => ({
   codigoSeguimiento: row.codigo_seguimiento ?? null,
   vendedor: row.vendedor,
   comprador: row.comprador,
+  calificacion: row.calificacion ?? null,
   items: (row.items ?? []).map((item) => ({ ...item, precio: Number(item.precio) })),
   eventos: row.eventos ?? [],
 });
@@ -222,4 +233,61 @@ export async function obtenerMetricas(empresaId: number | null, dias: number): P
     porSede: (m.por_sede ?? []).map((t) => ({ sede: t.sede, pedidos: Number(t.pedidos), ingresos: Number(t.ingresos) })),
     stockBajo: m.stock_bajo ?? [],
   };
+}
+
+export async function calificarPedido(pedidoId: number, puntaje: number, comentario?: string) {
+  const { error } = await supabase.rpc('calificar_pedido', {
+    p_pedido: pedidoId,
+    p_puntaje: puntaje,
+    p_comentario: comentario?.trim() || null,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function responderCalificacion(calificacionId: number, respuesta: string) {
+  const { error } = await supabase.rpc('responder_calificacion', {
+    p_calificacion: calificacionId,
+    p_respuesta: respuesta.trim(),
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export interface Reputacion {
+  promedio: number | null;
+  cantidad: number;
+  ultimas: { puntaje: number; comentario: string | null; respuesta: string | null; fecha: string; autor: string | null }[];
+}
+
+/** Reputación de una empresa o de un particular. Si la migración 12 no está, devuelve "sin opiniones". */
+export async function obtenerReputacion(destino: { empresaId?: number; vendedorId?: string }): Promise<Reputacion> {
+  const { data, error } = await supabase.rpc('reputacion', {
+    p_empresa: destino.empresaId ?? null,
+    p_vendedor: destino.vendedorId ?? null,
+  });
+
+  if (error || !data) {
+    return { promedio: null, cantidad: 0, ultimas: [] };
+  }
+
+  return {
+    promedio: data.promedio === null ? null : Number(data.promedio),
+    cantidad: Number(data.cantidad),
+    ultimas: data.ultimas ?? [],
+  };
+}
+
+export async function obtenerReputacionProducto(productoId: string): Promise<Pick<Reputacion, 'promedio' | 'cantidad'>> {
+  const { data, error } = await supabase.rpc('reputacion_producto', { p_producto: Number(productoId) });
+
+  if (error || !data) {
+    return { promedio: null, cantidad: 0 };
+  }
+
+  return { promedio: data.promedio === null ? null : Number(data.promedio), cantidad: Number(data.cantidad) };
 }

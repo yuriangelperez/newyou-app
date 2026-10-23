@@ -124,8 +124,8 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={goToRegister}>
-        <Text style={styles.resetText}>¿REESTABLECER CONTRASEÑA?</Text>
+      <TouchableOpacity onPress={() => router.push(ROUTES.forgotPassword)}>
+        <Text style={styles.resetText}>¿OLVIDASTE TU CONTRASEÑA?</Text>
       </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

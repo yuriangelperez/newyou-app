@@ -5,12 +5,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import TarjetaProducto from "../../components/TarjetaProducto";
 import { EncabezadoPantalla } from "../../components/ui/EncabezadoPantalla";
+import { Estrellas, ResumenReputacion } from "../../components/ui/Estrellas";
 import { VerEnMapa } from "../../components/ui/VerEnMapa";
 import { ROUTES } from "../../constants/routes";
 import { estilosFormulario as styles } from "../../constants/estilosFormulario";
 import { Colors, Spacing } from "../../constants/theme";
 import { Empresa, listarSedes, obtenerEmpresaPorSlug, Sede } from "../../services/empresasService";
 import { getProductosDeEmpresa } from "../../services/productosService";
+import { obtenerReputacion, Reputacion } from "../../services/pedidosService";
 import { useCarritoStore } from "../../stores/useCarritoStore";
 import { Producto } from "../../types";
 
@@ -26,6 +28,7 @@ export default function TiendaScreen() {
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [reputacion, setReputacion] = useState<Reputacion | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,12 +44,14 @@ export default function TiendaScreen() {
         .then(async (datos) => {
           setEmpresa(datos);
           if (!datos) return;
-          const [sedesEmpresa, publicaciones] = await Promise.all([
+          const [sedesEmpresa, publicaciones, opiniones] = await Promise.all([
             listarSedes(datos.id),
             getProductosDeEmpresa(datos.id),
+            obtenerReputacion({ empresaId: datos.id }),
           ]);
           setSedes(sedesEmpresa.filter((sede) => sede.activa));
           setProductos(publicaciones);
+          setReputacion(opiniones);
         })
         .catch((err) => setError(err instanceof Error ? err.message : "No se pudo cargar la tienda."))
         .finally(() => setCargando(false));
@@ -73,6 +78,7 @@ export default function TiendaScreen() {
           {empresa.estado !== "verificada" ? (
             <Text style={styles.aviso}>Vista previa: la tienda se publica cuando se verifique el CUIT.</Text>
           ) : null}
+          {reputacion ? <ResumenReputacion promedio={reputacion.promedio} cantidad={reputacion.cantidad} /> : null}
           {empresa.descripcion ? <Text style={styles.cardText}>{empresa.descripcion}</Text> : null}
           {sedes.map((sede) => (
             <View key={sede.id} style={styles.card}>
@@ -85,6 +91,23 @@ export default function TiendaScreen() {
               <VerEnMapa direccion={sede.direccion} />
             </View>
           ))}
+          {reputacion && reputacion.ultimas.length > 0 ? (
+            <>
+              <Text style={styles.sectionTitle}>Opiniones</Text>
+              {reputacion.ultimas.map((opinion, i) => (
+                <View key={`${opinion.fecha}-${i}`} style={styles.card}>
+                  <View style={styles.cardRow}>
+                    <Estrellas valor={opinion.puntaje} tamano={14} />
+                    <Text style={styles.muted}>
+                      {`${opinion.autor ?? "Comprador"} · ${new Date(opinion.fecha).toLocaleDateString("es-AR")}`}
+                    </Text>
+                  </View>
+                  {opinion.comentario ? <Text style={styles.cardText}>{opinion.comentario}</Text> : null}
+                  {opinion.respuesta ? <Text style={styles.muted}>{`Respuesta: ${opinion.respuesta}`}</Text> : null}
+                </View>
+              ))}
+            </>
+          ) : null}
           <Text style={styles.sectionTitle}>Publicaciones</Text>
         </>
       ) : null}

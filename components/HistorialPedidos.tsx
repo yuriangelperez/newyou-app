@@ -14,13 +14,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { Colors, FontSize, Radius, Spacing } from "../constants/theme";
+import { Estrellas } from "./ui/Estrellas";
 import { confirmar } from "../services/confirmar";
 import {
+  calificarPedido,
   cambiarEstadoPedido,
   EstadoPedido,
   marcarPedidoEnviado,
   Pedido,
   pedidoActivo,
+  responderCalificacion,
   sePuedeCancelar,
   siguienteEstado,
   TEXTO_ESTADO,
@@ -87,6 +90,9 @@ export function HistorialPedidos({
   const [enviando, setEnviando] = useState<number | null>(null);
   const [correo, setCorreo] = useState("");
   const [codigo, setCodigo] = useState("");
+  // Calificación del comprador o respuesta del vendedor que se está escribiendo.
+  const [puntaje, setPuntaje] = useState(0);
+  const [texto, setTexto] = useState("");
 
   const recargar = useCallback(async () => {
     try {
@@ -127,6 +133,45 @@ export function HistorialPedidos({
         text1: "No se pudo marcar como enviado",
         text2: err instanceof Error ? err.message : undefined,
       });
+    } finally {
+      setProcesando(null);
+    }
+  };
+
+  const onCalificar = async (pedido: Pedido) => {
+    if (puntaje < 1) {
+      Toast.show({ type: "error", text1: "Elegí de 1 a 5 estrellas" });
+      return;
+    }
+
+    try {
+      setProcesando(pedido.id);
+      await calificarPedido(pedido.id, puntaje, texto);
+      setPuntaje(0);
+      setTexto("");
+      Toast.show({ type: "success", text1: "¡Gracias por tu opinión!" });
+      await recargar();
+    } catch (err) {
+      Toast.show({ type: "error", text1: "No se pudo calificar", text2: err instanceof Error ? err.message : undefined });
+    } finally {
+      setProcesando(null);
+    }
+  };
+
+  const onResponder = async (pedido: Pedido) => {
+    if (!pedido.calificacion || !texto.trim()) {
+      Toast.show({ type: "error", text1: "Escribí la respuesta" });
+      return;
+    }
+
+    try {
+      setProcesando(pedido.id);
+      await responderCalificacion(pedido.calificacion.id, texto);
+      setTexto("");
+      Toast.show({ type: "success", text1: "Respuesta publicada" });
+      await recargar();
+    } catch (err) {
+      Toast.show({ type: "error", text1: "No se pudo responder", text2: err instanceof Error ? err.message : undefined });
     } finally {
       setProcesando(null);
     }
@@ -259,6 +304,68 @@ export function HistorialPedidos({
               <Pressable disabled={ocupado} onPress={() => void cambiar(item, "cancelado")}>
                 <Text style={styles.cancelText}>Cancelar pedido</Text>
               </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        {item.calificacion ? (
+          <View style={styles.opinion}>
+            <Estrellas valor={item.calificacion.puntaje} tamano={16} />
+            {item.calificacion.comentario ? <Text style={styles.item}>{item.calificacion.comentario}</Text> : null}
+            {item.calificacion.respuesta ? (
+              <Text style={styles.meta}>{`Respuesta del vendedor: ${item.calificacion.respuesta}`}</Text>
+            ) : null}
+            {modo === "venta" && gestiona && !item.calificacion.respuesta ? (
+              <>
+                <TextInput
+                  value={abierto === -item.id ? texto : ""}
+                  onFocus={() => {
+                    setAbierto(-item.id);
+                    setTexto("");
+                  }}
+                  onChangeText={setTexto}
+                  placeholder="Responder esta opinión"
+                  placeholderTextColor={Colors.textMuted}
+                  style={styles.input}
+                />
+                {abierto === -item.id ? (
+                  <Pressable disabled={ocupado} onPress={() => void onResponder(item)}>
+                    <Text style={styles.link}>Publicar respuesta</Text>
+                  </Pressable>
+                ) : null}
+              </>
+            ) : null}
+          </View>
+        ) : modo === "compra" && item.estado === "entregado" ? (
+          <View style={styles.opinion}>
+            <Text style={styles.meta}>¿Qué te pareció la compra?</Text>
+            <Estrellas
+              valor={abierto === -item.id ? puntaje : 0}
+              tamano={26}
+              onChange={(valor) => {
+                if (abierto !== -item.id) setTexto("");
+                setAbierto(-item.id);
+                setPuntaje(valor);
+              }}
+            />
+            {abierto === -item.id ? (
+              <>
+                <TextInput
+                  value={texto}
+                  onChangeText={setTexto}
+                  maxLength={500}
+                  placeholder="Contá tu experiencia (opcional)"
+                  placeholderTextColor={Colors.textMuted}
+                  style={styles.input}
+                />
+                <Pressable
+                  disabled={ocupado}
+                  onPress={() => void onCalificar(item)}
+                  style={[styles.primaryButton, ocupado && styles.disabled]}
+                >
+                  <Text style={styles.primaryText}>Enviar calificación</Text>
+                </Pressable>
+              </>
             ) : null}
           </View>
         ) : null}
@@ -443,6 +550,13 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: FontSize.md,
     fontFamily: "Montserrat_400Regular",
+  },
+  opinion: {
+    rowGap: Spacing.xs,
+    marginTop: Spacing.xs,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   evento: { color: Colors.textMuted, fontSize: FontSize.sm, fontFamily: "Montserrat_500Medium" },
 });

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar } from "../../components/BottomTabBar";
 import { ErrorView } from "../../components/ui/ErrorView";
+import { ResumenReputacion } from "../../components/ui/Estrellas";
 import { SkeletonList } from "../../components/ui/SkeletonList";
 import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from "../../constants/assets";
 import {
@@ -26,6 +27,7 @@ import { ROUTES } from "../../constants/routes";
 import { Colors } from "../../constants/theme";
 import { useProductoById } from "../../hooks/useProductoById";
 import { deleteProducto } from "../../services/productosService";
+import { obtenerReputacionProducto } from "../../services/pedidosService";
 import {
   selectTotalItems,
   useCarritoStore,
@@ -93,6 +95,20 @@ export default function ProductDetailScreen() {
   const [purchaseFeedback, setPurchaseFeedback] = useState(false);
   const favoriteScale = useState(() => new Animated.Value(1))[0];
   const purchaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [reputacion, setReputacion] = useState<{ promedio: number | null; cantidad: number } | null>(null);
+
+  // Opiniones de los pedidos entregados que incluyeron esta prenda.
+  useEffect(() => {
+    if (!producto?.id) {
+      return;
+    }
+
+    let vigente = true;
+    obtenerReputacionProducto(producto.id).then((datos) => vigente && setReputacion(datos));
+    return () => {
+      vigente = false;
+    };
+  }, [producto?.id]);
 
   useEffect(() => {
     if (!producto) {
@@ -342,6 +358,7 @@ export default function ProductDetailScreen() {
             <Text style={styles.price}>
               ${producto.precio.toLocaleString("es-AR")}
             </Text>
+            {reputacion ? <ResumenReputacion promedio={reputacion.promedio} cantidad={reputacion.cantidad} /> : null}
 
             <View style={styles.sizeSelector}>
               <View style={styles.sizeLabelsRow}>
