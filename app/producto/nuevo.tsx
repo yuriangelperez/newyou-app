@@ -29,7 +29,7 @@ import {
   ProductoFormValues,
   productoSchema,
 } from "../../schemas/productoSchema";
-import { createProducto } from "../../services/productosService";
+import { createProducto, ProductoInput } from "../../services/productosService";
 import { useDirecciones } from "../../hooks/useDirecciones";
 import { guardarSiEsNueva } from "../../services/direccionesService";
 import { encolarBorrador, hayConexion } from "../../services/offlineService";
@@ -38,7 +38,10 @@ import {
   pickImageFromLibrary,
 } from "../../services/storageService";
 import { subirImagenProducto } from "../../services/supabase";
-import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
+import { StockPorSede } from "../../components/ui/StockPorSede";
+import { usePuedeVender } from "../../hooks/usePuedeVender";
+import { useSedesEmpresa } from "../../hooks/useSedesEmpresa";
+import { selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
 
 const DEFAULT_VALUES: ProductoFormValues = {
   nombre: "",
@@ -57,7 +60,10 @@ const DEFAULT_VALUES: ProductoFormValues = {
 export default function NuevoProductoScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const esVendedor = useUsuarioStore(selectPuedeVender);
+  const esVendedor = usePuedeVender();
+  const empresaActiva = useEmpresaStore(selectEmpresaActiva);
+  const { editables: sedesEditables } = useSedesEmpresa(empresaActiva);
+  const [stockSedes, setStockSedes] = useState<Record<number, string>>({});
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -140,7 +146,7 @@ export default function NuevoProductoScreen() {
         .map((item) => item.trim())
         .filter(Boolean);
 
-      const payload = {
+      const payload: ProductoInput = {
         nombre: values.nombre.trim(),
         precio: values.precio,
         stock: values.stock,
@@ -159,6 +165,35 @@ export default function NuevoProductoScreen() {
         direccionRetiro: values.direccion?.trim() || undefined,
       };
 
+      if (empresaActiva) {
+        if (empresaActiva.estado !== "verificada") {
+          Toast.show({
+            type: "error",
+            text1: "Tu empresa todavía no está verificada",
+            text2: "Vas a poder publicar cuando se verifique el CUIT.",
+          });
+          return;
+        }
+        if (sedesEditables.length === 0) {
+          Toast.show({ type: "error", text1: "No tenés sedes asignadas para publicar" });
+          return;
+        }
+        if (!(await hayConexion())) {
+          Toast.show({ type: "error", text1: "Necesitás conexión para publicar como empresa" });
+          return;
+        }
+
+        const stockPorSede = sedesEditables.map((sede) => ({
+          sedeId: sede.id,
+          cantidad: Number(stockSedes[sede.id]) || 0,
+        }));
+        // La sede principal (dirección de retiro) es la primera con stock.
+        const principal = stockPorSede.find((item) => item.cantidad > 0) ?? stockPorSede[0];
+        payload.stock = stockPorSede.reduce((total, item) => total + item.cantidad, 0);
+        payload.direccionRetiro = undefined;
+        payload.empresa = { empresaId: empresaActiva.empresaId, sedeId: principal.sedeId, stockPorSede };
+      }
+
       if (!(await hayConexion())) {
         await encolarBorrador({ tipo: "producto", payload });
         Toast.show({
@@ -173,7 +208,9 @@ export default function NuevoProductoScreen() {
       const nuevoProducto = await createProducto(payload);
 
       // Si escribió una dirección nueva, queda guardada en sus direcciones.
-      guardarSiEsNueva(payload.direccionRetiro ?? "", direcciones).catch(() => {});
+      if (!payload.empresa) {
+        guardarSiEsNueva(payload.direccionRetiro ?? "", direcciones).catch(() => {});
+      }
 
       Toast.show({
         type: "success",
@@ -206,6 +243,12 @@ export default function NuevoProductoScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>Nueva Publicacion</Text>
+        {empresaActiva ? (
+          <Text style={styles.companyBanner}>
+            Publicando como {empresaActiva.nombre}
+            {empresaActiva.estado !== "verificada" ? " (pendiente de verificación: todavía no podés publicar)" : ""}
+          </Text>
+        ) : null}
 
         <InputField
           control={control}
@@ -222,15 +265,23 @@ export default function NuevoProductoScreen() {
           textInputProps={{ keyboardType: "numeric" }}
         />
 
-        <InputField
-          control={control}
-          name="stock"
-          label="Stock"
-          placeholder="10"
-          textInputProps={{
-            keyboardType: "numeric",
-          }}
-        />
+        {empresaActiva ? (
+          <StockPorSede
+            sedes={sedesEditables}
+            valores={stockSedes}
+            onChange={(sedeId, valor) => setStockSedes((actual) => ({ ...actual, [sedeId]: valor }))}
+          />
+        ) : (
+          <InputField
+            control={control}
+            name="stock"
+            label="Stock"
+            placeholder="10"
+            textInputProps={{
+              keyboardType: "numeric",
+            }}
+          />
+        )}
 
         <View style={styles.photoRow}>
           {(["camera", "library"] as const).map((source) => (
@@ -285,12 +336,16 @@ export default function NuevoProductoScreen() {
 
         <ColoresSelector control={control} />
 
-        <Text style={styles.addressTitle}>Dirección de retiro</Text>
-        <SelectorDireccion
-          direcciones={direcciones}
-          value={direccionElegida}
-          onChange={setDireccion}
-        />
+        {empresaActiva ? null : (
+          <>
+            <Text style={styles.addressTitle}>Dirección de retiro</Text>
+            <SelectorDireccion
+              direcciones={direcciones}
+              value={direccionElegida}
+              onChange={setDireccion}
+            />
+          </>
+        )}
 
         <InputField
           control={control}
@@ -335,6 +390,14 @@ export default function NuevoProductoScreen() {
 }
 
 const styles = StyleSheet.create({
+  companyBanner: {
+    backgroundColor: Colors.tertiary,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    color: Colors.primary,
+    fontFamily: "Montserrat_600SemiBold",
+  },
   screen: {
     flex: 1,
     backgroundColor: Colors.background,

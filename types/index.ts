@@ -14,6 +14,10 @@ export interface Producto {
   talle?: string[];
   colores?: string[];
   descripcion: string;
+  /** Prenda de empresa (null = de un particular). */
+  empresaId?: number | null;
+  sedeId?: number | null;
+  creadoPor?: string;
 }
 
 export interface Usuario {

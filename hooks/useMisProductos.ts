@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Producto } from '../types';
-import { getMisProductos } from '../services/productosService';
+import { getMisProductos, getProductosDeEmpresa } from '../services/productosService';
 
-export function useMisProductos() {
+/** Publicaciones propias, o las de la empresa activa si se pasa su id. */
+export function useMisProductos(empresaId: number | null = null) {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -12,7 +13,7 @@ export function useMisProductos() {
     try {
       setError(null);
 
-      const data = await getMisProductos();
+      const data = empresaId ? await getProductosDeEmpresa(empresaId) : await getMisProductos();
 
       setProductos(data);
     } catch (err) {
@@ -23,7 +24,7 @@ export function useMisProductos() {
 
       setError(message);
     }
-  }, []);
+  }, [empresaId]);
 
   useEffect(() => {
     void cargar().finally(() => {

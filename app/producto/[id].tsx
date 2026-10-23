@@ -30,7 +30,8 @@ import {
   selectTotalItems,
   useCarritoStore,
 } from "../../stores/useCarritoStore";
-import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
+import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { usePuedeGestionarProducto, usePuedeVender } from "../../hooks/usePuedeVender";
 import { useFavoritosStore } from "../../stores/useFavoritosStore";
 
 const CANVAS_WIDTH = 412;
@@ -45,8 +46,9 @@ export default function ProductDetailScreen() {
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
   const setCompraDirecta = useCarritoStore((state) => state.setCompraDirecta);
   const totalItems = useCarritoStore(selectTotalItems);
-  const esVendedor = useUsuarioStore(selectPuedeVender);
+  const esVendedor = usePuedeVender();
   const { producto, cargando, error, refrescar } = useProductoById(id);
+  const puedeGestionar = usePuedeGestionarProducto(producto);
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
@@ -444,7 +446,7 @@ export default function ProductDetailScreen() {
               ))}
             </View>
 
-            {esVendedor ? (
+            {puedeGestionar ? (
               <View style={styles.adminActionsRow}>
                 <Pressable
                   onPress={() =>

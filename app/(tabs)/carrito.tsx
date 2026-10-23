@@ -17,7 +17,8 @@ import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
 import { Colors, Radius, Shadow } from '../../constants/theme';
 import { selectSubtotal, selectTotalItems, useCarritoStore } from '../../stores/useCarritoStore';
-import { selectPuedeVender, useUsuarioStore } from '../../stores/useUsuarioStore';
+import { useUsuarioStore } from '../../stores/useUsuarioStore';
+import { usePuedeVender } from '../../hooks/usePuedeVender';
 
 const CANVAS_WIDTH = 412;
 
@@ -31,7 +32,7 @@ export default function CarritoScreen() {
   const eliminarProducto = useCarritoStore((state) => state.eliminarProducto);
   const totalItems = useCarritoStore(selectTotalItems);
   const subtotal = useCarritoStore(selectSubtotal);
-  const esVendedor = useUsuarioStore(selectPuedeVender);
+  const esVendedor = usePuedeVender();
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;

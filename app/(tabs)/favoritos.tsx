@@ -10,7 +10,7 @@ import { ROUTES } from '../../constants/routes';
 import { Colors } from '../../constants/theme';
 import { useCarritoStore, selectTotalItems } from '../../stores/useCarritoStore';
 import { useFavoritosStore } from '../../stores/useFavoritosStore';
-import { selectPuedeVender, useUsuarioStore } from '../../stores/useUsuarioStore';
+import { usePuedeVender } from '../../hooks/usePuedeVender';
 import { Producto } from '../../types';
 
 const MAX_CONTENT_WIDTH = 1160;
@@ -44,7 +44,7 @@ export default function FavoritosScreen() {
   const favoritos = useFavoritosStore((state) => state.favoritos);
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
   const totalItems = useCarritoStore(selectTotalItems);
-  const usuario = useUsuarioStore((state) => state.usuario);
+  const puedeVender = usePuedeVender();
 
   const onPressAgregar = (producto: Producto) => {
     if (!producto.disponible) {
@@ -98,7 +98,7 @@ export default function FavoritosScreen() {
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
-        esVendedor={selectPuedeVender({ usuario })}
+        esVendedor={puedeVender}
         onPressCreate={() => router.push(ROUTES.newProduct)}
         onPressHome={() => router.replace(ROUTES.home)}
         onPressBag={() => router.push(ROUTES.categories)}

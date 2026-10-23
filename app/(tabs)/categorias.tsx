@@ -24,7 +24,8 @@ import { Colors, Radius, Shadow } from "../../constants/theme";
 import { ROUTES } from "../../constants/routes";
 import { useProductos } from "../../hooks/useProductos";
 import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
-import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
+import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { usePuedeVender } from "../../hooks/usePuedeVender";
 import { Producto } from "../../types";
 
 const CANVAS_WIDTH = 412;
@@ -334,7 +335,7 @@ export default function CategoriasScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const totalItems = useCarritoStore(selectTotalItems);
-  const esVendedor = useUsuarioStore(selectPuedeVender);
+  const esVendedor = usePuedeVender();
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
   const { productos, cargando, error, refrescar } = useProductos();
   const [activeFilter, setActiveFilter] = useState("TODO");

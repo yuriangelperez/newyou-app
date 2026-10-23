@@ -31,12 +31,15 @@ import {
   ProductoFormValues,
   productoSchema,
 } from "../../schemas/productoSchema";
-import { updateProducto } from "../../services/productosService";
+import { getStockSedes, ProductoInput, updateProducto } from "../../services/productosService";
 import {
   pickImageFromLibrary,
   uploadProductImage,
 } from "../../services/storageService";
-import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
+import { StockPorSede } from "../../components/ui/StockPorSede";
+import { usePuedeGestionarProducto } from "../../hooks/usePuedeVender";
+import { useSedesEmpresa } from "../../hooks/useSedesEmpresa";
+import { puede, useEmpresaStore } from "../../stores/useEmpresaStore";
 
 const DEFAULT_VALUES: ProductoFormValues = {
   nombre: "",
@@ -54,10 +57,21 @@ const DEFAULT_VALUES: ProductoFormValues = {
 export default function EditarProductoScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const esVendedor = useUsuarioStore(selectPuedeVender);
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { producto, cargando, error, refrescar } = useProductoById(id);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const puedeGestionar = usePuedeGestionarProducto(producto);
+
+  // Prendas de empresa: stock por sede y permiso de precio según el rol en esa empresa.
+  const membresia = useEmpresaStore(
+    (state) => state.membresias.find((item) => item.empresaId === producto?.empresaId) ?? null,
+  );
+  const { editables: sedesEditables, soloLectura: sedesSoloLectura } = useSedesEmpresa(membresia);
+  const [stockSedes, setStockSedes] = useState<Record<number, string>>({});
+  const [stockGuardado, setStockGuardado] = useState<Record<number, number>>({});
+  const [stockCambiado, setStockCambiado] = useState(false);
+  const esDeEmpresa = Boolean(producto?.empresaId);
+  const puedeCambiarPrecio = !esDeEmpresa || puede(membresia, "productos.precio");
 
   const {
     control,
@@ -102,7 +116,22 @@ export default function EditarProductoScreen() {
     });
   }, [producto, reset]);
 
-  if (!esVendedor) {
+  useEffect(() => {
+    if (!producto?.empresaId) {
+      return;
+    }
+
+    getStockSedes(producto.id)
+      .then((filas) => {
+        const cantidades = Object.fromEntries(filas.map((fila) => [fila.sedeId, fila.cantidad]));
+        setStockGuardado(cantidades);
+        setStockSedes(Object.fromEntries(filas.map((fila) => [fila.sedeId, String(fila.cantidad)])));
+        setStockCambiado(false);
+      })
+      .catch(() => {});
+  }, [producto?.id, producto?.empresaId]);
+
+  const accesoDenegado = () => {
     return (
       <View style={styles.accessDenied}>
         <Text style={styles.title}>Editar publicación</Text>
@@ -117,7 +146,7 @@ export default function EditarProductoScreen() {
         </Pressable>
       </View>
     );
-  }
+  };
 
   const onPickAndUploadImage = async () => {
     try {
@@ -153,7 +182,7 @@ export default function EditarProductoScreen() {
     }
 
     try {
-      await updateProducto(id, {
+      const payload: ProductoInput = {
         nombre: values.nombre.trim(),
         precio: values.precio,
         stock: values.stock,
@@ -172,7 +201,20 @@ export default function EditarProductoScreen() {
           .map((item) => item.trim())
           .filter(Boolean),
         descripcion: values.descripcion.trim(),
-      });
+      };
+
+      if (producto?.empresaId && producto.sedeId) {
+        payload.empresa = {
+          empresaId: producto.empresaId,
+          sedeId: producto.sedeId,
+          stockPorSede: sedesEditables.map((sede) => ({
+            sedeId: sede.id,
+            cantidad: Number(stockSedes[sede.id]) || 0,
+          })),
+        };
+      }
+
+      await updateProducto(id, payload);
 
       Toast.show({
         type: "success",
@@ -211,6 +253,13 @@ export default function EditarProductoScreen() {
     );
   }
 
+  if (!puedeGestionar) {
+    return accesoDenegado();
+  }
+
+  const guardarDeshabilitado =
+    isSubmitting || uploadingImage || !isValid || (!isDirty && !stockCambiado);
+
   return (
     <KeyboardAvoidingView
       style={styles.screen}
@@ -233,20 +282,33 @@ export default function EditarProductoScreen() {
         <InputField
           control={control}
           name="precio"
-          label="Precio"
+          label={puedeCambiarPrecio ? "Precio" : "Precio (tu rol no puede cambiarlo)"}
           placeholder="35000"
-          textInputProps={{ keyboardType: "numeric" }}
+          textInputProps={{ keyboardType: "numeric", editable: puedeCambiarPrecio }}
         />
 
-        <InputField
-          control={control}
-          name="stock"
-          label="Stock"
-          placeholder="10"
-          textInputProps={{
-            keyboardType: "numeric",
-          }}
-        />
+        {esDeEmpresa ? (
+          <StockPorSede
+            sedes={sedesEditables}
+            valores={stockSedes}
+            onChange={(sedeId, valor) => {
+              setStockSedes((actual) => ({ ...actual, [sedeId]: valor }));
+              setStockCambiado(true);
+            }}
+            sedesSoloLectura={sedesSoloLectura}
+            cantidadesSoloLectura={stockGuardado}
+          />
+        ) : (
+          <InputField
+            control={control}
+            name="stock"
+            label="Stock"
+            placeholder="10"
+            textInputProps={{
+              keyboardType: "numeric",
+            }}
+          />
+        )}
 
         <Pressable
           onPress={() => void onPickAndUploadImage()}
@@ -304,13 +366,9 @@ export default function EditarProductoScreen() {
         </View>
 
         <Pressable
-          disabled={isSubmitting || uploadingImage || !isValid || !isDirty}
+          disabled={guardarDeshabilitado}
           onPress={() => void onSubmit()}
-          style={[
-            styles.submitButton,
-            (isSubmitting || uploadingImage || !isValid || !isDirty) &&
-              styles.submitDisabled,
-          ]}
+          style={[styles.submitButton, guardarDeshabilitado && styles.submitDisabled]}
         >
           <Text style={styles.submitText}>
             {isSubmitting ? "Guardando..." : "Guardar Cambios"}

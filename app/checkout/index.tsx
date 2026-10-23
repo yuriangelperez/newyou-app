@@ -35,7 +35,8 @@ import {
   selectTotalItems,
   useCarritoStore,
 } from "../../stores/useCarritoStore";
-import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
+import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { usePuedeVender } from "../../hooks/usePuedeVender";
 
 const CANVAS_WIDTH = 412;
 
@@ -72,7 +73,7 @@ export default function CheckoutScreen() {
     useCallback(() => limpiarCompraDirecta, [limpiarCompraDirecta]),
   );
   const usuario = useUsuarioStore((state) => state.usuario);
-  const esVendedor = selectPuedeVender({ usuario });
+  const esVendedor = usePuedeVender();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const scale = Math.min(width, CANVAS_WIDTH) / CANVAS_WIDTH;

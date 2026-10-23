@@ -14,7 +14,8 @@ import { useFocusEffect, useRouter } from "expo-router";
 
 import { Colors, Radius, Spacing } from "../constants/theme";
 import { ROUTES } from "../constants/routes";
-import { selectPuedeVender, useUsuarioStore } from "../stores/useUsuarioStore";
+import { selectEmpresaActiva, useEmpresaStore } from "../stores/useEmpresaStore";
+import { usePuedeVender } from "../hooks/usePuedeVender";
 import { useMisProductos } from "../hooks/useMisProductos";
 import { deleteProducto } from "../services/productosService";
 import { Producto } from "../types";
@@ -24,7 +25,8 @@ const backIcon = require("../assets/images/product-detail/back.png");
 export default function MisPublicacionesScreen() {
   const router = useRouter();
 
-  const usuario = useUsuarioStore((state) => state.usuario);
+  const puedeVender = usePuedeVender();
+  const empresaActiva = useEmpresaStore(selectEmpresaActiva);
 
   const {
     productos,
@@ -32,7 +34,7 @@ export default function MisPublicacionesScreen() {
     refreshing,
     error,
     refrescar,
-  } = useMisProductos();
+  } = useMisProductos(empresaActiva?.empresaId ?? null);
 
   useFocusEffect(
     useCallback(() => {
@@ -79,7 +81,7 @@ export default function MisPublicacionesScreen() {
     });
   };
 
-  if (!selectPuedeVender({ usuario })) {
+  if (!puedeVender) {
     return (
       <SafeAreaView
         style={styles.safeArea}
@@ -254,7 +256,7 @@ export default function MisPublicacionesScreen() {
 
           <View style={styles.headerTitleContainer}>
             <Text style={styles.title}>
-              Mis publicaciones
+              {empresaActiva ? `Publicaciones de ${empresaActiva.nombre}` : "Mis publicaciones"}
             </Text>
 
             <Text style={styles.counter}>

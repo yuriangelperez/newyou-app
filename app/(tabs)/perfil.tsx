@@ -18,14 +18,15 @@ import { Colors, Radius } from "../../constants/theme";
 import { supabase } from "../../services/supabase";
 import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
 import { selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
-import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
+import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { usePuedeVender } from "../../hooks/usePuedeVender";
 
 export default function PerfilScreen() {
   const router = useRouter();
   const usuario = useUsuarioStore((state) => state.usuario);
   const totalItems = useCarritoStore(selectTotalItems);
   const setUsuario = useUsuarioStore((state) => state.setUsuario);
-  const esVendedor = selectPuedeVender({ usuario });
+  const esVendedor = usePuedeVender();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const canvasWidth = Math.min(width, 412);
@@ -102,7 +103,7 @@ export default function PerfilScreen() {
 
           <Text style={styles.label}>Tipo de cuenta</Text>
           <Text style={styles.value}>
-            {esVendedor ? "Vendedor particular" : "Comprador"}
+            {usuario?.role === "particular" ? "Vendedor particular" : "Comprador"}
           </Text>
         </View>
         <Pressable
@@ -181,7 +182,7 @@ export default function PerfilScreen() {
             </Pressable>
 
           </>
-        ) : usuario ? (
+        ) : usuario?.role === "comprador" ? (
           <Pressable
             onPress={() => void convertirseEnVendedor()}
             style={styles.myProductsButton}
