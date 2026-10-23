@@ -16,11 +16,14 @@ import {
 
 import { BRANDING_LOGO } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
-import { Colors, Radius } from '../../constants/theme';
+import { Colors, Radius, Shadow } from '../../constants/theme';
+import { useEsEscritorio } from '../../hooks/useEsEscritorio';
 import { signUpWithPassword } from '../../services/auth';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  // En la web de escritorio el formulario va en una tarjeta centrada.
+  const esEscritorio = useEsEscritorio();
   const [correo, setCorreo] = useState('');
   const [usuario, setUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');
@@ -84,7 +87,7 @@ export default function RegisterScreen() {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, esEscritorio && styles.containerEscritorio]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
       <View style={styles.logoContainer}>
@@ -211,6 +214,19 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  containerEscritorio: {
+    flexGrow: 0,
+    alignSelf: 'center',
+    width: 480,
+    marginVertical: 48,
+    paddingTop: 48,
+    paddingHorizontal: 24,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadow.card,
+  },
   screen: {
     flex: 1,
     backgroundColor: Colors.background,

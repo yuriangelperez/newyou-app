@@ -5,7 +5,9 @@ import NetInfo from '@react-native-community/netinfo';
 import { useEffect, useState } from 'react';
 import Toast, { BaseToast, ToastConfig } from 'react-native-toast-message';
 
+import { BarraNavegacionWeb } from '../components/BarraNavegacionWeb';
 import { Colors } from '../constants/theme';
+import { useEsEscritorio } from '../hooks/useEsEscritorio';
 import { ROUTES } from '../constants/routes';
 import { sincronizarBorradores } from '../services/offlineService';
 import { supabase } from '../services/supabase';
@@ -28,6 +30,7 @@ export default function RootLayout() {
   const hidratarDesdeAuthUser = useUsuarioStore((state) => state.hidratarDesdeAuthUser);
   const router = useRouter();
   const segments = useSegments();
+  const esEscritorio = useEsEscritorio();
   // `undefined` = aún se está resolviendo la sesión inicial.
   const [haySesion, setHaySesion] = useState<boolean | undefined>(undefined);
 
@@ -129,6 +132,7 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="auto" />
+      {esEscritorio && haySesion && segments[0] !== '(auth)' ? <BarraNavegacionWeb /> : null}
       <Stack initialRouteName="(auth)/login" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)/login" />
         <Stack.Screen name="(auth)/register" />

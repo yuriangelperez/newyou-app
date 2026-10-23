@@ -34,6 +34,7 @@ import {
 } from "../../stores/useCarritoStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { usePuedeGestionarProducto, usePuedeVender } from "../../hooks/usePuedeVender";
+import { useEsEscritorio } from "../../hooks/useEsEscritorio";
 import { useFavoritosStore } from "../../stores/useFavoritosStore";
 
 const CANVAS_WIDTH = 412;
@@ -54,9 +55,11 @@ export default function ProductDetailScreen() {
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
+  // En la web de escritorio: fotos a la izquierda y datos a la derecha.
+  const esEscritorio = useEsEscritorio();
   const styles = useMemo(
-    () => createStyles(scale, canvasWidth, insets.top, insets.bottom),
-    [canvasWidth, insets.bottom, insets.top, scale],
+    () => createStyles(scale, canvasWidth, insets.top, insets.bottom, esEscritorio),
+    [canvasWidth, insets.bottom, insets.top, scale, esEscritorio],
   );
 
   const talles = producto?.talle?.length ? producto.talle : DEFAULT_SIZES;
@@ -315,6 +318,7 @@ export default function ProductDetailScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.galleryColumn}>
           <View style={styles.carouselFrame}>
             <ScrollView
               horizontal
@@ -350,6 +354,7 @@ export default function ProductDetailScreen() {
               ))}
             </View>
           ) : null}
+          </View>
 
           <View style={styles.infoSection}>
             <Text numberOfLines={2} style={styles.productName}>
@@ -542,8 +547,10 @@ function createStyles(
   canvasWidth: number,
   topInset: number,
   bottomInset: number,
+  esEscritorio = false,
 ) {
   const s = (value: number) => value * scale;
+  const foto = esEscritorio ? 440 : s(275);
 
   return StyleSheet.create({
     screen: {
@@ -553,7 +560,7 @@ function createStyles(
     canvas: {
       flex: 1,
       width: "100%",
-      maxWidth: 600,
+      maxWidth: esEscritorio ? 1100 : 600,
       alignSelf: "center",
       backgroundColor: Colors.background,
     },
@@ -591,11 +598,15 @@ function createStyles(
     },
     scrollContent: {
       paddingTop: s(23),
-      paddingBottom: s(122) + bottomInset,
+      paddingBottom: (esEscritorio ? 48 : s(122)) + bottomInset,
+      ...(esEscritorio
+        ? { flexDirection: "row" as const, alignItems: "flex-start" as const, columnGap: 48, paddingHorizontal: 24 }
+        : {}),
     },
+    galleryColumn: esEscritorio ? { flexShrink: 0 } : {},
     carouselFrame: {
-      width: s(275),
-      height: s(275),
+      width: foto,
+      height: foto,
       alignSelf: "center",
       borderRadius: s(10),
       borderWidth: s(5),
@@ -604,8 +615,8 @@ function createStyles(
       overflow: "hidden",
     },
     carouselImage: {
-      width: s(275),
-      height: s(275),
+      width: foto,
+      height: foto,
       resizeMode: "cover",
     },
     carouselDots: {
@@ -623,11 +634,13 @@ function createStyles(
     carouselDotActive: {
       backgroundColor: Colors.secondary,
     },
-    infoSection: {
-      marginTop: s(14),
-      marginLeft: s(38),
-      marginRight: s(38),
-    },
+    infoSection: esEscritorio
+      ? { flex: 1, maxWidth: 520 }
+      : {
+          marginTop: s(14),
+          marginLeft: s(38),
+          marginRight: s(38),
+        },
     productName: {
       color: "#2D1F16",
       fontSize: s(30),
