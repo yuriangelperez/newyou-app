@@ -115,7 +115,15 @@ export default function CheckoutScreen() {
   );
   const direccionRetiro = direccionesTienda.join(" | ");
 
-  const envio = calcularEnvio(entrega);
+  const envio = calcularEnvio(entrega, tiendas ?? []);
+  // Tiendas que no ofrecen la forma de entrega elegida (el servidor rechaza la compra).
+  const sinEntregaElegida = Array.from(
+    new Set(
+      (tiendas ?? [])
+        .filter((tienda) => (entrega === "domicilio" ? !tienda.haceEnvio : !tienda.haceRetiro))
+        .map((tienda) => tienda.vendedor),
+    ),
+  );
   const total = subtotal + envio;
 
   const onConfirmar = async () => {
@@ -189,7 +197,7 @@ export default function CheckoutScreen() {
     }
   };
 
-  const envioTexto = envio === 0 ? "GRATIS" : formatPrecio(envio);
+  const envioTexto = envio === 0 ? "GRATIS" : `${formatPrecio(envio)} (estimado)`;
 
   return (
     <View style={styles.screen}>
@@ -233,7 +241,9 @@ export default function CheckoutScreen() {
               <Text style={styles.entregaDetalle}>{opcion.detalle}</Text>
             </View>
             <Text style={styles.gratis}>
-              {calcularEnvio(opcion.value) === 0 ? "GRATIS" : formatPrecio(calcularEnvio(opcion.value))}
+              {calcularEnvio(opcion.value, tiendas ?? []) === 0
+                ? "GRATIS"
+                : formatPrecio(calcularEnvio(opcion.value, tiendas ?? []))}
             </Text>
           </Pressable>
         ))}
@@ -244,6 +254,14 @@ export default function CheckoutScreen() {
             value={direccion}
             onChange={setDireccion}
           />
+        ) : null}
+
+        {sinEntregaElegida.length > 0 ? (
+          <Text style={styles.aviso}>
+            {`${sinEntregaElegida.join(", ")} no ofrece ${
+              entrega === "domicilio" ? "envío a domicilio" : "retiro en el local"
+            }. Elegí la otra opción o quitá esas prendas.`}
+          </Text>
         ) : null}
 
         {entrega === "local" && vendedoresSinDireccion.length > 0 ? (

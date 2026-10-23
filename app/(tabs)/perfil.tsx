@@ -17,7 +17,7 @@ import { ROUTES } from "../../constants/routes";
 import { Colors, Radius } from "../../constants/theme";
 import { supabase } from "../../services/supabase";
 import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
-import { selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
+import { puede, selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { usePuedeVender } from "../../hooks/usePuedeVender";
 
@@ -182,6 +182,11 @@ export default function PerfilScreen() {
             </Pressable>
 
           </>
+        ) : puede(empresaActiva, "pedidos.ver") ? (
+          // Por ejemplo, el rol Envíos: no publica, pero gestiona los pedidos de la empresa.
+          <Pressable onPress={() => router.push(ROUTES.mySales)} style={styles.myProductsButton}>
+            <Text style={styles.myProductsText}>Ventas de {empresaActiva?.nombre}</Text>
+          </Pressable>
         ) : usuario?.role === "comprador" ? (
           <Pressable
             onPress={() => void convertirseEnVendedor()}

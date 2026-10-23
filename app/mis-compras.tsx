@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { HistorialPedidos } from "../components/HistorialPedidos";
-import { obtenerMisCompras } from "../services/comprasService";
 import { leerBorradores } from "../services/offlineService";
+import { obtenerMisPedidos } from "../services/pedidosService";
 
 export default function MisComprasScreen() {
   const [pendientes, setPendientes] = useState(0);
@@ -17,7 +17,8 @@ export default function MisComprasScreen() {
     <HistorialPedidos
       titulo="Mis compras"
       textoVacio="Todavía no hiciste ninguna compra."
-      cargar={obtenerMisCompras}
+      cargar={obtenerMisPedidos}
+      modo="compra"
       pendientes={pendientes}
     />
   );

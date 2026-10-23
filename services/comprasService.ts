@@ -4,8 +4,6 @@ import { supabase } from './supabase';
 export type EntregaCompra = 'domicilio' | 'local';
 export type MedioPago = 'Efectivo' | 'Tarjeta' | 'Mercado Pago' | 'Transferencia';
 
-// Según el diseño, el envío a domicilio y el retiro en local son gratis.
-export const COSTO_ENVIO_DOMICILIO = 0;
 
 export interface ConfirmarCompraParams {
   operationKey: string;
@@ -26,8 +24,23 @@ export function generarOperationKey() {
   return `NY-ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 }
 
-export function calcularEnvio(entrega: EntregaCompra) {
-  return entrega === 'domicilio' ? COSTO_ENVIO_DOMICILIO : 0;
+/**
+ * Envío estimado: el costo de cada sede de empresa involucrada (una vez por sede);
+ * los particulares no cobran envío. El servidor recalcula el valor final.
+ */
+export function calcularEnvio(entrega: EntregaCompra, tiendas: TiendaRetiro[] = []) {
+  if (entrega !== 'domicilio') {
+    return 0;
+  }
+
+  const costoPorSede = new Map<number, number>();
+  tiendas.forEach((tienda) => {
+    if (tienda.sedeId !== null) {
+      costoPorSede.set(tienda.sedeId, tienda.costoEnvio);
+    }
+  });
+
+  return Array.from(costoPorSede.values()).reduce((total, costo) => total + costo, 0);
 }
 
 /**
@@ -65,65 +78,15 @@ export async function confirmarCompra({
   return data as CompraConfirmada;
 }
 
-export interface ItemHistorial {
-  productoId: string;
-  nombre: string;
-  precio: number;
-  cantidad: number;
-  talle?: string;
-  color?: string;
-}
-
-export interface PedidoHistorial {
-  compraid: number;
-  numero_orden: number;
-  created_at: string;
-  entrega: EntregaCompra;
-  metodo_pago: string;
-  items: ItemHistorial[];
-  total: number;
-  /** Sólo en ventas: nombre del comprador. */
-  comprador?: string | null;
-}
-
-export async function obtenerMisCompras(): Promise<PedidoHistorial[]> {
-  const { data, error } = await supabase
-    .from('compras')
-    .select('compraid, numero_orden, created_at, entrega, metodo_pago, total, items')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? []).map((row) => ({ ...row, total: Number(row.total) })) as PedidoHistorial[];
-}
-
-export async function obtenerMisVentas(): Promise<PedidoHistorial[]> {
-  const { data, error } = await supabase.rpc('mis_ventas');
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? []).map(
-    (row: PedidoHistorial & { total_vendedor: number }) => ({
-      compraid: row.compraid,
-      numero_orden: row.numero_orden,
-      created_at: row.created_at,
-      entrega: row.entrega,
-      metodo_pago: row.metodo_pago,
-      items: row.items,
-      total: Number(row.total_vendedor),
-      comprador: row.comprador,
-    }),
-  );
-}
-
 export interface TiendaRetiro {
   productoId: string;
   vendedor: string;
   direccion: string | null;
+  /** Sede de empresa (null para particulares). */
+  sedeId: number | null;
+  haceRetiro: boolean;
+  haceEnvio: boolean;
+  costoEnvio: number;
 }
 
 /** Dirección de retiro de cada producto del carrito (la de su publicación). */
@@ -139,10 +102,22 @@ export async function obtenerTiendasDeRetiro(
   }
 
   return (data ?? []).map(
-    (row: { productoid: number; vendedor: string; direccion: string | null }) => ({
+    (row: {
+      productoid: number;
+      vendedor: string;
+      direccion: string | null;
+      sede_id: number | null;
+      hace_retiro: boolean | null;
+      hace_envio: boolean | null;
+      costo_envio: number | string | null;
+    }) => ({
       productoId: String(row.productoid),
       vendedor: row.vendedor,
       direccion: row.direccion?.trim() || null,
+      sedeId: row.sede_id ?? null,
+      haceRetiro: row.hace_retiro ?? true,
+      haceEnvio: row.hace_envio ?? true,
+      costoEnvio: Number(row.costo_envio ?? 0),
     }),
   );
 }
