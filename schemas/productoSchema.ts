@@ -31,6 +31,9 @@ export const productoSchema = z.object({
     z.string().url('Ingresa una URL de imagen valida.'),
   ]),
 
+  // Hasta 5 imágenes; la primera es la principal. `imagen` queda como la principal.
+  imagenes: z.array(z.string().url('Imagen invalida.')).max(5, 'Podés subir hasta 5 imágenes.').default([]),
+
   tipoPrenda: z.enum(TIPOS_PRENDA),
 
   categoria: z.enum(CATEGORIAS_PRODUCTO),

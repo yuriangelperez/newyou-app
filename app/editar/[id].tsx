@@ -3,8 +3,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
-  ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -32,10 +30,7 @@ import {
   productoSchema,
 } from "../../schemas/productoSchema";
 import { getStockSedes, ProductoInput, updateProducto } from "../../services/productosService";
-import {
-  pickImageFromLibrary,
-  uploadProductImage,
-} from "../../services/storageService";
+import { SelectorImagenes } from "../../components/ui/SelectorImagenes";
 import { StockPorSede } from "../../components/ui/StockPorSede";
 import { usePuedeGestionarProducto } from "../../hooks/usePuedeVender";
 import { useSedesEmpresa } from "../../hooks/useSedesEmpresa";
@@ -46,6 +41,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
   precio: "0",
   stock: "1",
   imagen: "",
+  imagenes: [],
   categoria: "Camisas",
   ...CATEGORIA_PRODUCTO_POR_DEFECTO,
   disponible: true,
@@ -87,7 +83,11 @@ export default function EditarProductoScreen() {
   });
 
   const disponible = watch("disponible");
-  const imageField = watch("imagen");
+  const imagenes = watch("imagenes") ?? [];
+  const setImagenes = (lista: string[]) => {
+    setValue("imagenes", lista, { shouldValidate: true, shouldDirty: true });
+    setValue("imagen", lista[0] ?? "", { shouldValidate: true });
+  };
 
   useEffect(() => {
     if (!producto) {
@@ -99,6 +99,7 @@ export default function EditarProductoScreen() {
       precio: producto.precio.toString(),
       stock: producto.stock.toString(),
       imagen: producto.imagen,
+      imagenes: (producto.imagenes?.length ? producto.imagenes : [producto.imagen]).filter(Boolean).slice(0, 5),
       categoria: producto.categoria as ProductoFormValues["categoria"],
       tipoPrenda:
         producto.categoriaProducto?.tipoPrenda ??
@@ -148,34 +149,6 @@ export default function EditarProductoScreen() {
     );
   };
 
-  const onPickAndUploadImage = async () => {
-    try {
-      setUploadingImage(true);
-      const image = await pickImageFromLibrary();
-
-      if (!image) {
-        return;
-      }
-
-      const publicUrl = await uploadProductImage(image);
-      setValue("imagen", publicUrl, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
-      Toast.show({
-        type: "success",
-        text1: "Imagen actualizada",
-        text2: "La nueva imagen se subió correctamente.",
-      });
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "No se pudo subir la imagen.";
-      Toast.show({ type: "error", text1: "Error de imagen", text2: message });
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
   const onSubmit = handleSubmit(async (values) => {
     if (!id) {
       return;
@@ -186,7 +159,8 @@ export default function EditarProductoScreen() {
         nombre: values.nombre.trim(),
         precio: values.precio,
         stock: values.stock,
-        imagen: values.imagen.trim(),
+        imagen: values.imagenes[0] ?? "",
+        imagenes: values.imagenes,
         categoria: values.categoria,
         tipoPrenda: values.tipoPrenda,
         temporada: values.temporada,
@@ -310,26 +284,12 @@ export default function EditarProductoScreen() {
           />
         )}
 
-        <Pressable
-          onPress={() => void onPickAndUploadImage()}
-          disabled={uploadingImage || isSubmitting}
-          style={[
-            styles.uploadButton,
-            (uploadingImage || isSubmitting) && styles.submitDisabled,
-          ]}
-        >
-          {uploadingImage ? (
-            <ActivityIndicator color="#2D1F16" />
-          ) : (
-            <Text style={styles.uploadButtonText}>
-              Reemplazar imagen desde la galería
-            </Text>
-          )}
-        </Pressable>
-
-        {imageField ? (
-          <Image source={{ uri: imageField }} style={styles.previewImage} />
-        ) : null}
+        <SelectorImagenes
+          imagenes={imagenes}
+          onChange={setImagenes}
+          onSubiendoChange={setUploadingImage}
+          deshabilitado={isSubmitting}
+        />
 
         <CategoriaProductoSelector control={control} />
 
@@ -436,28 +396,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginTop: 4,
-  },
-  uploadButton: {
-    marginTop: 6,
-    minHeight: 44,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.secondary,
-    backgroundColor: "#EFE5DE",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  uploadButtonText: {
-    color: "#2D1F16",
-    fontSize: 14,
-    fontFamily: "Montserrat_600SemiBold",
-  },
-  previewImage: {
-    width: "100%",
-    height: 180,
-    borderRadius: Radius.md,
-    marginTop: 10,
-    backgroundColor: Colors.surface,
   },
   switchLabel: {
     color: Colors.primary,

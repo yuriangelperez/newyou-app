@@ -3,6 +3,7 @@ import { CategoriaProducto } from "../constants/categoriasProductos";
 import { supabase } from "./supabase";
 
 const TABLA_PRODUCTOS = "productos";
+export const MAX_IMAGENES = 5;
 
 const CATEGORY_NAME_BY_ID: Record<number, string> = {
   1: "Camisas",
@@ -95,6 +96,8 @@ export interface ProductoInput {
   precio: number;
   stock: number;
   imagen: string;
+  /** Hasta 5; la primera es la principal. Si falta, se usa `imagen`. */
+  imagenes?: string[];
   categoria: string;
   tipoPrenda: CategoriaProducto["tipoPrenda"];
   temporada: CategoriaProducto["temporada"];
@@ -340,7 +343,11 @@ async function mapInputToPersistData(
    */
   const stock = payload.disponible ? Math.max(0, payload.stock) : 0;
 
-  const imagen = payload.imagen.trim();
+  const imagenes = (payload.imagenes ?? [payload.imagen])
+    .map((url) => url.trim())
+    .filter(Boolean)
+    .slice(0, MAX_IMAGENES);
+  const imagen = imagenes[0] ?? "";
   const { data: authData, error: authError } = await supabase.auth.getUser();
 
   if (authError || !authData.user) {
@@ -354,7 +361,7 @@ async function mapInputToPersistData(
     stock,
     categoriaid,
     imagen_url: imagen,
-    imagenes: imagen ? [imagen] : [],
+    imagenes,
     talles: payload.talle,
     colores: payload.colores,
     tipo_prenda: tipoPrendaPersistido(

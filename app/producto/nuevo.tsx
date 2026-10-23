@@ -3,8 +3,6 @@ import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
-  ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -33,11 +31,7 @@ import { createProducto, ProductoInput } from "../../services/productosService";
 import { useDirecciones } from "../../hooks/useDirecciones";
 import { guardarSiEsNueva } from "../../services/direccionesService";
 import { encolarBorrador, hayConexion } from "../../services/offlineService";
-import {
-  pickImageFromCamera,
-  pickImageFromLibrary,
-} from "../../services/storageService";
-import { subirImagenProducto } from "../../services/supabase";
+import { SelectorImagenes } from "../../components/ui/SelectorImagenes";
 import { StockPorSede } from "../../components/ui/StockPorSede";
 import { usePuedeVender } from "../../hooks/usePuedeVender";
 import { useSedesEmpresa } from "../../hooks/useSedesEmpresa";
@@ -48,6 +42,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
   precio: "0",
   stock: "1",
   imagen: "",
+  imagenes: [],
   categoria: "Camisas",
   ...CATEGORIA_PRODUCTO_POR_DEFECTO,
   disponible: true,
@@ -64,7 +59,6 @@ export default function NuevoProductoScreen() {
   const empresaActiva = useEmpresaStore(selectEmpresaActiva);
   const { editables: sedesEditables } = useSedesEmpresa(empresaActiva);
   const [stockSedes, setStockSedes] = useState<Record<number, string>>({});
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const {
@@ -87,7 +81,11 @@ export default function NuevoProductoScreen() {
   );
 
   const disponible = watch("disponible");
-  const imageField = watch("imagen");
+  const imagenes = watch("imagenes") ?? [];
+  const setImagenes = (lista: string[]) => {
+    setValue("imagenes", lista, { shouldValidate: true, shouldDirty: true });
+    setValue("imagen", lista[0] ?? "", { shouldValidate: true });
+  };
 
   if (!esVendedor) {
     return (
@@ -106,39 +104,6 @@ export default function NuevoProductoScreen() {
     );
   }
 
-  const onPickAndUploadImage = async (source: "camera" | "library") => {
-    try {
-      setUploadingImage(true);
-      const image =
-        source === "camera"
-          ? await pickImageFromCamera()
-          : await pickImageFromLibrary();
-
-      if (!image) {
-        return;
-      }
-
-      setImagePreview(image.uri);
-      const publicUrl = await subirImagenProducto(image.base64, image.mimeType);
-      setValue("imagen", publicUrl, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
-
-      Toast.show({
-        type: "success",
-        text1: "Imagen subida",
-        text2: "Se cargo correctamente en Supabase Storage.",
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "No se pudo subir la imagen.";
-      Toast.show({ type: "error", text1: "Error de imagen", text2: message });
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
   const onSubmit = handleSubmit(async (values) => {
     try {
       const talles = values.talle
@@ -150,7 +115,8 @@ export default function NuevoProductoScreen() {
         nombre: values.nombre.trim(),
         precio: values.precio,
         stock: values.stock,
-        imagen: values.imagen.trim(),
+        imagen: values.imagenes[0] ?? "",
+        imagenes: values.imagenes,
         categoria: values.categoria,
         tipoPrenda: values.tipoPrenda,
         temporada: values.temporada,
@@ -283,46 +249,12 @@ export default function NuevoProductoScreen() {
           />
         )}
 
-        <View style={styles.photoRow}>
-          {(["camera", "library"] as const).map((source) => (
-            <Pressable
-              key={source}
-              onPress={() => void onPickAndUploadImage(source)}
-              disabled={uploadingImage || isSubmitting}
-              style={[
-                styles.uploadButton,
-                styles.photoButton,
-                (uploadingImage || isSubmitting) && styles.submitDisabled,
-              ]}
-            >
-              {uploadingImage ? (
-                <ActivityIndicator color={Colors.primary} />
-              ) : (
-                <Text style={styles.uploadButtonText}>
-                  {source === "camera" ? "Tomar foto" : "Galería"}
-                </Text>
-              )}
-            </Pressable>
-          ))}
-        </View>
-
-        {imagePreview || imageField ? (
-          <>
-            <Image
-              source={{ uri: imagePreview ?? imageField }}
-              style={styles.previewImage}
-            />
-            <Pressable
-              onPress={() => {
-                setImagePreview(null);
-                setValue("imagen", "", { shouldValidate: true, shouldDirty: true });
-              }}
-              style={styles.removePhotoButton}
-            >
-              <Text style={styles.removePhotoText}>Quitar foto</Text>
-            </Pressable>
-          </>
-        ) : null}
+        <SelectorImagenes
+          imagenes={imagenes}
+          onChange={setImagenes}
+          onSubiendoChange={setUploadingImage}
+          deshabilitado={isSubmitting}
+        />
 
         <CategoriaProductoSelector control={control} />
 
@@ -466,55 +398,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Montserrat_500Medium",
   },
-  uploadButton: {
-    marginTop: 6,
-    minHeight: 44,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.secondary,
-    backgroundColor: "#EFE5DE",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  uploadButtonText: {
-    color: "#2D1F16",
-    fontSize: 14,
-    fontFamily: "Montserrat_600SemiBold",
-  },
-  removePhotoButton: {
-    marginTop: Spacing.sm,
-    minHeight: 40,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.danger,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  removePhotoText: {
-    color: Colors.danger,
-    fontSize: 14,
-    fontFamily: "Montserrat_600SemiBold",
-  },
   addressTitle: {
     marginTop: Spacing.sm,
     marginBottom: Spacing.sm,
     color: Colors.primary,
     fontSize: 14,
     fontFamily: "Montserrat_600SemiBold",
-  },
-  photoRow: {
-    flexDirection: "row",
-    columnGap: Spacing.sm,
-  },
-  photoButton: {
-    flex: 1,
-  },
-  previewImage: {
-    width: "100%",
-    height: 180,
-    borderRadius: Radius.md,
-    marginTop: 10,
-    backgroundColor: Colors.surface,
   },
   submitButton: {
     marginTop: 18,

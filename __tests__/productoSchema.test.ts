@@ -52,3 +52,22 @@ describe('productoSchema', () => {
     expect(productoSchema.safeParse({ ...valido, imagen: '' }).success).toBe(true);
   });
 });
+
+describe('productoSchema: imágenes', () => {
+  const url = (n: number) => `https://ejemplo.com/foto-${n}.jpg`;
+
+  it('acepta hasta 5 imágenes', () => {
+    const resultado = productoSchema.safeParse({ ...valido, imagenes: [1, 2, 3, 4, 5].map(url) });
+    expect(resultado.success).toBe(true);
+  });
+
+  it('rechaza una sexta imagen', () => {
+    const resultado = productoSchema.safeParse({ ...valido, imagenes: [1, 2, 3, 4, 5, 6].map(url) });
+    expect(campos(resultado)).toContain('imagenes');
+  });
+
+  it('sin imágenes queda una lista vacía', () => {
+    const resultado = productoSchema.safeParse(valido);
+    expect(resultado.success && resultado.data.imagenes).toEqual([]);
+  });
+});
