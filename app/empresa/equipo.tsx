@@ -1,6 +1,6 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -23,6 +23,7 @@ import {
   ROLES_EMPRESA,
   Sede,
 } from "../../services/empresasService";
+import { confirmar } from "../../services/confirmar";
 import { puede, selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
 
@@ -66,6 +67,7 @@ export default function EquipoScreen() {
   const [rol, setRol] = useState<RolEmpresa>("vendedor");
   const [sedesElegidas, setSedesElegidas] = useState<number[]>([]);
   const [invitando, setInvitando] = useState(false);
+  const [cambiandoRol, setCambiandoRol] = useState<string | null>(null);
 
   const empresaId = membresia?.empresaId;
   const gestiona = puede(membresia, "equipo.gestionar");
@@ -143,49 +145,36 @@ export default function EquipoScreen() {
     }
   };
 
-  const onCambiarRol = (miembro: MiembroEquipo) => {
+  // Elección del rol en la misma tarjeta: Alert con varias opciones no funciona en la web.
+  const onElegirRol = async (miembro: MiembroEquipo, nuevoRol: RolEmpresa) => {
     if (!empresaId) return;
-    const opciones = ROLES_EMPRESA.filter((item) => soyPropietario || item.codigo !== "propietario");
+    setCambiandoRol(null);
+    if (nuevoRol === miembro.rol) return;
 
-    Alert.alert(`Rol de ${miembro.username}`, "Las sedes de vendedores y envíos se mantienen.", [
-      ...opciones.map((opcion) => ({
-        text: opcion.nombre,
-        onPress: async () => {
-          try {
-            await cambiarRolMiembro(
-              empresaId,
-              miembro.usuarioId,
-              opcion.codigo,
-              miembro.todasLasSedes ? "todas" : miembro.sedesPermitidas,
-            );
-            await recargar();
-            if (miembro.usuarioId === usuarioId) await useEmpresaStore.getState().cargar();
-          } catch (err) {
-            avisarError("No se pudo cambiar el rol", err);
-          }
-        },
-      })),
-      { text: "Cancelar", style: "cancel" as const },
-    ]);
+    try {
+      await cambiarRolMiembro(
+        empresaId,
+        miembro.usuarioId,
+        nuevoRol,
+        miembro.todasLasSedes ? "todas" : miembro.sedesPermitidas,
+      );
+      await recargar();
+      if (miembro.usuarioId === usuarioId) await useEmpresaStore.getState().cargar();
+    } catch (err) {
+      avisarError("No se pudo cambiar el rol", err);
+    }
   };
 
-  const onQuitar = (miembro: MiembroEquipo) => {
+  const onQuitar = async (miembro: MiembroEquipo) => {
     if (!empresaId) return;
-    Alert.alert("Quitar del equipo", `¿Quitar a ${miembro.username}?`, [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Quitar",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await quitarMiembro(empresaId, miembro.usuarioId);
-            await recargar();
-          } catch (err) {
-            avisarError("No se pudo quitar", err);
-          }
-        },
-      },
-    ]);
+    if (!(await confirmar("Quitar del equipo", `¿Quitar a ${miembro.username}?`, "Quitar"))) return;
+
+    try {
+      await quitarMiembro(empresaId, miembro.usuarioId);
+      await recargar();
+    } catch (err) {
+      avisarError("No se pudo quitar", err);
+    }
   };
 
   const onCancelarInvitacion = async (id: number) => {
@@ -225,12 +214,23 @@ export default function EquipoScreen() {
               </View>
               <Text style={styles.muted}>{miembro.email}</Text>
               <Text style={styles.muted}>{alcance(miembro.todasLasSedes, miembro.sedesPermitidas)}</Text>
+              {puedeTocar && cambiandoRol === miembro.usuarioId ? (
+                <Chips
+                  opciones={ROLES_EMPRESA.filter((item) => soyPropietario || item.codigo !== "propietario").map(
+                    (item) => ({ valor: item.codigo, texto: item.nombre }),
+                  )}
+                  activas={[miembro.rol]}
+                  onPress={(nuevoRol) => void onElegirRol(miembro, nuevoRol)}
+                />
+              ) : null}
               {puedeTocar ? (
                 <View style={styles.actions}>
-                  <Pressable onPress={() => onCambiarRol(miembro)}>
-                    <Text style={styles.link}>Cambiar rol</Text>
+                  <Pressable
+                    onPress={() => setCambiandoRol(cambiandoRol === miembro.usuarioId ? null : miembro.usuarioId)}
+                  >
+                    <Text style={styles.link}>{cambiandoRol === miembro.usuarioId ? "Cerrar" : "Cambiar rol"}</Text>
                   </Pressable>
-                  <Pressable onPress={() => onQuitar(miembro)}>
+                  <Pressable onPress={() => void onQuitar(miembro)}>
                     <Text style={[styles.link, styles.danger]}>Quitar</Text>
                   </Pressable>
                 </View>

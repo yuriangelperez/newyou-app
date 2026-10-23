@@ -145,6 +145,7 @@ export default function RootLayout() {
         <Stack.Screen name="empresa/equipo" />
         <Stack.Screen name="invitacion" />
         <Stack.Screen name="tienda/[slug]" />
+        <Stack.Screen name="admin" />
       </Stack>
       <Toast config={toastConfig} />
     </>

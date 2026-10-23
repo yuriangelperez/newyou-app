@@ -3,12 +3,15 @@ import { User } from "@supabase/supabase-js";
 import { create } from "zustand";
 
 import { RoleUsuario } from "../services/auth";
+import { esAdminPlataforma } from "../services/empresasService";
 
 export interface UsuarioSesion {
   id: string;
   nombre: string;
   email: string;
   role: RoleUsuario;
+  /** Administrador de la plataforma (verifica empresas). El servidor lo vuelve a comprobar. */
+  esAdmin?: boolean;
 }
 
 interface UsuarioStore {
@@ -93,6 +96,7 @@ export const useUsuarioStore = create<UsuarioStore>((set) => ({
     }
 
     const role = normalizarRole(profile?.role ?? authData.user.user_metadata?.role);
+    const esAdmin = await esAdminPlataforma();
 
     set({
       usuario: {
@@ -100,6 +104,7 @@ export const useUsuarioStore = create<UsuarioStore>((set) => ({
         nombre: resolverNombre(authData.user),
         email: authData.user.email || authUser.email,
         role,
+        esAdmin,
       },
     });
   },

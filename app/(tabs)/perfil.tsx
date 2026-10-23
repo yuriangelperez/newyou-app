@@ -119,6 +119,12 @@ export default function PerfilScreen() {
           <Text style={styles.favoritesText}>Direcciones</Text>
         </Pressable>
 
+        {usuario?.esAdmin ? (
+          <Pressable onPress={() => router.push(ROUTES.admin)} style={styles.myProductsButton}>
+            <Text style={styles.myProductsText}>Panel de administrador</Text>
+          </Pressable>
+        ) : null}
+
         {usuario ? (
           <View style={[styles.card, styles.companyCard]}>
             <Text style={styles.label}>Modo empresa</Text>

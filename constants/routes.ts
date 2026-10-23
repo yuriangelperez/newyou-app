@@ -18,6 +18,7 @@ export const ROUTES = {
   companyTeam: '/empresa/equipo',
   invitation: '/invitacion',
   store: '/tienda/[slug]',
+  admin: '/admin',
 
   categories: '/categorias',
   cart: '/carrito',

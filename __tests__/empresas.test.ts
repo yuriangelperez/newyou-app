@@ -8,7 +8,7 @@ jest.mock('../services/empresasService', () => ({
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { cuitValido, Membresia, mensajeInvitacion } from '../services/empresasService';
+import { cuitValido, formatearCuit, Membresia, mensajeInvitacion } from '../services/empresasService';
 import { puede, selectEmpresaActiva, useEmpresaStore } from '../stores/useEmpresaStore';
 
 const vendedora: Membresia = {
@@ -97,5 +97,12 @@ describe('mensajeInvitacion', () => {
     const texto = mensajeInvitacion('Moda Sur', { codigo: 'AB12CD34', rol: 'vendedor' });
     expect(texto).toContain('newyou://invitacion?codigo=AB12CD34');
     expect(texto).toContain('como Vendedor');
+  });
+});
+
+describe('formatearCuit', () => {
+  it('agrega los guiones a un CUIT de 11 dígitos', () => {
+    expect(formatearCuit('30712345671')).toBe('30-71234567-1');
+    expect(formatearCuit('123')).toBe('123');
   });
 });

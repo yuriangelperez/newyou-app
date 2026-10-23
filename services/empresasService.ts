@@ -374,3 +374,72 @@ export function mensajeInvitacion(empresa: string, invitacion: Pick<Invitacion, 
     'en Perfil > Tengo un código de invitación.'
   );
 }
+
+// ===== Administración de la plataforma (migración 07) =====
+
+export interface EmpresaAdmin {
+  id: number;
+  razonSocial: string;
+  nombre: string;
+  cuit: string;
+  slug: string;
+  estado: EstadoEmpresa;
+  creadorEmail: string | null;
+  sedes: number;
+  miembros: number;
+  creadaEl: string;
+  ultimoMotivo: string | null;
+}
+
+export async function esAdminPlataforma(): Promise<boolean> {
+  const { data, error } = await supabase.rpc('es_admin_plataforma');
+
+  // Sin la migración 07 la función no existe: nadie es administrador.
+  return !error && data === true;
+}
+
+export async function listarEmpresasAdmin(estado: EstadoEmpresa | null): Promise<EmpresaAdmin[]> {
+  const { data, error } = await supabase.rpc('admin_empresas', { p_estado: estado });
+  fallar(error);
+
+  return (data ?? []).map(
+    (row: {
+      id: number;
+      razon_social: string;
+      nombre_fantasia: string;
+      cuit: string;
+      slug: string;
+      estado: EstadoEmpresa;
+      creador_email: string | null;
+      sedes: number;
+      miembros: number;
+      created_at: string;
+      ultimo_motivo: string | null;
+    }) => ({
+      id: row.id,
+      razonSocial: row.razon_social,
+      nombre: row.nombre_fantasia,
+      cuit: row.cuit,
+      slug: row.slug,
+      estado: row.estado,
+      creadorEmail: row.creador_email,
+      sedes: Number(row.sedes),
+      miembros: Number(row.miembros),
+      creadaEl: row.created_at,
+      ultimoMotivo: row.ultimo_motivo,
+    }),
+  );
+}
+
+export async function cambiarEstadoEmpresa(empresaId: number, estado: EstadoEmpresa, motivo?: string) {
+  const { error } = await supabase.rpc('admin_cambiar_estado_empresa', {
+    p_empresa: empresaId,
+    p_estado: estado,
+    p_motivo: motivo?.trim() || null,
+  });
+  fallar(error);
+}
+
+/** CUIT con guiones para mostrar: 30-71234567-1. */
+export const formatearCuit = (cuit: string) =>
+  cuit.length === 11 ? `${cuit.slice(0, 2)}-${cuit.slice(2, 10)}-${cuit.slice(10)}` : cuit;

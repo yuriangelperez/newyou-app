@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -16,6 +16,7 @@ import {
   obtenerEmpresa,
   quitarMiembro,
 } from "../../services/empresasService";
+import { confirmar } from "../../services/confirmar";
 import { puede, selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
 
@@ -88,25 +89,18 @@ export default function PanelEmpresaScreen() {
     }
   };
 
-  const onSalir = () => {
+  const onSalir = async () => {
     if (!usuarioId) return;
-    Alert.alert("Salir de la empresa", `¿Dejar de ser parte de ${membresia.nombre}?`, [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Salir",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await quitarMiembro(membresia.empresaId, usuarioId);
-            await setEmpresaActiva(null);
-            await useEmpresaStore.getState().cargar();
-            router.back();
-          } catch (err) {
-            Toast.show({ type: "error", text1: "No se pudo salir", text2: err instanceof Error ? err.message : undefined });
-          }
-        },
-      },
-    ]);
+    if (!(await confirmar("Salir de la empresa", `¿Dejar de ser parte de ${membresia.nombre}?`, "Salir"))) return;
+
+    try {
+      await quitarMiembro(membresia.empresaId, usuarioId);
+      await setEmpresaActiva(null);
+      await useEmpresaStore.getState().cargar();
+      router.back();
+    } catch (err) {
+      Toast.show({ type: "error", text1: "No se pudo salir", text2: err instanceof Error ? err.message : undefined });
+    }
   };
 
   return (
@@ -121,6 +115,12 @@ export default function PanelEmpresaScreen() {
           <Text style={styles.aviso}>
             Tu empresa está pendiente de verificación. Ya podés armar sedes y equipo; la tienda se muestra al
             público cuando se verifique el CUIT.
+          </Text>
+        ) : null}
+        {membresia.estado === "suspendida" ? (
+          <Text style={[styles.aviso, styles.danger]}>
+            Tu empresa está suspendida: la tienda no se muestra y no se pueden gestionar publicaciones ni
+            pedidos. Escribinos para revisar el caso.
           </Text>
         ) : null}
 
@@ -170,7 +170,7 @@ export default function PanelEmpresaScreen() {
           <Pressable onPress={() => void setEmpresaActiva(null)}>
             <Text style={styles.link}>Actuar como yo</Text>
           </Pressable>
-          <Pressable onPress={onSalir}>
+          <Pressable onPress={() => void onSalir()}>
             <Text style={[styles.link, styles.danger]}>Salir de la empresa</Text>
           </Pressable>
         </View>
