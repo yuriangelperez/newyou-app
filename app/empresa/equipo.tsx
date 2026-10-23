@@ -1,6 +1,6 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -98,9 +98,24 @@ export default function EquipoScreen() {
   const alcance = (todas: boolean, ids: number[]) =>
     todas ? "Todas las sedes" : sedes.filter((sede) => ids.includes(sede.id)).map((sede) => sede.nombre).join(", ") || "Sin sedes";
 
-  const compartir = (invitacion: Invitacion) => {
+  // En el navegador Share no siempre existe: se usa navigator.share o se copia el texto.
+  const compartir = async (invitacion: Invitacion) => {
     if (!membresia) return;
-    void Share.share({ message: mensajeInvitacion(membresia.nombre, invitacion) });
+    const message = mensajeInvitacion(membresia.nombre, invitacion);
+
+    try {
+      if (Platform.OS !== "web") {
+        await Share.share({ message });
+      } else if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ text: message });
+      } else {
+        await navigator.clipboard.writeText(message);
+        Toast.show({ type: "success", text1: "Invitación copiada", text2: `Código ${invitacion.codigo}` });
+      }
+    } catch {
+      // Cancelado por el usuario o sin permiso para copiar: el código queda visible en la lista.
+      Toast.show({ type: "info", text1: `Código de invitación: ${invitacion.codigo}` });
+    }
   };
 
   const onInvitar = async () => {
@@ -120,7 +135,7 @@ export default function EquipoScreen() {
       setEmail("");
       setSedesElegidas([]);
       await recargar();
-      compartir(invitacion);
+      await compartir(invitacion);
     } catch (err) {
       avisarError("No se pudo invitar", err);
     } finally {
@@ -237,7 +252,7 @@ export default function EquipoScreen() {
                   Código {invitacion.codigo} · vence el {new Date(invitacion.venceEn).toLocaleDateString("es-AR")}
                 </Text>
                 <View style={styles.actions}>
-                  <Pressable onPress={() => compartir(invitacion)}>
+                  <Pressable onPress={() => void compartir(invitacion)}>
                     <Text style={styles.link}>Compartir</Text>
                   </Pressable>
                   <Pressable onPress={() => void onCancelarInvitacion(invitacion.id)}>
