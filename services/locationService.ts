@@ -9,6 +9,8 @@ export type UbicacionResultado =
       longitud: number;
       /** true si no se pudo obtener una dirección legible y sólo hay coordenadas. */
       soloCoordenadas: boolean;
+      /** Margen de error informado por el dispositivo, en metros (null si no lo informa). */
+      precisionMetros: number | null;
     }
   | { ok: false; motivo: string };
 
@@ -78,9 +80,9 @@ export async function obtenerDireccionActual(): Promise<UbicacionResultado> {
     }
 
     const posicion = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
+      accuracy: Location.Accuracy.High,
     });
-    const { latitude, longitude } = posicion.coords;
+    const { latitude, longitude, accuracy } = posicion.coords;
 
     const direccion =
       (await direccionConExpo(latitude, longitude)) ||
@@ -92,6 +94,7 @@ export async function obtenerDireccionActual(): Promise<UbicacionResultado> {
       latitud: latitude,
       longitud: longitude,
       soloCoordenadas: !direccion,
+      precisionMetros: accuracy ?? null,
     };
   } catch {
     return { ok: false, motivo: 'No se pudo obtener la ubicación (¿sin señal GPS?).' };
