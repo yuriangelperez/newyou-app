@@ -27,7 +27,32 @@ UPDATE public.profiles SET role = 'particular', updated_at = now() WHERE role = 
 ALTER TABLE public.profiles
   ADD CONSTRAINT profiles_role_check CHECK (role IN ('comprador', 'particular'));
 
--- 3) Políticas existentes que comparan con 'vendedor' (no están versionadas en el repo):
+-- 3) Limpieza de políticas duplicadas (ver 00-base.sql). Las políticas permisivas se suman con OR,
+--    así que "Usuarios autenticados pueden crear productos" y similares dejaban publicar, editar y
+--    borrar a cualquier comprador. Quedan sólo las "Vendedores ..." (pasan a 'particular' abajo).
+DROP POLICY IF EXISTS "Usuarios autenticados pueden crear productos" ON public.productos;
+DROP POLICY IF EXISTS productos_insert_own ON public.productos;
+DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar sus productos" ON public.productos;
+DROP POLICY IF EXISTS productos_update_own ON public.productos;
+DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar sus productos" ON public.productos;
+DROP POLICY IF EXISTS productos_delete_own ON public.productos;
+DROP POLICY IF EXISTS "Usuarios autenticados pueden ver productos" ON public.productos;
+DROP POLICY IF EXISTS productos_select_authenticated ON public.productos;
+
+-- Las compras sólo se crean con confirmar_compra (SECURITY DEFINER), que valida stock y precios.
+DROP POLICY IF EXISTS "Los usuarios pueden crear sus compras" ON public.compras;
+DROP POLICY IF EXISTS "Los usuarios pueden ver sus compras" ON public.compras;
+
+-- categorias tenía RLS sin políticas: nadie podía leerla ni crearla desde la app.
+DROP POLICY IF EXISTS categorias_lectura ON public.categorias;
+CREATE POLICY categorias_lectura ON public.categorias
+  FOR SELECT TO anon, authenticated USING (true);
+DROP POLICY IF EXISTS categorias_alta_particular ON public.categorias;
+CREATE POLICY categorias_alta_particular ON public.categorias
+  FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'particular'));
+
+-- 4) Políticas existentes que comparan con 'vendedor' (las "Vendedores ..." de 00-base.sql):
 --    se reescriben para comparar con 'particular'. Cada cambio queda informado en NOTICE.
 DO $$
 DECLARE
@@ -53,7 +78,29 @@ BEGIN
 END;
 $$;
 
--- 4) Guarda de role:
+-- 5) Alta de perfiles: la app nueva registra 'particular'; la vieja, 'vendedor'.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, username, role)
+  VALUES (
+    new.id,
+    new.email,
+    COALESCE(new.raw_user_meta_data ->> 'username', 'usuario'),
+    CASE
+      WHEN new.raw_user_meta_data ->> 'role' IN ('particular', 'vendedor') THEN 'particular'
+      ELSE 'comprador'
+    END
+  );
+  RETURN new;
+END;
+$$;
+
+-- 6) Guarda de role:
 --    - Al crear el perfil, 'vendedor' (metadata de registros viejos o del trigger de alta) se toma como 'particular'.
 --    - Un usuario no puede cambiar su role con un UPDATE directo; sólo con activar_modo_particular().
 CREATE OR REPLACE FUNCTION public.profiles_proteger_role()
@@ -81,7 +128,7 @@ CREATE TRIGGER profiles_proteger_role
   BEFORE INSERT OR UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.profiles_proteger_role();
 
--- 5) "Quiero vender prendas": un comprador activa el modo particular.
+-- 7) "Quiero vender prendas": un comprador activa el modo particular.
 --    SECURITY DEFINER: corre como dueño de la función, así que la guarda de arriba lo deja pasar.
 CREATE OR REPLACE FUNCTION public.activar_modo_particular()
 RETURNS text
