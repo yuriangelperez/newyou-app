@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { FlatList, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import TarjetaProducto from '../../components/TarjetaProducto';
 import { BottomTabBar } from '../../components/BottomTabBar';
+import { PRODUCT_DETAIL_ICONS } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
 import { Colors } from '../../constants/theme';
 import { useCarritoStore, selectTotalItems } from '../../stores/useCarritoStore';
@@ -64,8 +65,8 @@ export default function FavoritosScreen() {
       <StatusBar style="dark" />
       <View style={styles.header}>
         <View style={styles.headerInner}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.backText}>Volver</Text>
+          <Pressable accessibilityLabel="Volver" onPress={() => router.back()} style={styles.backButton}>
+            <Image source={PRODUCT_DETAIL_ICONS.back} style={styles.backIcon} />
           </Pressable>
           <Text style={styles.title}>Favoritos</Text>
         </View>
@@ -128,9 +129,10 @@ function createStyles(scale: number, bottomInset: number, horizontalPadding: num
       paddingHorizontal: horizontalPadding,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      columnGap: s(12),
     },
-    backText: { color: Colors.secondary, fontSize: s(14), fontFamily: 'Montserrat_600SemiBold' },
+    backButton: { width: s(39), height: s(39), alignItems: 'center', justifyContent: 'center' },
+    backIcon: { width: s(39), height: s(39), resizeMode: 'contain' },
     title: { color: Colors.primary, fontSize: s(24), fontFamily: 'Montserrat_700Bold' },
     content: {
       width: '100%',

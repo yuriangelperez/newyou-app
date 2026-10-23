@@ -97,18 +97,15 @@ export default function MisPublicacionesScreen() {
           </Text>
 
           <Pressable
-            style={styles.backButton}
+            accessibilityLabel="Volver"
+            style={styles.backIconButton}
             onPress={() => router.replace(ROUTES.home)}
           >
             <Image
               source={backIcon}
-              style={styles.backIcon}
+              style={styles.backIconImage}
               resizeMode="contain"
             />
-
-            <Text style={styles.backButtonText}>
-              Volver
-            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -553,10 +550,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
-  backIcon: {
-    width: 22,
-    height: 22,
-  },
 
   backButtonText: {
     color: "#2D1F16",
