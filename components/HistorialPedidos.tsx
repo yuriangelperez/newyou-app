@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
@@ -17,6 +18,7 @@ import { confirmar } from "../services/confirmar";
 import {
   cambiarEstadoPedido,
   EstadoPedido,
+  marcarPedidoEnviado,
   Pedido,
   pedidoActivo,
   sePuedeCancelar,
@@ -81,6 +83,10 @@ export function HistorialPedidos({
   const [filtro, setFiltro] = useState<Filtro>("activos");
   const [abierto, setAbierto] = useState<number | null>(null);
   const [procesando, setProcesando] = useState<number | null>(null);
+  // Datos del envío que se piden antes de marcar "enviado".
+  const [enviando, setEnviando] = useState<number | null>(null);
+  const [correo, setCorreo] = useState("");
+  const [codigo, setCodigo] = useState("");
 
   const recargar = useCallback(async () => {
     try {
@@ -100,6 +106,31 @@ export function HistorialPedidos({
       void recargar();
     }, [recargar]),
   );
+
+  const onEnviar = async (pedido: Pedido) => {
+    if (!correo.trim()) {
+      Toast.show({ type: "error", text1: "Indicá el correo o la mensajería" });
+      return;
+    }
+
+    try {
+      setProcesando(pedido.id);
+      await marcarPedidoEnviado(pedido.id, correo, codigo);
+      setEnviando(null);
+      setCorreo("");
+      setCodigo("");
+      Toast.show({ type: "success", text1: "Pedido enviado" });
+      await recargar();
+    } catch (err) {
+      Toast.show({
+        type: "error",
+        text1: "No se pudo marcar como enviado",
+        text2: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setProcesando(null);
+    }
+  };
 
   const cambiar = async (pedido: Pedido, estado: EstadoPedido) => {
     if (estado === "cancelado") {
@@ -160,6 +191,12 @@ export function HistorialPedidos({
           </Text>
         ) : null}
 
+        {item.empresaEnvio ? (
+          <Text style={styles.meta}>
+            {`Envío por ${item.empresaEnvio}${item.codigoSeguimiento ? ` · seguimiento ${item.codigoSeguimiento}` : ""}`}
+          </Text>
+        ) : null}
+
         {item.items.map((it, index) => (
           <Text key={`${it.productoId}-${index}`} style={styles.item}>
             {`${it.cantidad} x ${it.nombre}${it.talle ? ` (${it.talle}${it.color ? `, ${it.color}` : ""})` : ""}`}
@@ -171,12 +208,44 @@ export function HistorialPedidos({
           <Text style={styles.total}>{formatPrecio(item.total)}</Text>
         </View>
 
-        {gestiona || puedeCancelar ? (
+        {gestiona && siguiente === "enviado" && enviando === item.id ? (
+          <View style={styles.envioForm}>
+            <TextInput
+              value={correo}
+              onChangeText={setCorreo}
+              placeholder="Correo o mensajería (Andreani, OCA, moto...)"
+              placeholderTextColor={Colors.textMuted}
+              style={styles.input}
+            />
+            <TextInput
+              value={codigo}
+              onChangeText={setCodigo}
+              autoCapitalize="characters"
+              placeholder="Código de seguimiento (opcional)"
+              placeholderTextColor={Colors.textMuted}
+              style={styles.input}
+            />
+            <View style={styles.actions}>
+              <Pressable onPress={() => setEnviando(null)}>
+                <Text style={styles.link}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                disabled={ocupado}
+                onPress={() => void onEnviar(item)}
+                style={[styles.primaryButton, ocupado && styles.disabled]}
+              >
+                <Text style={styles.primaryText}>Confirmar envío</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {(gestiona || puedeCancelar) && enviando !== item.id ? (
           <View style={styles.actions}>
             {gestiona && siguiente ? (
               <Pressable
                 disabled={ocupado}
-                onPress={() => void cambiar(item, siguiente)}
+                onPress={() => (siguiente === "enviado" ? setEnviando(item.id) : void cambiar(item, siguiente))}
                 style={[styles.primaryButton, ocupado && styles.disabled]}
               >
                 {ocupado ? (
@@ -364,5 +433,16 @@ const styles = StyleSheet.create({
   cancelText: { color: Colors.danger, fontSize: FontSize.md, fontFamily: "Montserrat_700Bold" },
   disabled: { opacity: 0.55 },
   link: { color: Colors.secondary, fontSize: FontSize.sm, fontFamily: "Montserrat_700Bold", marginTop: Spacing.xs },
+  envioForm: { rowGap: Spacing.sm, marginTop: Spacing.xs },
+  input: {
+    minHeight: 42,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.secondary,
+    color: Colors.text,
+    fontSize: FontSize.md,
+    fontFamily: "Montserrat_400Regular",
+  },
   evento: { color: Colors.textMuted, fontSize: FontSize.sm, fontFamily: "Montserrat_500Medium" },
 });

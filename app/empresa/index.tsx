@@ -158,6 +158,18 @@ export default function PanelEmpresaScreen() {
           <Text style={styles.cardTitle}>Equipo</Text>
           <Text style={styles.muted}>Miembros, roles e invitaciones</Text>
         </Pressable>
+        {puede(membresia, "pedidos.ver") ? (
+          <Pressable style={styles.card} onPress={() => router.push(ROUTES.mySales)}>
+            <Text style={styles.cardTitle}>Ventas y envíos</Text>
+            <Text style={styles.muted}>Pedidos de tus sedes, estados y seguimiento</Text>
+          </Pressable>
+        ) : null}
+        {puede(membresia, "metricas.ver") ? (
+          <Pressable style={styles.card} onPress={() => router.push(ROUTES.metrics)}>
+            <Text style={styles.cardTitle}>Métricas</Text>
+            <Text style={styles.muted}>Ingresos, más vendidos, sedes y stock bajo</Text>
+          </Pressable>
+        ) : null}
         <Pressable
           style={styles.card}
           onPress={() => router.push({ pathname: ROUTES.store, params: { slug: membresia.slug } })}

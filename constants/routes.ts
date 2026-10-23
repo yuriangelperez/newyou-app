@@ -19,6 +19,7 @@ export const ROUTES = {
   invitation: '/invitacion',
   store: '/tienda/[slug]',
   admin: '/admin',
+  metrics: '/metricas',
 
   categories: '/categorias',
   cart: '/carrito',

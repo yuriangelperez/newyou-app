@@ -180,6 +180,14 @@ export default function PerfilScreen() {
             >
               <Text style={styles.myProductsText}>Mis ventas</Text>
             </Pressable>
+            {!empresaActiva || puede(empresaActiva, "metricas.ver") ? (
+              <Pressable
+                onPress={() => router.push(ROUTES.metrics)}
+                style={styles.myProductsButton}
+              >
+                <Text style={styles.myProductsText}>Métricas</Text>
+              </Pressable>
+            ) : null}
 
           </>
         ) : puede(empresaActiva, "pedidos.ver") ? (

@@ -457,7 +457,7 @@ BEGIN
       SELECT pr.empresa_id,
              CASE WHEN pr.empresa_id IS NOT NULL THEN pr.sede_id END AS sede_id,
              CASE WHEN pr.empresa_id IS NULL THEN pr.creado_por END AS vendedor_id,
-             jsonb_agg(i.item || jsonb_build_object('_img', pr.imagen_url)) AS items,
+             jsonb_agg(i.item || jsonb_build_object('_img', pr.imagen_url, '_precio', pr.precio)) AS items,
              sum(coalesce((i.item->>'precio')::numeric, pr.precio) * (i.item->>'cantidad')::int) AS subtotal
         FROM jsonb_array_elements(v_compra.items) AS i(item)
         JOIN productos pr ON pr.productoid = (i.item->>'productoId')::bigint
@@ -472,7 +472,7 @@ BEGIN
 
       INSERT INTO pedido_items (pedido_id, producto_id, nombre, precio_unitario, cantidad, talle, color, imagen_url)
       SELECT v_pedido, (it->>'productoId')::bigint, coalesce(it->>'nombre', 'Prenda'),
-             coalesce((it->>'precio')::numeric, 0), (it->>'cantidad')::int, it->>'talle', it->>'color',
+             coalesce((it->>'precio')::numeric, (it->>'_precio')::numeric), (it->>'cantidad')::int, it->>'talle', it->>'color',
              nullif(it->>'_img', '')
         FROM jsonb_array_elements(v_grupo.items) AS it;
 
