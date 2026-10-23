@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import Toast from 'react-native-toast-message';
 
 import { Colors, FontSize, Radius, Spacing } from '../../constants/theme';
-import { obtenerDireccionActual } from '../../services/locationService';
+import { abrirDireccionEnMapa, obtenerDireccionActual } from '../../services/locationService';
 
 interface BotonGpsProps {
   /** Recibe la dirección detectada para que la pantalla la cargue en su campo. */
@@ -56,11 +56,21 @@ export function BotonGps({ onDireccion }: BotonGpsProps) {
       </Pressable>
 
       {punto ? (
-        <Text style={styles.hint}>
-          {punto.soloCoordenadas
-            ? 'No pudimos obtener la dirección, solo las coordenadas. Escribí la dirección a mano.'
-            : 'Revisá que la dirección sea correcta: el GPS puede tener un margen de error.'}
-        </Text>
+        <>
+          <Text style={styles.hint}>
+            {punto.soloCoordenadas
+              ? 'No pudimos obtener la dirección, solo las coordenadas. Escribí la dirección a mano.'
+              : 'Revisá que la dirección sea correcta: el GPS puede tener un margen de error.'}
+          </Text>
+          {/* Abre el punto exacto que tomó el GPS, no la dirección escrita. */}
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => void abrirDireccionEnMapa(`${punto.latitud},${punto.longitud}`)}
+            style={styles.link}
+          >
+            <Text style={styles.linkText}>Ver la ubicación detectada en el mapa</Text>
+          </Pressable>
+        </>
       ) : null}
     </View>
   );
@@ -83,6 +93,13 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
     fontSize: FontSize.sm,
     fontFamily: 'Montserrat_600SemiBold',
+  },
+  link: { alignSelf: 'flex-start', paddingVertical: 4 },
+  linkText: {
+    color: Colors.secondary,
+    fontSize: FontSize.sm,
+    fontFamily: 'Montserrat_700Bold',
+    textDecorationLine: 'underline',
   },
   hint: {
     color: Colors.textMuted,

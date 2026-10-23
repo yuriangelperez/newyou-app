@@ -6,6 +6,7 @@ import Toast from "react-native-toast-message";
 
 import { BotonGps } from "../../components/ui/BotonGps";
 import { EncabezadoPantalla } from "../../components/ui/EncabezadoPantalla";
+import { VerEnMapa } from "../../components/ui/VerEnMapa";
 import { ROUTES } from "../../constants/routes";
 import { estilosFormulario as styles } from "../../constants/estilosFormulario";
 import { Colors, Spacing } from "../../constants/theme";
@@ -122,6 +123,7 @@ export default function NuevaEmpresaScreen() {
             placeholderTextColor={Colors.textMuted}
           />
           <BotonGps onDireccion={setSedeDireccion} />
+          <VerEnMapa direccion={sedeDireccion} />
           <View style={styles.switchRow}>
             <Text style={styles.cardText}>Retiro en el local</Text>
             <Switch value={haceRetiro} onValueChange={setHaceRetiro} trackColor={{ true: Colors.secondary }} />
