@@ -17,14 +17,14 @@ import { ROUTES } from "../../constants/routes";
 import { Colors, Radius } from "../../constants/theme";
 import { supabase } from "../../services/supabase";
 import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
-import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
 
 export default function PerfilScreen() {
   const router = useRouter();
   const usuario = useUsuarioStore((state) => state.usuario);
   const totalItems = useCarritoStore(selectTotalItems);
   const setUsuario = useUsuarioStore((state) => state.setUsuario);
-  const esVendedor = usuario?.role === "vendedor";
+  const esVendedor = selectPuedeVender({ usuario });
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const canvasWidth = Math.min(width, 412);
@@ -58,17 +58,15 @@ export default function PerfilScreen() {
     }
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ role: "vendedor" })
-        .eq("id", usuario.id);
+      // El tipo de cuenta sólo se cambia en el servidor (migración 05).
+      const { error } = await supabase.rpc("activar_modo_particular");
 
       if (error) {
         throw error;
       }
 
-      setUsuario({ ...usuario, role: "vendedor" });
-      Toast.show({ type: "success", text1: "Ahora sos vendedor" });
+      setUsuario({ ...usuario, role: "particular" });
+      Toast.show({ type: "success", text1: "Ya podés vender tus prendas" });
     } catch {
       Toast.show({
         type: "error",
@@ -99,7 +97,7 @@ export default function PerfilScreen() {
 
           <Text style={styles.label}>Tipo de cuenta</Text>
           <Text style={styles.value}>
-            {esVendedor ? "Vendedor" : "Comprador"}
+            {esVendedor ? "Vendedor particular" : "Comprador"}
           </Text>
         </View>
         <Pressable

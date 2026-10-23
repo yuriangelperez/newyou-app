@@ -20,5 +20,5 @@ export interface Usuario {
   id: string;
   nombre: string;
   email: string;
-  role: 'vendedor' | 'comprador';
+  role: 'particular' | 'comprador';
 }

@@ -30,7 +30,7 @@ import {
   selectTotalItems,
   useCarritoStore,
 } from "../../stores/useCarritoStore";
-import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
 import { useFavoritosStore } from "../../stores/useFavoritosStore";
 
 const CANVAS_WIDTH = 412;
@@ -45,9 +45,7 @@ export default function ProductDetailScreen() {
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
   const setCompraDirecta = useCarritoStore((state) => state.setCompraDirecta);
   const totalItems = useCarritoStore(selectTotalItems);
-  const esVendedor = useUsuarioStore(
-    (state) => state.usuario?.role === "vendedor",
-  );
+  const esVendedor = useUsuarioStore(selectPuedeVender);
   const { producto, cargando, error, refrescar } = useProductoById(id);
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);

@@ -36,7 +36,7 @@ import {
   pickImageFromLibrary,
   uploadProductImage,
 } from "../../services/storageService";
-import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
 
 const DEFAULT_VALUES: ProductoFormValues = {
   nombre: "",
@@ -54,9 +54,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
 export default function EditarProductoScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const esVendedor = useUsuarioStore(
-    (state) => state.usuario?.role === "vendedor",
-  );
+  const esVendedor = useUsuarioStore(selectPuedeVender);
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { producto, cargando, error, refrescar } = useProductoById(id);
   const [uploadingImage, setUploadingImage] = useState(false);

@@ -2,11 +2,13 @@ import { supabase } from "../services/supabase";
 import { User } from "@supabase/supabase-js";
 import { create } from "zustand";
 
+import { RoleUsuario } from "../services/auth";
+
 export interface UsuarioSesion {
   id: string;
   nombre: string;
   email: string;
-  role: "comprador" | "vendedor";
+  role: RoleUsuario;
 }
 
 interface UsuarioStore {
@@ -17,6 +19,11 @@ interface UsuarioStore {
   clearUsuario: () => void;
 
   hidratarDesdeAuthUser: (authUser: User | null) => Promise<void>;
+}
+
+// Cuentas registradas antes de la migración 05 traen 'vendedor' en la metadata.
+function normalizarRole(valor: unknown): RoleUsuario {
+  return valor === "particular" || valor === "vendedor" ? "particular" : "comprador";
 }
 
 function resolverNombre(authUser: User | null) {
@@ -41,6 +48,10 @@ function resolverNombre(authUser: User | null) {
 
   return "Usuario";
 }
+
+// Quién puede publicar y ver sus ventas. En la entrega de empresas se suma a los miembros con permiso.
+export const selectPuedeVender = (state: Pick<UsuarioStore, "usuario">) =>
+  state.usuario?.role === "particular";
 
 export const useUsuarioStore = create<UsuarioStore>((set) => ({
   usuario: null,
@@ -75,18 +86,13 @@ export const useUsuarioStore = create<UsuarioStore>((set) => ({
         .upsert(
           {
             id: authData.user.id,
-            role: authData.user.user_metadata?.role === "vendedor" ? "vendedor" : "comprador",
+            role: normalizarRole(authData.user.user_metadata?.role),
           },
           { onConflict: "id" }
         );
     }
 
-    const fallbackRole = authData.user.user_metadata?.role === "vendedor" ? "vendedor" : "comprador";
-
-    const role =
-      profile?.role === "vendedor"
-        ? "vendedor"
-        : fallbackRole;
+    const role = normalizarRole(profile?.role ?? authData.user.user_metadata?.role);
 
     set({
       usuario: {

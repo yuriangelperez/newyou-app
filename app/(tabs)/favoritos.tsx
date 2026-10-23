@@ -10,7 +10,7 @@ import { ROUTES } from '../../constants/routes';
 import { Colors } from '../../constants/theme';
 import { useCarritoStore, selectTotalItems } from '../../stores/useCarritoStore';
 import { useFavoritosStore } from '../../stores/useFavoritosStore';
-import { useUsuarioStore } from '../../stores/useUsuarioStore';
+import { selectPuedeVender, useUsuarioStore } from '../../stores/useUsuarioStore';
 import { Producto } from '../../types';
 
 const MAX_CONTENT_WIDTH = 1160;
@@ -98,7 +98,7 @@ export default function FavoritosScreen() {
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
-        esVendedor={usuario?.role === 'vendedor'}
+        esVendedor={selectPuedeVender({ usuario })}
         onPressCreate={() => router.push(ROUTES.newProduct)}
         onPressHome={() => router.replace(ROUTES.home)}
         onPressBag={() => router.push(ROUTES.categories)}

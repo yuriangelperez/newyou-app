@@ -14,7 +14,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 
 import { Colors, Radius, Spacing } from "../constants/theme";
 import { ROUTES } from "../constants/routes";
-import { useUsuarioStore } from "../stores/useUsuarioStore";
+import { selectPuedeVender, useUsuarioStore } from "../stores/useUsuarioStore";
 import { useMisProductos } from "../hooks/useMisProductos";
 import { deleteProducto } from "../services/productosService";
 import { Producto } from "../types";
@@ -79,7 +79,7 @@ export default function MisPublicacionesScreen() {
     });
   };
 
-  if (usuario?.role !== "vendedor") {
+  if (!selectPuedeVender({ usuario })) {
     return (
       <SafeAreaView
         style={styles.safeArea}

@@ -65,7 +65,7 @@ export default function RegisterScreen() {
         correo.trim(),
         contrasena,
         usuario.trim(),
-        quiereVender ? 'vendedor' : 'comprador',
+        quiereVender ? 'particular' : 'comprador',
       );
 
       if (authError) {

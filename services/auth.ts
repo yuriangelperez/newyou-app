@@ -16,7 +16,7 @@ export async function signInWithPassword(
   }
 }
 
-export type RoleUsuario = 'comprador' | 'vendedor';
+export type RoleUsuario = 'comprador' | 'particular';
 
 export async function signUpWithPassword(
   email: string,

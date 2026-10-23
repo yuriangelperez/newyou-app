@@ -27,7 +27,7 @@ import {
   selectTotalItems,
   useCarritoStore,
 } from "../../stores/useCarritoStore";
-import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
 import { Producto } from "../../types";
 
 const CANVAS_WIDTH = 412;
@@ -397,7 +397,7 @@ export default function HomeScreen() {
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
-        esVendedor={usuario?.role === "vendedor"}
+        esVendedor={selectPuedeVender({ usuario })}
         onPressCreate={() => router.push(ROUTES.newProduct)}
         onPressBag={() => router.push(ROUTES.categories)}
         onPressCart={() => router.push(ROUTES.cart)}

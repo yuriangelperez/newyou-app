@@ -3,10 +3,10 @@ import { Redirect } from "expo-router";
 import { HistorialPedidos } from "../components/HistorialPedidos";
 import { ROUTES } from "../constants/routes";
 import { obtenerMisVentas } from "../services/comprasService";
-import { useUsuarioStore } from "../stores/useUsuarioStore";
+import { selectPuedeVender, useUsuarioStore } from "../stores/useUsuarioStore";
 
 export default function MisVentasScreen() {
-  const esVendedor = useUsuarioStore((state) => state.usuario?.role === "vendedor");
+  const esVendedor = useUsuarioStore(selectPuedeVender);
 
   if (!esVendedor) {
     return <Redirect href={ROUTES.home} />;

@@ -38,7 +38,7 @@ import {
   pickImageFromLibrary,
 } from "../../services/storageService";
 import { subirImagenProducto } from "../../services/supabase";
-import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
 
 const DEFAULT_VALUES: ProductoFormValues = {
   nombre: "",
@@ -57,9 +57,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
 export default function NuevoProductoScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const esVendedor = useUsuarioStore(
-    (state) => state.usuario?.role === "vendedor",
-  );
+  const esVendedor = useUsuarioStore(selectPuedeVender);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
