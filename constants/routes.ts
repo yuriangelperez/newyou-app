@@ -12,6 +12,13 @@ export const ROUTES = {
   mySales: '/mis-ventas',
   addresses: '/direcciones',
 
+  companyPanel: '/empresa',
+  newCompany: '/empresa/nueva',
+  companyBranches: '/empresa/sedes',
+  companyTeam: '/empresa/equipo',
+  invitation: '/invitacion',
+  store: '/tienda/[slug]',
+
   categories: '/categorias',
   cart: '/carrito',
   checkout: '/checkout',

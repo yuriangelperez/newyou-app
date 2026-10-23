@@ -1,0 +1,113 @@
+import { StyleSheet } from "react-native";
+
+import { Colors, FontSize, Radius, Spacing } from "./theme";
+
+/** Estilos compartidos por las pantallas de empresa (mismo look que Mis direcciones). */
+export const estilosFormulario = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: Colors.background },
+  content: {
+    width: "100%",
+    maxWidth: 800,
+    alignSelf: "center",
+    padding: Spacing.md,
+    rowGap: Spacing.md,
+  },
+  card: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.secondary,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    rowGap: Spacing.sm,
+  },
+  cardRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", columnGap: Spacing.sm },
+  cardTitle: {
+    flexShrink: 1,
+    color: Colors.primary,
+    fontSize: FontSize.lg,
+    fontFamily: "Montserrat_700Bold",
+  },
+  cardText: {
+    color: Colors.text,
+    fontSize: FontSize.md,
+    fontFamily: "Montserrat_500Medium",
+  },
+  muted: {
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
+    fontFamily: "Montserrat_500Medium",
+  },
+  badge: {
+    color: Colors.secondary,
+    fontSize: FontSize.sm,
+    fontFamily: "Montserrat_700Bold",
+  },
+  sectionTitle: {
+    color: Colors.primary,
+    fontSize: FontSize.lg,
+    fontFamily: "Montserrat_700Bold",
+  },
+  label: {
+    color: Colors.primary,
+    fontSize: FontSize.sm,
+    fontFamily: "Montserrat_700Bold",
+  },
+  input: {
+    minHeight: 44,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.secondary,
+    backgroundColor: Colors.surface,
+    color: Colors.text,
+    fontSize: FontSize.md,
+    fontFamily: "Montserrat_400Regular",
+  },
+  inputMultilinea: { minHeight: 88, paddingTop: Spacing.sm, textAlignVertical: "top" },
+  switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  actions: { flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", rowGap: Spacing.sm },
+  link: {
+    color: Colors.secondary,
+    fontSize: FontSize.md,
+    fontFamily: "Montserrat_700Bold",
+  },
+  danger: { color: Colors.danger },
+  error: { color: Colors.danger, fontFamily: "Montserrat_500Medium" },
+  empty: {
+    color: Colors.textMuted,
+    fontSize: FontSize.md,
+    fontFamily: "Montserrat_500Medium",
+  },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+  chip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.secondary,
+  },
+  chipActivo: { backgroundColor: Colors.secondary },
+  chipTexto: { color: Colors.secondary, fontSize: FontSize.sm, fontFamily: "Montserrat_600SemiBold" },
+  chipTextoActivo: { color: Colors.white },
+  saveButton: {
+    minHeight: 46,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.secondary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  disabled: { opacity: 0.55 },
+  saveText: {
+    color: Colors.white,
+    fontSize: FontSize.lg,
+    fontFamily: "Montserrat_700Bold",
+  },
+  aviso: {
+    backgroundColor: Colors.tertiary,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    color: Colors.primary,
+    fontSize: FontSize.md,
+    fontFamily: "Montserrat_500Medium",
+  },
+});

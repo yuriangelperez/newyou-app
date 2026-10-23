@@ -294,6 +294,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
    3. `03-direcciones.sql`: columnas de dirección y la dirección de entrega en `compras`.
    4. `04-mis-direcciones.sql`: tabla `direcciones` con RLS, dirección de retiro por publicación (con relleno automático de las anteriores) y la función `direcciones_retiro()`.
    5. `05-particular.sql`: el rol `vendedor` pasa a `particular` (C2C), se eliminan políticas duplicadas que dejaban publicar a cualquier comprador y crear compras sin `confirmar_compra`, se agregan políticas a `categorias`, y el tipo de cuenta sólo se cambia con la función `activar_modo_particular()`. Publicarlo junto con la versión de la app que usa `particular`.
+   6. `06-empresas.sql`: modo empresa. Tablas `empresas`, `sedes`, `empresa_miembros` (rol y sedes permitidas) e `invitaciones`, catálogo de roles y permisos, `tiene_permiso()` para las políticas y las funciones `crear_empresa`, `mis_empresas`, `equipo_empresa`, `aceptar_invitacion`, `cambiar_rol_miembro` y `quitar_miembro`. Una empresa nace pendiente; para publicarla: `UPDATE public.empresas SET estado = 'verificada' WHERE cuit = '<cuit>';`.
 
 Para versionar las políticas, funciones y triggers que hoy sólo están en Supabase, ejecutar [`supabase/consultas/exportar-esquema.sql`](supabase/consultas/exportar-esquema.sql). El resultado del 2026-10-23 quedó en `supabase/migraciones/00-base.sql` (referencia, no se ejecuta).
 

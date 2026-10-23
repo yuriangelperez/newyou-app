@@ -434,6 +434,44 @@ export async function getMisProductos() {
 }
 
 /*
+ * Publicaciones de una empresa (página de la tienda).
+ */
+export async function getProductosDeEmpresa(empresaId: number) {
+  const client = assertSupabaseConfigured();
+
+  const { data, error } = await client
+    .from(TABLA_PRODUCTOS)
+    .select(
+      `
+        productoid,
+        nombre,
+        descripcion,
+        precio,
+        stock,
+        categoriaid,
+        imagen_url,
+        imagenes,
+        talles,
+        colores,
+        tipo_prenda,
+        temporada,
+        publico,
+        categorias ( nombre )
+      `,
+    )
+    .eq("empresa_id", empresaId)
+    .order("productoid", {
+      ascending: false,
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => mapRowToProducto(row as ProductoRow));
+}
+
+/*
  * Obtener un producto por ID.
  */
 export async function getProductoById(id: string) {

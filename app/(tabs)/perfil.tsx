@@ -17,6 +17,7 @@ import { ROUTES } from "../../constants/routes";
 import { Colors, Radius } from "../../constants/theme";
 import { supabase } from "../../services/supabase";
 import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
+import { selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
 import { selectPuedeVender, useUsuarioStore } from "../../stores/useUsuarioStore";
 
 export default function PerfilScreen() {
@@ -35,6 +36,9 @@ export default function PerfilScreen() {
   );
 
   const clearUsuario = useUsuarioStore((state) => state.clearUsuario);
+  const membresias = useEmpresaStore((state) => state.membresias);
+  const empresaActiva = useEmpresaStore(selectEmpresaActiva);
+  const setEmpresaActiva = useEmpresaStore((state) => state.setEmpresaActiva);
 
   const cerrarSesion = async () => {
     try {
@@ -49,6 +53,7 @@ export default function PerfilScreen() {
     }
 
     clearUsuario();
+    useEmpresaStore.getState().limpiar();
     router.replace(ROUTES.login);
   };
 
@@ -113,6 +118,46 @@ export default function PerfilScreen() {
         >
           <Text style={styles.favoritesText}>Direcciones</Text>
         </Pressable>
+
+        {usuario ? (
+          <View style={[styles.card, styles.companyCard]}>
+            <Text style={styles.label}>Modo empresa</Text>
+            {membresias.length > 0 ? (
+              <>
+                <Text style={styles.value}>Actuar como</Text>
+                <View style={styles.chips}>
+                  {[{ id: null, nombre: "Yo" }, ...membresias.map((m) => ({ id: m.empresaId, nombre: m.nombre }))].map(
+                    (opcion) => {
+                      const activa = (empresaActiva?.empresaId ?? null) === opcion.id;
+                      return (
+                        <Pressable
+                          key={opcion.id ?? "yo"}
+                          onPress={() => void setEmpresaActiva(opcion.id)}
+                          style={[styles.chip, activa && styles.chipActive]}
+                        >
+                          <Text style={[styles.chipText, activa && styles.chipTextActive]}>{opcion.nombre}</Text>
+                        </Pressable>
+                      );
+                    },
+                  )}
+                </View>
+                {empresaActiva ? (
+                  <Pressable onPress={() => router.push(ROUTES.companyPanel)} style={styles.myProductsButton}>
+                    <Text style={styles.myProductsText}>Panel de {empresaActiva.nombre}</Text>
+                  </Pressable>
+                ) : null}
+              </>
+            ) : (
+              <Text style={styles.value}>Vendé como tienda, con sedes y equipo.</Text>
+            )}
+            <Pressable onPress={() => router.push(ROUTES.newCompany)} style={styles.favoritesButton}>
+              <Text style={styles.favoritesText}>Crear empresa</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push(ROUTES.invitation)} style={styles.favoritesButton}>
+              <Text style={styles.favoritesText}>Tengo un código de invitación</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {esVendedor ? (
           <>
@@ -257,6 +302,32 @@ function createStyles(scale: number, bottomInset: number, topInset: number) {
       color: "#2D1F16",
       fontSize: s(15),
       fontFamily: "Montserrat_700Bold",
+    },
+    companyCard: {
+      marginTop: s(16),
+    },
+    chips: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: s(8),
+    },
+    chip: {
+      paddingHorizontal: s(14),
+      paddingVertical: s(6),
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: Colors.secondary,
+    },
+    chipActive: {
+      backgroundColor: Colors.secondary,
+    },
+    chipText: {
+      color: Colors.secondary,
+      fontSize: s(13),
+      fontFamily: "Montserrat_600SemiBold",
+    },
+    chipTextActive: {
+      color: Colors.white,
     },
     logoutText: {
       color: "#2D1F16",

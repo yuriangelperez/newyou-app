@@ -9,6 +9,7 @@ import { Colors } from '../constants/theme';
 import { ROUTES } from '../constants/routes';
 import { sincronizarBorradores } from '../services/offlineService';
 import { supabase } from '../services/supabase';
+import { useEmpresaStore } from '../stores/useEmpresaStore';
 import { useUsuarioStore } from '../stores/useUsuarioStore';
 
 // Toast ámbar para avisos de modo offline.
@@ -66,6 +67,15 @@ export default function RootLayout() {
       subscription.unsubscribe();
     };
   }, [hidratarDesdeAuthUser]);
+
+  // Empresas del usuario para el selector "actuar como".
+  useEffect(() => {
+    if (haySesion) {
+      void useEmpresaStore.getState().cargar();
+    } else if (haySesion === false) {
+      useEmpresaStore.getState().limpiar();
+    }
+  }, [haySesion]);
 
   // Al recuperar la red (y con sesión) se suben los borradores de `ny_drafts`.
   useEffect(() => {
@@ -129,6 +139,12 @@ export default function RootLayout() {
         <Stack.Screen name="mis-ventas" />
         <Stack.Screen name="direcciones" />
         <Stack.Screen name="checkout/index" />
+        <Stack.Screen name="empresa/index" />
+        <Stack.Screen name="empresa/nueva" />
+        <Stack.Screen name="empresa/sedes" />
+        <Stack.Screen name="empresa/equipo" />
+        <Stack.Screen name="invitacion" />
+        <Stack.Screen name="tienda/[slug]" />
       </Stack>
       <Toast config={toastConfig} />
     </>
