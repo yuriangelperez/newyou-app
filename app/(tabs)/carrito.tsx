@@ -33,6 +33,7 @@ export default function CarritoScreen() {
   const totalItems = useCarritoStore(selectTotalItems);
   const subtotal = useCarritoStore(selectSubtotal);
   const esVendedor = usePuedeVender();
+  const verPrenda = (id: string) => router.push({ pathname: ROUTES.productDetail, params: { id } });
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
@@ -69,10 +70,14 @@ export default function CarritoScreen() {
         ItemSeparatorComponent={() => <View style={styles.itemSpacing} />}
         renderItem={({ item }) => (
           <View style={styles.cartRow}>
-            <Image source={{ uri: item.imagen }} style={styles.productImage} />
+            <Pressable accessibilityLabel={`Ver ${item.nombre}`} onPress={() => verPrenda(item.productoId)}>
+              <Image source={{ uri: item.imagen }} style={styles.productImage} />
+            </Pressable>
 
             <View style={styles.rightColumn}>
-              <Text style={styles.productTitle}>{item.nombre}</Text>
+              <Pressable onPress={() => verPrenda(item.productoId)}>
+                <Text style={styles.productTitle}>{item.nombre}</Text>
+              </Pressable>
               <View style={styles.bulletList}>
                 <Text style={styles.bulletText}>{'\u2022 '}Talle: {item.talle}</Text>
                 <Text style={styles.bulletText}>{'\u2022 '}Color: {item.color}</Text>

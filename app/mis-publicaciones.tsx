@@ -72,6 +72,10 @@ export default function MisPublicacionesScreen() {
     );
   };
 
+  const handleVer = (producto: Producto) => {
+    router.push({ pathname: ROUTES.productDetail, params: { id: producto.id } });
+  };
+
   const handleEditar = (producto: Producto) => {
     router.push({
       pathname: ROUTES.editProduct,
@@ -166,27 +170,31 @@ export default function MisPublicacionesScreen() {
     item: Producto;
   }) => (
     <View style={styles.card}>
-      {item.imagen ? (
-        <Image
-          source={{ uri: item.imagen }}
-          style={styles.productImage}
-          resizeMode="cover"
-        />
-      ) : (
-        <View style={styles.productImagePlaceholder}>
-          <Text style={styles.placeholderText}>
-            Sin imagen
-          </Text>
-        </View>
-      )}
+      <Pressable accessibilityLabel={`Ver ${item.nombre}`} onPress={() => handleVer(item)}>
+        {item.imagen ? (
+          <Image
+            source={{ uri: item.imagen }}
+            style={styles.productImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.productImagePlaceholder}>
+            <Text style={styles.placeholderText}>
+              Sin imagen
+            </Text>
+          </View>
+        )}
+      </Pressable>
 
       <View style={styles.info}>
-        <Text
-          style={styles.productName}
-          numberOfLines={2}
-        >
-          {item.nombre}
-        </Text>
+        <Pressable onPress={() => handleVer(item)}>
+          <Text
+            style={styles.productName}
+            numberOfLines={2}
+          >
+            {item.nombre}
+          </Text>
+        </Pressable>
 
         <Text style={styles.price}>
           ${item.precio.toLocaleString("es-AR")}

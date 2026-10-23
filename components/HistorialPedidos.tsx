@@ -8,8 +8,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { ROUTES } from "../constants/routes";
 import Toast from "react-native-toast-message";
 
 import { Colors, FontSize, Radius, Shadow, Spacing } from "../constants/theme";
@@ -79,6 +81,7 @@ export function HistorialPedidos({
   puedeCambiar = () => false,
   pendientes = 0,
 }: HistorialPedidosProps) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -242,11 +245,23 @@ export function HistorialPedidos({
           </Text>
         ) : null}
 
-        {item.items.map((it, index) => (
-          <Text key={`${it.productoId}-${index}`} style={styles.item}>
-            {`${it.cantidad} x ${it.nombre}${it.talle ? ` (${it.talle}${it.color ? `, ${it.color}` : ""})` : ""}`}
-          </Text>
-        ))}
+        {item.items.map((it, index) => {
+          const texto = `${it.cantidad} x ${it.nombre}${it.talle ? ` (${it.talle}${it.color ? `, ${it.color}` : ""})` : ""}`;
+          // Si la prenda se borró después de la compra, queda como texto.
+          return it.productoId ? (
+            <Pressable
+              key={`${it.productoId}-${index}`}
+              accessibilityRole="link"
+              onPress={() => router.push({ pathname: ROUTES.productDetail, params: { id: String(it.productoId) } })}
+            >
+              <Text style={[styles.item, styles.itemLink]}>{texto}</Text>
+            </Pressable>
+          ) : (
+            <Text key={`sin-prenda-${index}`} style={styles.item}>
+              {texto}
+            </Text>
+          );
+        })}
 
         <View style={styles.row}>
           <Text style={styles.meta}>{item.envio > 0 ? `Envío ${formatPrecio(item.envio)}` : "Envío gratis"}</Text>
@@ -499,6 +514,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     fontFamily: "Montserrat_500Medium",
   },
+  itemLink: { textDecorationLine: "underline", textDecorationColor: Colors.tertiary },
   actions: {
     flexDirection: "row",
     alignItems: "center",
