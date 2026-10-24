@@ -36,6 +36,7 @@ import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { usePuedeGestionarProducto, usePuedeVender } from "../../hooks/usePuedeVender";
 import { useEsEscritorio } from "../../hooks/useEsEscritorio";
 import { useFavoritosStore } from "../../stores/useFavoritosStore";
+import { calcularPrecioFinal } from "../../types";
 
 const CANVAS_WIDTH = 412;
 
@@ -360,8 +361,18 @@ export default function ProductDetailScreen() {
             <Text numberOfLines={2} style={styles.productName}>
               {producto.nombre}
             </Text>
+            {producto.descuentoPorcentaje > 0 ? (
+              <>
+                <Text style={styles.discountLabel}>
+                  -{producto.descuentoPorcentaje}% de descuento
+                </Text>
+                <Text style={styles.originalPrice}>
+                  ${producto.precio.toLocaleString("es-AR")}
+                </Text>
+              </>
+            ) : null}
             <Text style={styles.price}>
-              ${producto.precio.toLocaleString("es-AR")}
+              ${calcularPrecioFinal(producto).toLocaleString("es-AR")}
             </Text>
             {reputacion ? <ResumenReputacion promedio={reputacion.promedio} cantidad={reputacion.cantidad} /> : null}
 
@@ -646,6 +657,19 @@ function createStyles(
       fontSize: s(30),
       lineHeight: s(36),
       fontWeight: "600",
+    },
+    discountLabel: {
+      marginTop: s(8),
+      color: Colors.danger,
+      fontSize: s(14),
+      fontWeight: "700",
+    },
+    originalPrice: {
+      marginTop: s(8),
+      color: Colors.textMuted,
+      fontSize: s(16),
+      lineHeight: s(20),
+      textDecorationLine: "line-through",
     },
     price: {
       marginTop: s(8),

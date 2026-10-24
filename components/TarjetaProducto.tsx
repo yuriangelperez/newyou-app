@@ -10,7 +10,7 @@ import {
 
 import { Colors, Radius } from "../constants/theme";
 import { useCarritoStore } from "../stores/useCarritoStore";
-import { Producto } from "../types";
+import { calcularPrecioFinal, Producto } from "../types";
 
 interface TarjetaProductoProps {
   producto: Producto;
@@ -39,6 +39,7 @@ export default function TarjetaProducto({
   );
   const eliminarProducto = useCarritoStore((state) => state.eliminarProducto);
   const agregado = productoEnCarrito;
+  const tieneDescuento = producto.descuentoPorcentaje > 0;
 
   const onPressAccion = () => {
     if (productoEnCarrito) {
@@ -76,6 +77,12 @@ export default function TarjetaProducto({
         />
       )}
 
+      {tieneDescuento ? (
+        <View style={styles.discountBadge}>
+          <Text style={styles.discountText}>-{producto.descuentoPorcentaje}%</Text>
+        </View>
+      ) : null}
+
       {!producto.disponible ? (
         <View style={styles.soldOutBadge}>
           <Text style={styles.soldOutText}>AGOTADO</Text>
@@ -87,9 +94,16 @@ export default function TarjetaProducto({
       </Text>
 
       <View style={styles.footer}>
-        <Text style={styles.price}>
-          ${producto.precio.toLocaleString("es-AR")}
-        </Text>
+        <View>
+          {tieneDescuento ? (
+            <Text style={styles.originalPrice}>
+              ${producto.precio.toLocaleString("es-AR")}
+            </Text>
+          ) : null}
+          <Text style={styles.price}>
+            ${calcularPrecioFinal(producto).toLocaleString("es-AR")}
+          </Text>
+        </View>
 
         <Pressable
           accessibilityLabel={
@@ -138,6 +152,26 @@ function createStyles(scale: number) {
       paddingHorizontal: s(12),
       paddingTop: s(10),
       paddingBottom: s(12),
+    },
+    discountBadge: {
+      position: "absolute",
+      top: s(10),
+      left: s(10),
+      paddingHorizontal: s(7),
+      paddingVertical: s(4),
+      borderRadius: s(6),
+      backgroundColor: Colors.danger,
+    },
+    discountText: {
+      color: Colors.white,
+      fontSize: s(10),
+      fontWeight: "700",
+    },
+    originalPrice: {
+      color: Colors.textMuted,
+      fontSize: s(10),
+      lineHeight: s(12),
+      textDecorationLine: "line-through",
     },
     soldOutBadge: {
       alignSelf: "flex-start",

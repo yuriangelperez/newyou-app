@@ -18,7 +18,7 @@ import { selectEmpresaActiva, useEmpresaStore } from "../stores/useEmpresaStore"
 import { usePuedeVender } from "../hooks/usePuedeVender";
 import { useMisProductos } from "../hooks/useMisProductos";
 import { deleteProducto } from "../services/productosService";
-import { Producto } from "../types";
+import { calcularPrecioFinal, Producto } from "../types";
 
 const backIcon = require("../assets/images/product-detail/back.png");
 
@@ -196,8 +196,18 @@ export default function MisPublicacionesScreen() {
           </Text>
         </Pressable>
 
+        {item.descuentoPorcentaje > 0 ? (
+          <Text style={styles.discountLabel}>
+            -{item.descuentoPorcentaje}% de descuento
+          </Text>
+        ) : null}
+        {item.descuentoPorcentaje > 0 ? (
+          <Text style={styles.originalPrice}>
+            ${item.precio.toLocaleString("es-AR")}
+          </Text>
+        ) : null}
         <Text style={styles.price}>
-          ${item.precio.toLocaleString("es-AR")}
+          ${calcularPrecioFinal(item).toLocaleString("es-AR")}
         </Text>
 
         <Text style={styles.stock}>
@@ -427,6 +437,20 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
     fontSize: 15,
     fontWeight: "700",
+  },
+
+  discountLabel: {
+    marginTop: 6,
+    color: "#B84A39",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  originalPrice: {
+    marginTop: 4,
+    color: "#8A7B73",
+    fontSize: 12,
+    textDecorationLine: "line-through",
   },
 
   stock: {

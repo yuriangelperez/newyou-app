@@ -66,6 +66,12 @@ export default function CheckoutScreen() {
   const esCompraDirecta = compraDirecta !== null;
   const items = compraDirecta ?? itemsCarrito;
   const subtotal = items.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
+  // `precio` ya trae el descuento aplicado; `precioOriginal` es el de lista.
+  const subtotalOriginal = items.reduce(
+    (acc, item) => acc + (item.precioOriginal ?? item.precio) * item.cantidad,
+    0,
+  );
+  const descuentos = subtotalOriginal - subtotal;
   const totalItems = items.reduce((acc, item) => acc + item.cantidad, 0);
 
   // Al salir de la pantalla se descarta la compra directa pendiente.
@@ -285,11 +291,11 @@ export default function CheckoutScreen() {
           <Text style={styles.summaryTitle}>Resumen de compra</Text>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryText}>{`Productos (${totalItems})`}</Text>
-            <Text style={styles.summaryText}>{formatPrecio(subtotal)}</Text>
+            <Text style={styles.summaryText}>{formatPrecio(subtotalOriginal)}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryText}>Descuentos</Text>
-            <Text style={styles.summaryText}>-$0</Text>
+            <Text style={styles.summaryText}>{`-${formatPrecio(descuentos)}`}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryText}>Envío</Text>

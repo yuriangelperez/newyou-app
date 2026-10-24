@@ -166,6 +166,7 @@ export default function PerfilScreen() {
           {fila("bag-handle-outline", "Mis compras", () => router.push(ROUTES.myPurchases))}
           {fila("heart-outline", "Favoritos", () => router.push(ROUTES.favorites))}
           {fila("location-outline", "Direcciones", () => router.push(ROUTES.addresses))}
+          {fila("settings-outline", "Ajustes", () => router.push(ROUTES.settings))}
         </View>
 
         {ventas.length > 0 ? (

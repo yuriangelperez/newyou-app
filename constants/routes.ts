@@ -13,6 +13,7 @@ export const ROUTES = {
   myPurchases: '/mis-compras',
   mySales: '/mis-ventas',
   addresses: '/direcciones',
+  settings: '/ajustes',
 
   companyPanel: '/empresa',
   newCompany: '/empresa/nueva',

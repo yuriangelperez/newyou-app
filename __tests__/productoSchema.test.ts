@@ -71,3 +71,22 @@ describe('productoSchema: imágenes', () => {
     expect(resultado.success && resultado.data.imagenes).toEqual([]);
   });
 });
+
+describe('productoSchema: descuentos', () => {
+  it('sin descuento queda en 0%', () => {
+    const resultado = productoSchema.safeParse(valido);
+    expect(resultado.success && resultado.data.descuentoPorcentaje).toBe(0);
+  });
+
+  it('con el descuento activo exige un porcentaje mayor a 0', () => {
+    const resultado = productoSchema.safeParse({ ...valido, descuentoActivo: true, descuentoPorcentaje: '0' });
+    expect(campos(resultado)).toContain('descuentoPorcentaje');
+  });
+
+  it('rechaza descuentos fuera de 0–100%', () => {
+    expect(campos(productoSchema.safeParse({ ...valido, descuentoActivo: true, descuentoPorcentaje: '150' }))).toContain(
+      'descuentoPorcentaje',
+    );
+    expect(productoSchema.safeParse({ ...valido, descuentoActivo: true, descuentoPorcentaje: '20' }).success).toBe(true);
+  });
+});

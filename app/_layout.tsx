@@ -152,6 +152,7 @@ export default function RootLayout() {
         <Stack.Screen name="mis-compras" />
         <Stack.Screen name="mis-ventas" />
         <Stack.Screen name="direcciones" />
+        <Stack.Screen name="ajustes" />
         <Stack.Screen name="checkout/index" />
         <Stack.Screen name="empresa/index" />
         <Stack.Screen name="empresa/nueva" />

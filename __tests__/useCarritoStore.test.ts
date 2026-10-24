@@ -5,6 +5,7 @@ const remera: Producto = {
   id: '1',
   nombre: 'Remera',
   precio: 1000,
+  descuentoPorcentaje: 0,
   imagen: '',
   categoria: 'Camisas',
   disponible: true,
@@ -72,5 +73,15 @@ describe('useCarritoStore', () => {
     const state = useCarritoStore.getState();
     expect(state.items).toHaveLength(0);
     expect(selectSubtotal(state)).toBe(0);
+  });
+});
+
+describe('useCarritoStore: descuentos', () => {
+  it('guarda el precio con descuento y el original', () => {
+    agregar({ ...remera, id: '3', descuentoPorcentaje: 25 });
+
+    const [item] = useCarritoStore.getState().items;
+    expect(item.precio).toBe(750);
+    expect(item.precioOriginal).toBe(1000);
   });
 });

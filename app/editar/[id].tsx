@@ -39,6 +39,8 @@ import { puede, useEmpresaStore } from "../../stores/useEmpresaStore";
 const DEFAULT_VALUES: ProductoFormValues = {
   nombre: "",
   precio: "0",
+  descuentoActivo: false,
+  descuentoPorcentaje: "0",
   stock: "1",
   imagen: "",
   imagenes: [],
@@ -83,6 +85,7 @@ export default function EditarProductoScreen() {
   });
 
   const disponible = watch("disponible");
+  const descuentoActivo = watch("descuentoActivo");
   const imagenes = watch("imagenes") ?? [];
   const setImagenes = (lista: string[]) => {
     setValue("imagenes", lista, { shouldValidate: true, shouldDirty: true });
@@ -97,6 +100,8 @@ export default function EditarProductoScreen() {
     reset({
       nombre: producto.nombre,
       precio: producto.precio.toString(),
+      descuentoActivo: producto.descuentoPorcentaje > 0,
+      descuentoPorcentaje: producto.descuentoPorcentaje.toString(),
       stock: producto.stock.toString(),
       imagen: producto.imagen,
       imagenes: (producto.imagenes?.length ? producto.imagenes : [producto.imagen]).filter(Boolean).slice(0, 5),
@@ -158,6 +163,7 @@ export default function EditarProductoScreen() {
       const payload: ProductoInput = {
         nombre: values.nombre.trim(),
         precio: values.precio,
+        descuentoPorcentaje: values.descuentoActivo ? values.descuentoPorcentaje : 0,
         stock: values.stock,
         imagen: values.imagenes[0] ?? "",
         imagenes: values.imagenes,
@@ -260,6 +266,28 @@ export default function EditarProductoScreen() {
           placeholder="35000"
           textInputProps={{ keyboardType: "numeric", editable: puedeCambiarPrecio }}
         />
+
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>Aplicar descuento</Text>
+          <Switch
+            value={descuentoActivo}
+            disabled={!puedeCambiarPrecio}
+            onValueChange={(value) =>
+              setValue("descuentoActivo", value, { shouldValidate: true, shouldDirty: true })
+            }
+            trackColor={{ true: Colors.secondary, false: "#CFCFCF" }}
+          />
+        </View>
+
+        {descuentoActivo ? (
+          <InputField
+            control={control}
+            name="descuentoPorcentaje"
+            label="Descuento (%)"
+            placeholder="10"
+            textInputProps={{ keyboardType: "numeric", editable: puedeCambiarPrecio }}
+          />
+        ) : null}
 
         {esDeEmpresa ? (
           <StockPorSede

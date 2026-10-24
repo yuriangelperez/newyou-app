@@ -57,6 +57,7 @@ interface ProductoRow {
   nombre: string;
   descripcion: string;
   precio: number;
+  descuento_porcentaje: number | null;
   stock: number | null;
   categoriaid: number | null;
   imagen_url: string | null;
@@ -76,6 +77,7 @@ interface ProductoPersistData {
   nombre: string;
   descripcion: string;
   precio: number;
+  descuento_porcentaje: number;
   stock: number;
   categoriaid: number;
   imagen_url: string;
@@ -94,6 +96,7 @@ interface ProductoPersistData {
 export interface ProductoInput {
   nombre: string;
   precio: number;
+  descuentoPorcentaje: number;
   stock: number;
   imagen: string;
   /** Hasta 5; la primera es la principal. Si falta, se usa `imagen`. */
@@ -293,6 +296,7 @@ function mapRowToProducto(row: ProductoRow): Producto {
     id: row.productoid.toString(),
     nombre: row.nombre,
     precio: Number(row.precio),
+    descuentoPorcentaje: Number(row.descuento_porcentaje ?? 0),
     imagen: imagenPrincipal,
     imagenes,
     categoria:
@@ -358,6 +362,7 @@ async function mapInputToPersistData(
     nombre: payload.nombre.trim(),
     descripcion: payload.descripcion.trim(),
     precio: payload.precio,
+    descuento_porcentaje: payload.descuentoPorcentaje,
     stock,
     categoriaid,
     imagen_url: imagen,
@@ -393,6 +398,7 @@ export async function getProductos() {
         nombre,
         descripcion,
         precio,
+        descuento_porcentaje,
         stock,
         categoriaid,
         imagen_url,
@@ -440,6 +446,7 @@ export async function getMisProductos() {
         nombre,
         descripcion,
         precio,
+        descuento_porcentaje,
         stock,
         categoriaid,
         imagen_url,
@@ -529,6 +536,7 @@ export async function getProductoById(id: string) {
         nombre,
         descripcion,
         precio,
+        descuento_porcentaje,
         stock,
         categoriaid,
         imagen_url,
@@ -575,6 +583,7 @@ export async function createProducto(payload: ProductoInput) {
         nombre,
         descripcion,
         precio,
+        descuento_porcentaje,
         stock,
         categoriaid,
         imagen_url,
@@ -635,6 +644,7 @@ export async function updateProducto(id: string, payload: ProductoInput) {
         nombre,
         descripcion,
         precio,
+        descuento_porcentaje,
         stock,
         categoriaid,
         imagen_url,
