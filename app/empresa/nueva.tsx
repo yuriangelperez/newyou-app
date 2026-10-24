@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Switch, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -22,6 +23,7 @@ export default function NuevaEmpresaScreen() {
   const [descripcion, setDescripcion] = useState("");
   const [sedeNombre, setSedeNombre] = useState("Casa central");
   const [sedeDireccion, setSedeDireccion] = useState("");
+  const [pedidoMapa, setPedidoMapa] = useState(0);
   const [haceRetiro, setHaceRetiro] = useState(true);
   const [haceEnvio, setHaceEnvio] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -76,7 +78,7 @@ export default function NuevaEmpresaScreen() {
   return (
     <View style={styles.screen}>
       <EncabezadoPantalla titulo="NUEVA EMPRESA" />
-      <ScrollView
+      <KeyboardAwareScrollView bottomOffset={24}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.xl }]}
         keyboardShouldPersistTaps="handled"
       >
@@ -118,12 +120,14 @@ export default function NuevaEmpresaScreen() {
           <TextInput
             value={sedeDireccion}
             onChangeText={setSedeDireccion}
+            onSubmitEditing={() => setPedidoMapa((n) => n + 1)}
+            returnKeyType="search"
             style={styles.input}
             placeholder="Calle, número, ciudad"
             placeholderTextColor={Colors.textMuted}
           />
-          <BotonGps onDireccion={setSedeDireccion} />
-          <VerEnMapa direccion={sedeDireccion} />
+          <BotonGps onDireccion={setSedeDireccion} direccionActual={sedeDireccion} />
+          <VerEnMapa direccion={sedeDireccion} pedido={pedidoMapa} />
           <View style={styles.switchRow}>
             <Text style={styles.cardText}>Retiro en el local</Text>
             <Switch value={haceRetiro} onValueChange={setHaceRetiro} trackColor={{ true: Colors.secondary }} />
@@ -141,7 +145,7 @@ export default function NuevaEmpresaScreen() {
         >
           {guardando ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.saveText}>Crear empresa</Text>}
         </Pressable>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

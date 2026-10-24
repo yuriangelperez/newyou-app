@@ -1,5 +1,5 @@
 import { supabase } from "../services/supabase";
-import { User } from "@supabase/supabase-js";
+import { isAuthRetryableFetchError, User } from "@supabase/supabase-js";
 import { create } from "zustand";
 
 import { RoleUsuario } from "../services/auth";
@@ -56,7 +56,7 @@ function resolverNombre(authUser: User | null) {
 export const selectPuedeVender = (state: Pick<UsuarioStore, "usuario">) =>
   state.usuario?.role === "particular";
 
-export const useUsuarioStore = create<UsuarioStore>((set) => ({
+export const useUsuarioStore = create<UsuarioStore>((set, get) => ({
   usuario: null,
 
   setUsuario: (usuario) => set({ usuario }),
@@ -69,7 +69,25 @@ export const useUsuarioStore = create<UsuarioStore>((set) => ({
       return;
     }
 
+    // Primero con los datos de la sesión guardada: con sesión el inicio nunca
+    // muestra "invitado", aunque la red tarde o falle. Después se confirma con el servidor.
+    const anterior = get().usuario;
+    set({
+      usuario: {
+        id: authUser.id,
+        nombre: resolverNombre(authUser),
+        email: authUser.email,
+        role: anterior?.id === authUser.id ? anterior.role : normalizarRole(authUser.user_metadata?.role),
+        esAdmin: anterior?.id === authUser.id ? anterior.esAdmin : false,
+      },
+    });
+
     const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    // Sin red (modo offline) se mantiene la sesión guardada.
+    if (isAuthRetryableFetchError(authError)) {
+      return;
+    }
 
     if (authError || !authData.user) {
       await supabase.auth.signOut();

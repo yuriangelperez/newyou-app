@@ -317,11 +317,10 @@ Variables de entorno (archivo `.env`):
 ```text
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
-EXPO_PUBLIC_GOOGLE_MAPS_KEY=      # mapa embebido en Android (builds de EAS)
 ```
 
 El mapa embebido, las notificaciones y el deslizar para borrar usan módulos nativos: funcionan en
-Expo Go para probar, pero las notificaciones push sólo llegan en un build de EAS en un celular real.
+Expo Go para probar (salvo las notificaciones), y las notificaciones sólo funcionan en un build de EAS en un celular real.
 
 ### Configuración de Supabase
 
@@ -413,7 +412,7 @@ La documentación define Expo Router como sistema de navegación, una estructura
 ### APIs nativas
 
 * Expo Image Picker
-* Expo Location + react-native-maps
+* Expo Location + mapa de OpenStreetMap (react-native-webview, sin clave de Google)
 * Expo Notifications (locales y push)
 * NetInfo
 

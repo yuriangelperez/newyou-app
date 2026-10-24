@@ -4,12 +4,12 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import { confirmar } from "../services/confirmar";
@@ -31,6 +31,8 @@ export default function DireccionesScreen() {
   const { direcciones, cargando, error, recargar } = useDirecciones();
   const [alias, setAlias] = useState("");
   const [direccion, setDireccion] = useState("");
+  // Enter en el campo abre o actualiza el mapa.
+  const [pedidoMapa, setPedidoMapa] = useState(0);
   const [guardando, setGuardando] = useState(false);
 
   const avisarError = (titulo: string, err: unknown) =>
@@ -96,7 +98,7 @@ export default function DireccionesScreen() {
         </View>
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView bottomOffset={24}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.xl }]}
         keyboardShouldPersistTaps="handled"
       >
@@ -144,12 +146,14 @@ export default function DireccionesScreen() {
           <TextInput
             value={direccion}
             onChangeText={setDireccion}
+            onSubmitEditing={() => setPedidoMapa((n) => n + 1)}
+            returnKeyType="search"
             placeholder="Calle, número, ciudad"
             placeholderTextColor={Colors.textMuted}
             style={styles.input}
           />
-          <BotonGps onDireccion={setDireccion} />
-          <VerEnMapa direccion={direccion} />
+          <BotonGps onDireccion={setDireccion} direccionActual={direccion} />
+          <VerEnMapa direccion={direccion} pedido={pedidoMapa} />
           <Pressable
             disabled={guardando}
             onPress={() => void onGuardar()}
@@ -162,7 +166,7 @@ export default function DireccionesScreen() {
             )}
           </Pressable>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

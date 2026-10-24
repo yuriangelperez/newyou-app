@@ -5,16 +5,14 @@ import { Controller, useForm } from 'react-hook-form';
 import { useRouter } from 'expo-router';
 import {
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { TarjetaBienvenida } from '../../components/TarjetaBienvenida';
 import { BRANDING_LOGO } from '../../constants/assets';
@@ -61,10 +59,8 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
+    <View style={styles.screen}>
+      <KeyboardAwareScrollView bottomOffset={24}
         contentContainerStyle={[styles.container, esEscritorio && styles.containerEscritorio]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
@@ -165,9 +161,9 @@ export default function LoginScreen() {
       <TouchableOpacity onPress={() => setMostrarBienvenida(true)}>
         <Text style={styles.welcomeText}>¿Qué es New You?</Text>
       </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <TarjetaBienvenida visible={mostrarBienvenida} onCerrar={() => setMostrarBienvenida(false)} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

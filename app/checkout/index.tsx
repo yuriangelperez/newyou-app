@@ -4,12 +4,12 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -220,7 +220,7 @@ export default function CheckoutScreen() {
         </View>
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView bottomOffset={24}
         style={styles.scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -334,7 +334,7 @@ export default function CheckoutScreen() {
           </Pressable>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <BottomTabBar
         activeTab="cart"
