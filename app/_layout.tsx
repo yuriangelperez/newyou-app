@@ -2,6 +2,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import NetInfo from '@react-native-community/netinfo';
+import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
 import Toast, { BaseToast, ToastConfig } from 'react-native-toast-message';
 
@@ -11,6 +12,7 @@ import { Colors } from '../constants/theme';
 import { useEsEscritorio } from '../hooks/useEsEscritorio';
 import { ROUTES } from '../constants/routes';
 import { bienvenidaVista, marcarBienvenidaVista } from '../services/bienvenidaService';
+import { notificacionesDisponibles } from '../services/notificacionesService';
 import { sincronizarBorradores } from '../services/offlineService';
 import { supabase } from '../services/supabase';
 import { tokenService } from '../services/tokenService';
@@ -126,6 +128,29 @@ export default function RootLayout() {
 
     return unsubscribe;
   }, [haySesion]);
+
+  // Al tocar una notificación se abre la pantalla que corresponde.
+  useEffect(() => {
+    if (!notificacionesDisponibles || !haySesion) {
+      return;
+    }
+
+    const suscripcion = Notifications.addNotificationResponseReceivedListener((respuesta) => {
+      const datos = respuesta.notification.request.content.data as {
+        tipo?: string;
+        productoId?: string;
+      };
+      if (datos.tipo === 'venta') {
+        router.push(ROUTES.mySales);
+      } else if (datos.tipo === 'compra') {
+        router.push(ROUTES.myPurchases);
+      } else if (datos.productoId) {
+        router.push({ pathname: ROUTES.productDetail, params: { id: datos.productoId } });
+      }
+    });
+
+    return () => suscripcion.remove();
+  }, [haySesion, router]);
 
   // Guardia de rutas: sin sesión sólo se permiten las pantallas de (auth);
   // con sesión activa, (auth) redirige al home.

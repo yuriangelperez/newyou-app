@@ -19,6 +19,7 @@ import { ROUTES } from "../constants/routes";
 import { Colors, Radius } from "../constants/theme";
 import { selectTotalItems, useCarritoStore } from "../stores/useCarritoStore";
 import { usePuedeVender } from "../hooks/usePuedeVender";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 
 const CANVAS_WIDTH = 412;
 
@@ -28,7 +29,7 @@ export default function AjustesScreen() {
   const insets = useSafeAreaInsets();
   const totalItems = useCarritoStore(selectTotalItems);
   const esVendedor = usePuedeVender();
-  const [notificacionesPush, setNotificacionesPush] = useState(true);
+  const push = usePushNotifications();
   const [notificacionesCorreo, setNotificacionesCorreo] = useState(false);
   const [promociones, setPromociones] = useState(true);
 
@@ -63,9 +64,11 @@ export default function AjustesScreen() {
         <View style={styles.card}>
           <SettingSwitch
             title="Notificaciones push"
-            detail="Recibí novedades sobre tus compras."
-            value={notificacionesPush}
-            onValueChange={setNotificacionesPush}
+            detail="Recibí avisos cuando cambia el estado de tus pedidos."
+            value={push.activas}
+            disabled={push.cargando}
+            onValueChange={(valor) => void push.cambiar(valor)}
+            testID="switch-push"
             styles={styles}
           />
           <View style={styles.divider} />
@@ -127,12 +130,16 @@ function SettingSwitch({
   detail,
   value,
   onValueChange,
+  disabled,
+  testID,
   styles,
 }: {
   title: string;
   detail: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
+  disabled?: boolean;
+  testID?: string;
   styles: SettingStyles;
 }) {
   return (
@@ -144,6 +151,8 @@ function SettingSwitch({
       <Switch
         value={value}
         onValueChange={onValueChange}
+        disabled={disabled}
+        testID={testID}
         trackColor={{ true: Colors.secondary, false: "#CFCFCF" }}
         thumbColor={Colors.surface}
       />

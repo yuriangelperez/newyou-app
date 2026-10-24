@@ -17,6 +17,7 @@ import { BottomTabBar } from "../../components/BottomTabBar";
 import { ROUTES } from "../../constants/routes";
 import { Colors, Radius, Shadow } from "../../constants/theme";
 import { supabase } from "../../services/supabase";
+import { desregistrarDispositivoPush } from "../../services/pushService";
 import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
 import { puede, selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
@@ -44,6 +45,8 @@ export default function PerfilScreen() {
 
   const cerrarSesion = async () => {
     try {
+      // Antes de salir: este celular deja de recibir los push de esta cuenta.
+      await desregistrarDispositivoPush().catch(() => undefined);
       await supabase.auth.signOut();
     } catch {
       Toast.show({
