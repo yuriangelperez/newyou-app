@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import Toast from 'react-native-toast-message';
 
 import { Colors, FontSize, Radius, Spacing } from '../../constants/theme';
+import { MapaItem } from '../MapaItem';
 import { usePermission } from '../../hooks/usePermission';
 import { abrirDireccionEnMapa, obtenerDireccionActual } from '../../services/locationService';
 
@@ -19,8 +20,8 @@ interface BotonGpsProps {
 }
 
 /**
- * Botón "Usar mi ubicación (GPS)". Tras detectar la ubicación muestra un enlace
- * para verla en el mapa y un aviso para revisar la dirección; si el GPS falla,
+ * Botón "Usar mi ubicación (GPS)". Tras detectar la ubicación muestra el punto en
+ * un mapa (en el celular), un enlace para abrirlo en la app de mapas y un aviso para revisar la dirección; si el GPS falla,
  * avisa y deja la carga manual.
  */
 export function BotonGps({ onDireccion }: BotonGpsProps) {
@@ -65,7 +66,12 @@ export function BotonGps({ onDireccion }: BotonGpsProps) {
 
   return (
     <View style={styles.wrapper}>
-      <Pressable disabled={buscando} onPress={() => void onPress()} style={styles.button}>
+      <Pressable
+        disabled={buscando}
+        onPress={() => void onPress()}
+        style={styles.button}
+        testID="boton-gps"
+      >
         {buscando ? (
           <ActivityIndicator color={Colors.secondary} />
         ) : (
@@ -87,6 +93,7 @@ export function BotonGps({ onDireccion }: BotonGpsProps) {
                 : `Margen de error: ${formatearDistancia(punto.precisionMetros)}.`}
             </Text>
           ) : null}
+          <MapaItem latitud={punto.latitud} longitud={punto.longitud} titulo="Ubicación detectada" />
           {/* Abre el punto exacto que tomó el GPS, no la dirección escrita. */}
           <Pressable
             accessibilityRole="link"

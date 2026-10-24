@@ -29,6 +29,7 @@ import {
 } from "../../schemas/productoSchema";
 import { createProducto, ProductoInput } from "../../services/productosService";
 import { useDirecciones } from "../../hooks/useDirecciones";
+import { useNotifications } from "../../hooks/useNotifications";
 import { guardarSiEsNueva } from "../../services/direccionesService";
 import { encolarBorrador, hayConexion } from "../../services/offlineService";
 import { SelectorImagenes } from "../../components/ui/SelectorImagenes";
@@ -58,6 +59,7 @@ export default function NuevoProductoScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const esVendedor = usePuedeVender();
+  const { recordarPublicacion } = useNotifications();
   const empresaActiva = useEmpresaStore(selectEmpresaActiva);
   const { editables: sedesEditables } = useSedesEmpresa(empresaActiva);
   const [stockSedes, setStockSedes] = useState<Record<number, string>>({});
@@ -181,6 +183,9 @@ export default function NuevoProductoScreen() {
       if (!payload.empresa) {
         guardarSiEsNueva(payload.direccionRetiro ?? "", direcciones).catch(() => {});
       }
+
+      // Recordatorio local al día siguiente (se cancela si la prenda se borra).
+      void recordarPublicacion({ id: nuevoProducto.id, nombre: nuevoProducto.nombre });
 
       Toast.show({
         type: "success",

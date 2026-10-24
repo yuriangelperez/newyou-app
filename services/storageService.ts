@@ -5,8 +5,8 @@ import { supabase } from './supabase';
 
 const DEFAULT_BUCKET = process.env.EXPO_PUBLIC_SUPABASE_PRODUCTS_BUCKET || 'productos';
 
-// Compresión previa a la subida (0-1).
-const IMAGE_QUALITY = 0.6;
+// Compresión previa a la subida (0-1). La cátedra pide 0.7–0.8; 0.8 para fotos de prendas.
+const IMAGE_QUALITY = 0.8;
 
 export interface PickedProductImage {
   uri: string;

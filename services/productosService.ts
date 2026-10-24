@@ -1,6 +1,7 @@
 import { Producto } from "../types";
 import { CategoriaProducto } from "../constants/categoriasProductos";
 import { supabase } from "./supabase";
+import { cancelarRecordatorioPublicacion } from "./notificacionesService";
 
 const TABLA_PRODUCTOS = "productos";
 export const MAX_IMAGENES = 5;
@@ -738,6 +739,9 @@ export async function deleteProducto(id: string) {
   if (error) {
     throw error;
   }
+
+  // Si tenía un recordatorio local pendiente, ya no corresponde.
+  await cancelarRecordatorioPublicacion(id).catch(() => undefined);
 }
 
 /*

@@ -80,7 +80,7 @@ export async function obtenerDireccionActual(): Promise<UbicacionResultado> {
     }
 
     const posicion = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
+      accuracy: Location.Accuracy.Balanced,
     });
     const { latitude, longitude, accuracy } = posicion.coords;
 
