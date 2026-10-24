@@ -11,6 +11,7 @@ import { useEsEscritorio } from '../hooks/useEsEscritorio';
 import { ROUTES } from '../constants/routes';
 import { sincronizarBorradores } from '../services/offlineService';
 import { supabase } from '../services/supabase';
+import { tokenService } from '../services/tokenService';
 import { useEmpresaStore } from '../stores/useEmpresaStore';
 import { useUsuarioStore } from '../stores/useUsuarioStore';
 
@@ -64,6 +65,11 @@ export default function RootLayout() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setHaySesion(Boolean(session));
       hidratarDesdeAuthUser(session?.user ?? null);
+      // El JWT queda también en SecureStore (cifrado) para el interceptor de la Clase 8.
+      void (session
+        ? tokenService.save(session.access_token, session.user.id)
+        : tokenService.clear()
+      ).catch(() => undefined);
     });
 
     return () => {

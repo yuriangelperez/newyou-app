@@ -1,8 +1,10 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import { Colors, FontSize, Radius, Spacing } from '../../constants/theme';
+import { usePermission } from '../../hooks/usePermission';
 import { MAX_IMAGENES } from '../../services/productosService';
 import { pickImageFromCamera, pickImagesFromLibrary } from '../../services/storageService';
 import { subirImagenProducto } from '../../services/supabase';
@@ -18,6 +20,14 @@ interface SelectorImagenesProps {
 /** Fotos de la prenda: agregar (cámara o galería), quitar, ordenar y elegir la principal. */
 export function SelectorImagenes({ imagenes, onChange, onSubiendoChange, deshabilitado }: SelectorImagenesProps) {
   const [subiendo, setSubiendo] = useState(false);
+  const permisoCamara = usePermission(
+    ImagePicker.requestCameraPermissionsAsync,
+    'Sin acceso a la cámara no podés fotografiar la prenda.',
+  );
+  const permisoGaleria = usePermission(
+    ImagePicker.requestMediaLibraryPermissionsAsync,
+    'Sin acceso a la galería no podés elegir fotos.',
+  );
   const lugares = MAX_IMAGENES - imagenes.length;
   // En la web no hay cámara: sólo galería (el selector de archivos del navegador).
   const fuentes = Platform.OS === 'web' ? (['library'] as const) : (['camera', 'library'] as const);
@@ -30,6 +40,11 @@ export function SelectorImagenes({ imagenes, onChange, onSubiendoChange, deshabi
   const agregar = async (fuente: 'camera' | 'library') => {
     if (lugares <= 0) {
       Toast.show({ type: 'info', text1: `Podés subir hasta ${MAX_IMAGENES} imágenes` });
+      return;
+    }
+
+    const permiso = fuente === 'camera' ? permisoCamara : permisoGaleria;
+    if (!(await permiso.request())) {
       return;
     }
 
