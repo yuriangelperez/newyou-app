@@ -229,6 +229,9 @@ export default function CheckoutScreen() {
         {ENTREGAS.map((opcion) => (
           <Pressable
             key={opcion.value}
+            testID={`checkout-entrega-${opcion.value}`}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: entrega === opcion.value }}
             onPress={() => setEntrega(opcion.value)}
             style={[styles.entregaCard, entrega === opcion.value && styles.selected]}
           >
@@ -280,6 +283,9 @@ export default function CheckoutScreen() {
         {MEDIOS_PAGO.map((medio) => (
           <Pressable
             key={medio.value}
+            testID={`checkout-pago-${medio.value}`}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: medioPago === medio.value }}
             onPress={() => setMedioPago(medio.value)}
             style={[styles.pagoCard, medioPago === medio.value && styles.selected]}
           >
@@ -307,10 +313,12 @@ export default function CheckoutScreen() {
           </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalText}>TOTAL:</Text>
-            <Text style={styles.totalText}>{formatPrecio(total)}</Text>
+            <Text style={styles.totalText} testID="checkout-total">{formatPrecio(total)}</Text>
           </View>
 
           <Pressable
+            testID="checkout-confirmar"
+            accessibilityRole="button"
             disabled={items.length === 0 || isSubmitting}
             onPress={() => void onConfirmar()}
             style={[

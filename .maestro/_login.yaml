@@ -1,0 +1,18 @@
+# Subflujo reutilizable: inicia sesión con EMAIL y PASSWORD (pasados con -e).
+appId: com.anonymous.newyouapp
+tags: [subflujo]
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "login-correo"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "login-contrasena"
+- inputText: ${PASSWORD}
+- tapOn:
+    id: "login-boton"
+- extendedWaitUntil:
+    visible:
+      id: "home-buscar"
+    timeout: 15000

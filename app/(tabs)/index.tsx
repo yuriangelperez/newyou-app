@@ -335,6 +335,8 @@ export default function HomeScreen() {
               <View style={styles.searchOuter}>
                 <View style={styles.searchContainer}>
                   <TextInput
+                    testID="home-buscar"
+                    accessibilityLabel="Buscar prendas"
                     value={searchText}
                     onChangeText={setSearchText}
                     placeholder="Buscar prendas..."
