@@ -2,7 +2,6 @@ import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 import { BotonFavorito } from "../../components/BotonFavorito";
 import { BottomTabBar } from "../../components/BottomTabBar";
@@ -27,6 +27,7 @@ import { ROUTES } from "../../constants/routes";
 import { Colors } from "../../constants/theme";
 import { useProductoById } from "../../hooks/useProductoById";
 import { deleteProducto } from "../../services/productosService";
+import { confirmar } from "../../services/confirmar";
 import { obtenerReputacionProducto } from "../../services/pedidosService";
 import {
   selectTotalItems,
@@ -147,15 +148,16 @@ export default function ProductDetailScreen() {
     }
 
     if (producto.stock <= 0) {
-      Alert.alert("Sin stock", "Este producto no tiene unidades disponibles.");
+      Toast.show({ type: "info", text1: "Sin stock", text2: "Este producto no tiene unidades disponibles." });
       return false;
     }
 
     if (quantity > producto.stock) {
-      Alert.alert(
-        "Stock insuficiente",
-        `Solo quedan ${producto.stock} unidades disponibles.`,
-      );
+      Toast.show({
+        type: "info",
+        text1: "Stock insuficiente",
+        text2: `Solo quedan ${producto.stock} unidades disponibles.`,
+      });
       return false;
     }
 
@@ -212,21 +214,20 @@ export default function ProductDetailScreen() {
       return;
     }
 
-    Alert.alert("Eliminar producto", "Esta accion no se puede deshacer.", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Eliminar",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteProducto(producto.id);
-            router.replace(ROUTES.home);
-          } catch {
-            Alert.alert("Error", "No se pudo eliminar el producto.");
-          }
-        },
+    // confirmar() también funciona en la web, donde Alert con botones no hace nada (BUG-05).
+    void confirmar("Eliminar producto", "Esta acción no se puede deshacer.", "Eliminar").then(
+      async (ok) => {
+        if (!ok) {
+          return;
+        }
+        try {
+          await deleteProducto(producto.id);
+          router.replace(ROUTES.home);
+        } catch {
+          Toast.show({ type: "error", text1: "No se pudo eliminar el producto." });
+        }
       },
-    ]);
+    );
   };
 
   if (cargando) {
