@@ -570,6 +570,17 @@ Pendientes o mejoras opcionales:
 
 ---
 
+# Pruebas y especificaciones
+
+* [`docs/testing/`](docs/testing/README.md): estrategia, criterios Gherkin, matriz de trazabilidad,
+  colección de Postman, prueba de carga con JMeter y gestión de defectos.
+* [`.maestro/`](.maestro/): flujos E2E (`maestro test .maestro -e EMAIL=... -e PASSWORD=...`).
+* [`docs/planificacion/cronograma.md`](docs/planificacion/cronograma.md): PERT, camino crítico y Gantt.
+* [`specs/`](specs/) y [`.specify/`](.specify/memory/constitution.md): Spec-Driven Development con
+  GitHub Spec Kit (Clase 13). Cada funcionalidad nueva empieza con `/speckit.specify`.
+
+---
+
 # Uso de inteligencia artificial
 
 El equipo usó asistentes de IA como *pair programmers*, revisando y probando cada cambio antes de
