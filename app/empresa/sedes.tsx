@@ -1,6 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Switch, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -34,6 +35,7 @@ function FormularioSede({
   const [datos, setDatos] = useState(inicial);
   const [costo, setCosto] = useState(inicial.costoEnvio ? String(inicial.costoEnvio) : "");
   const [guardando, setGuardando] = useState(false);
+  const [pedidoMapa, setPedidoMapa] = useState(0);
   const cambiar = (parcial: Partial<DatosSede>) => setDatos((actual) => ({ ...actual, ...parcial }));
 
   const onPress = async () => {
@@ -60,9 +62,9 @@ function FormularioSede({
       <Text style={styles.label}>Nombre</Text>
       <TextInput value={datos.nombre} onChangeText={(nombre) => cambiar({ nombre })} style={styles.input} placeholder="Sucursal Pilar" placeholderTextColor={Colors.textMuted} />
       <Text style={styles.label}>Dirección</Text>
-      <TextInput value={datos.direccion} onChangeText={(direccion) => cambiar({ direccion })} style={styles.input} placeholder="Calle, número, ciudad" placeholderTextColor={Colors.textMuted} />
-      <BotonGps onDireccion={(direccion) => cambiar({ direccion })} />
-      <VerEnMapa direccion={datos.direccion} />
+      <TextInput value={datos.direccion} onChangeText={(direccion) => cambiar({ direccion })} onSubmitEditing={() => setPedidoMapa((n) => n + 1)} returnKeyType="search" style={styles.input} placeholder="Calle, número, ciudad" placeholderTextColor={Colors.textMuted} />
+      <BotonGps onDireccion={(direccion) => cambiar({ direccion })} direccionActual={datos.direccion} />
+      <VerEnMapa direccion={datos.direccion} pedido={pedidoMapa} />
       <Text style={styles.label}>Horarios (opcional)</Text>
       <TextInput value={datos.horarios ?? ""} onChangeText={(horarios) => cambiar({ horarios })} style={styles.input} placeholder="Lun a Sáb 9 a 19 h" placeholderTextColor={Colors.textMuted} />
       <View style={styles.switchRow}>
@@ -133,7 +135,7 @@ export default function SedesScreen() {
   return (
     <View style={styles.screen}>
       <EncabezadoPantalla titulo="SEDES" />
-      <ScrollView
+      <KeyboardAwareScrollView bottomOffset={24}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.xl }]}
         keyboardShouldPersistTaps="handled"
       >
@@ -187,7 +189,7 @@ export default function SedesScreen() {
             </Pressable>
           )
         ) : null}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

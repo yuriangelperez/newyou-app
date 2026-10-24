@@ -24,6 +24,8 @@ export function SelectorDireccion({
   placeholder = 'Calle, número, ciudad',
 }: SelectorDireccionProps) {
   const [modoNueva, setModoNueva] = useState(false);
+  // Enter en el campo abre o actualiza el mapa.
+  const [pedidoMapa, setPedidoMapa] = useState(0);
   const sinGuardadas = direcciones.length === 0;
 
   // Preselecciona la principal cuando terminan de cargar las direcciones.
@@ -74,15 +76,17 @@ export function SelectorDireccion({
           <TextInput
             value={value}
             onChangeText={onChange}
+            onSubmitEditing={() => setPedidoMapa((n) => n + 1)}
+            returnKeyType="search"
             placeholder={placeholder}
             placeholderTextColor={Colors.textMuted}
             style={styles.input}
           />
-          <BotonGps onDireccion={onChange} />
+          <BotonGps onDireccion={onChange} direccionActual={value} />
         </View>
       ) : null}
 
-      <VerEnMapa direccion={value} />
+      <VerEnMapa direccion={value} pedido={pedidoMapa} />
     </View>
   );
 }

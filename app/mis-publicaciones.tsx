@@ -1,26 +1,31 @@
 import React, { useCallback } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  FlatList,
   Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 import { useFocusEffect, useRouter } from "expo-router";
 
+import { FilaDeslizable } from "../components/FilaDeslizable";
 import { Colors, Radius, Spacing } from "../constants/theme";
 import { ROUTES } from "../constants/routes";
 import { selectEmpresaActiva, useEmpresaStore } from "../stores/useEmpresaStore";
 import { usePuedeVender } from "../hooks/usePuedeVender";
 import { useMisProductos } from "../hooks/useMisProductos";
 import { deleteProducto } from "../services/productosService";
+import { confirmar } from "../services/confirmar";
 import { calcularPrecioFinal, Producto } from "../types";
 
 const backIcon = require("../assets/images/product-detail/back.png");
+
+// FlashList no admite `gap` en el contenedor: el espacio va como separador.
+const Separador = () => <View style={styles.separador} />;
 
 export default function MisPublicacionesScreen() {
   const router = useRouter();
@@ -42,34 +47,25 @@ export default function MisPublicacionesScreen() {
     }, [refrescar]),
   );
 
-  const handleEliminar = (producto: Producto) => {
-    Alert.alert(
+  const handleEliminar = async (producto: Producto) => {
+    const ok = await confirmar(
       "Eliminar publicación",
       `¿Querés eliminar "${producto.nombre}"? Esta acción no se puede deshacer.`,
-      [
-        {
-          text: "Cancelar",
-          style: "cancel",
-        },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteProducto(producto.id);
-              await refrescar();
-            } catch (err) {
-              Alert.alert(
-                "Error",
-                err instanceof Error
-                  ? err.message
-                  : "No se pudo eliminar la publicación.",
-              );
-            }
-          },
-        },
-      ],
+      "Eliminar",
     );
+    if (!ok) {
+      return;
+    }
+    try {
+      await deleteProducto(producto.id);
+      await refrescar();
+    } catch (err) {
+      Toast.show({
+        type: "error",
+        text1: "No se pudo eliminar la publicación",
+        text2: err instanceof Error ? err.message : undefined,
+      });
+    }
   };
 
   const handleVer = (producto: Producto) => {
@@ -169,7 +165,8 @@ export default function MisPublicacionesScreen() {
   }: {
     item: Producto;
   }) => (
-    <View style={styles.card}>
+    <FilaDeslizable onEliminar={() => handleEliminar(item)}>
+    <View style={styles.card} testID={`publicacion-${item.id}`}>
       <Pressable accessibilityLabel={`Ver ${item.nombre}`} onPress={() => handleVer(item)}>
         {item.imagen ? (
           <Image
@@ -248,6 +245,7 @@ export default function MisPublicacionesScreen() {
         </Pressable>
       </View>
     </View>
+    </FilaDeslizable>
   );
 
   return (
@@ -317,11 +315,12 @@ export default function MisPublicacionesScreen() {
             </Pressable>
           </View>
         ) : (
-          <FlatList
+          <FlashList
             data={productos}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             contentContainerStyle={styles.list}
+            ItemSeparatorComponent={Separador}
             showsVerticalScrollIndicator={false}
             refreshing={refreshing}
             onRefresh={() => void refrescar()}
@@ -386,8 +385,8 @@ const styles = StyleSheet.create({
   list: {
     paddingTop: 2,
     paddingBottom: 24,
-    gap: Spacing.sm,
   },
+  separador: { height: Spacing.sm },
 
   card: {
     backgroundColor: "#E4E0E1",
@@ -581,7 +580,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-
 
   backButtonText: {
     color: "#2D1F16",

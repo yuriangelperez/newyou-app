@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Toast from "react-native-toast-message";
 
 import { EncabezadoPantalla } from "../components/ui/EncabezadoPantalla";
@@ -47,7 +48,7 @@ export default function InvitacionScreen() {
   return (
     <View style={styles.screen}>
       <EncabezadoPantalla titulo="INVITACIÓN" />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.aviso}>
           La invitación tiene que estar a nombre del correo de esta cuenta{email ? ` (${email})` : ""}.
         </Text>
@@ -69,7 +70,7 @@ export default function InvitacionScreen() {
             {aceptando ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.saveText}>Unirme</Text>}
           </Pressable>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

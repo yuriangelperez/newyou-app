@@ -1,7 +1,8 @@
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Toast from "react-native-toast-message";
 
 import { EncabezadoPantalla } from "../../components/ui/EncabezadoPantalla";
@@ -61,7 +62,7 @@ export default function NuevaContrasenaScreen() {
   return (
     <View style={styles.screen}>
       <EncabezadoPantalla titulo="NUEVA CONTRASEÑA" />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {estado === "verificando" ? <ActivityIndicator color={Colors.primary} /> : null}
 
         {estado === "error" ? (
@@ -102,7 +103,7 @@ export default function NuevaContrasenaScreen() {
             </Pressable>
           </View>
         ) : null}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

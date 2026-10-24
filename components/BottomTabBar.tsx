@@ -48,12 +48,16 @@ export function BottomTabBar({
         <TabButton
           active={activeTab === 'home'}
           icon={TAB_BAR_ICONS.home}
+          label="Inicio"
+          testID="tab-inicio"
           onPress={onPressHome}
           styles={styles}
         />
         <TabButton
           active={activeTab === 'bag'}
           icon={TAB_BAR_ICONS.bag}
+          label="Categorías"
+          testID="tab-categorias"
           onPress={onPressBag}
           styles={styles}
         />
@@ -71,6 +75,8 @@ export function BottomTabBar({
         <TabButton
           active={activeTab === 'cart'}
           icon={TAB_BAR_ICONS.cart}
+          label="Carrito"
+          testID="tab-carrito"
           onPress={onPressCart}
           styles={styles}
           badgeCount={cartCount}
@@ -79,6 +85,8 @@ export function BottomTabBar({
           active={activeTab === 'menu'}
           compact
           icon={TAB_BAR_ICONS.menu}
+          label="Perfil y menú"
+          testID="tab-perfil"
           onPress={onPressMenu}
           styles={styles}
         />
@@ -94,7 +102,11 @@ function TabButton({
   onPress,
   styles,
   badgeCount = 0,
+  label,
+  testID,
 }: {
+  label: string;
+  testID: string;
   active: boolean;
   compact?: boolean;
   icon: number;
@@ -103,7 +115,14 @@ function TabButton({
   badgeCount?: number;
 }) {
   return (
-    <Pressable onPress={onPress} disabled={!onPress && active} style={styles.tabItem}>
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityLabel={badgeCount > 0 ? `${label}, ${badgeCount} prendas` : label}
+      accessibilityState={{ selected: active }}
+      testID={testID}
+      onPress={onPress}
+      disabled={!onPress && active}
+      style={styles.tabItem}>
       <View style={[styles.tabBackground, active && styles.tabBackgroundActive]}>
         <Image source={icon} style={[compact ? styles.tabIconCompact : styles.tabIcon, active && styles.tabIconActive]} />
         {badgeCount > 0 ? (

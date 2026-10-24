@@ -1,0 +1,20 @@
+# TC-E-05 · HU11–HU14: retiro en el local, pago en efectivo y confirmación con número de orden.
+# Requiere una prenda con stock en el carrito (corre después de 04).
+appId: com.anonymous.newyouapp
+tags: [checkout]
+---
+- runFlow: 04-buscar-y-agregar-al-carrito.yaml
+- tapOn:
+    id: "carrito-completar"
+- tapOn:
+    id: "checkout-entrega-local"
+- tapOn:
+    id: "checkout-pago-Efectivo"
+- assertVisible:
+    id: "checkout-total"
+- tapOn:
+    id: "checkout-confirmar"
+- extendedWaitUntil:
+    visible: "Compra confirmada"
+    timeout: 15000
+- assertVisible: "Orden #.*"

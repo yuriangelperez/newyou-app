@@ -1,7 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { decode } from 'base64-arraybuffer';
+
+import { crearFetchConSesion } from './interceptor';
+import { secureSessionStorage } from './secureSessionStorage';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 
@@ -13,15 +14,20 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(
+export const supabase: SupabaseClient = createClient(
   supabaseUrl,
   supabaseAnonKey,
   {
     auth: {
-      storage: AsyncStorage,
+      // JWT cifrado en SecureStore (Clase 8), no en AsyncStorage.
+      storage: secureSessionStorage,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
+    },
+    global: {
+      // Interceptor: ante un 401 renueva el token una vez y reintenta.
+      fetch: crearFetchConSesion(() => supabase.auth),
     },
   }
 );

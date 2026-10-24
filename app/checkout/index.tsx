@@ -4,12 +4,12 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -220,7 +220,7 @@ export default function CheckoutScreen() {
         </View>
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView bottomOffset={24}
         style={styles.scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -229,6 +229,9 @@ export default function CheckoutScreen() {
         {ENTREGAS.map((opcion) => (
           <Pressable
             key={opcion.value}
+            testID={`checkout-entrega-${opcion.value}`}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: entrega === opcion.value }}
             onPress={() => setEntrega(opcion.value)}
             style={[styles.entregaCard, entrega === opcion.value && styles.selected]}
           >
@@ -280,6 +283,9 @@ export default function CheckoutScreen() {
         {MEDIOS_PAGO.map((medio) => (
           <Pressable
             key={medio.value}
+            testID={`checkout-pago-${medio.value}`}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: medioPago === medio.value }}
             onPress={() => setMedioPago(medio.value)}
             style={[styles.pagoCard, medioPago === medio.value && styles.selected]}
           >
@@ -307,10 +313,12 @@ export default function CheckoutScreen() {
           </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalText}>TOTAL:</Text>
-            <Text style={styles.totalText}>{formatPrecio(total)}</Text>
+            <Text style={styles.totalText} testID="checkout-total">{formatPrecio(total)}</Text>
           </View>
 
           <Pressable
+            testID="checkout-confirmar"
+            accessibilityRole="button"
             disabled={items.length === 0 || isSubmitting}
             onPress={() => void onConfirmar()}
             style={[
@@ -326,7 +334,7 @@ export default function CheckoutScreen() {
           </Pressable>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       <BottomTabBar
         activeTab="cart"

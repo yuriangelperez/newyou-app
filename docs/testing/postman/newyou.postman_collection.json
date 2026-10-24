@@ -1,0 +1,901 @@
+{
+  "info": {
+    "name": "New You · API Supabase",
+    "description": "Pruebas de la API REST de Supabase de New You, con los 5 tipos de prueba de la práctica de la clase 5: auth, CRUD secuencial, negativos (incluye RLS), concurrencia e idempotencia del checkout, y performance. Correr con el environment `newyou.postman_environment.json` contra el proyecto de DESARROLLO, nunca el de producción.\n\nCLI: `npx newman run newyou.postman_collection.json -e newyou.postman_environment.json`.\nConcurrencia: correr la carpeta 4 en el Runner con 10 iteraciones y delay 0.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "tokenVendedor",
+      "value": ""
+    },
+    {
+      "key": "uidVendedor",
+      "value": ""
+    },
+    {
+      "key": "tokenOtro",
+      "value": ""
+    },
+    {
+      "key": "uidOtro",
+      "value": ""
+    },
+    {
+      "key": "tokenComprador",
+      "value": ""
+    },
+    {
+      "key": "uidComprador",
+      "value": ""
+    },
+    {
+      "key": "productoId",
+      "value": ""
+    },
+    {
+      "key": "productoAjenoId",
+      "value": ""
+    },
+    {
+      "key": "operationKey",
+      "value": ""
+    },
+    {
+      "key": "primeraCompraId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Login vendedor (TC-HU02-01)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('devuelve access_token (JWT)', () => pm.expect(j.access_token.split('.')).to.have.length(3));",
+                  "pm.collectionVariables.set('tokenVendedor', j.access_token);",
+                  "pm.collectionVariables.set('uidVendedor', j.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anonKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/auth/v1/token?grant_type=password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{vendedorEmail}}\",\n  \"password\": \"{{vendedorPassword}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login otro vendedor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('devuelve access_token (JWT)', () => pm.expect(j.access_token.split('.')).to.have.length(3));",
+                  "pm.collectionVariables.set('tokenOtro', j.access_token);",
+                  "pm.collectionVariables.set('uidOtro', j.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anonKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/auth/v1/token?grant_type=password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{otroEmail}}\",\n  \"password\": \"{{otroPassword}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login comprador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('devuelve access_token (JWT)', () => pm.expect(j.access_token.split('.')).to.have.length(3));",
+                  "pm.collectionVariables.set('tokenComprador', j.access_token);",
+                  "pm.collectionVariables.set('uidComprador', j.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anonKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/auth/v1/token?grant_type=password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{compradorEmail}}\",\n  \"password\": \"{{compradorPassword}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login con contraseña incorrecta (TC-HU02-02)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rechaza las credenciales (400 invalid_credentials)', () => pm.response.to.have.status(400));",
+                  "pm.test('no devuelve token', () => pm.expect(pm.response.json().access_token).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anonKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/auth/v1/token?grant_type=password"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{vendedorEmail}}\",\n  \"password\": \"ClaveIncorrecta1\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Sin sesión no se ven compras (RLS)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 con lista vacía: RLS filtra todo para anon', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anonKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/compras?select=compraid"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. CRUD secuencial de productos",
+      "item": [
+        {
+          "name": "Crear producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json()[0];",
+                  "pm.test('queda a nombre del vendedor', () => pm.expect(p.creado_por).to.eql(pm.collectionVariables.get('uidVendedor')));",
+                  "pm.collectionVariables.set('productoId', p.productoid);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenVendedor}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Prenda de prueba Postman\",\n  \"descripcion\": \"Creada por la colección de pruebas\",\n  \"precio\": 15000,\n  \"descuento_porcentaje\": 0,\n  \"stock\": 3,\n  \"categoriaid\": 1,\n  \"imagen_url\": \"\",\n  \"imagenes\": [],\n  \"talles\": [\n    \"M\"\n  ],\n  \"colores\": [\n    \"Negro\"\n  ],\n  \"tipo_prenda\": \"Camisas\",\n  \"temporada\": \"Todo el año\",\n  \"publico\": \"Adulto\",\n  \"creado_por\": \"{{uidVendedor}}\",\n  \"direccion_retiro\": \"Pilar, Buenos Aires\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Leer producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y un resultado', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.have.length(1); });",
+                  "pm.test('precio original', () => pm.expect(Number(pm.response.json()[0].precio)).to.eql(15000));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anonKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos?productoid=eq.{{productoId}}&select=productoid,nombre,precio,stock"
+            }
+          }
+        },
+        {
+          "name": "Actualizar precio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 y precio nuevo', () => { pm.response.to.have.status(200); pm.expect(Number(pm.response.json()[0].precio)).to.eql(12000); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenVendedor}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos?productoid=eq.{{productoId}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"precio\": 12000\n}"
+            }
+          }
+        },
+        {
+          "name": "Borrar producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenVendedor}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos?productoid=eq.{{productoId}}"
+            }
+          }
+        },
+        {
+          "name": "Verificar que ya no existe",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('lista vacía (equivalente a 404 en PostgREST)', () => pm.expect(pm.response.json()).to.eql([]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anonKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos?productoid=eq.{{productoId}}&select=productoid,nombre,precio,stock"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Negativos",
+      "item": [
+        {
+          "name": "Crear sin sesión → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401: anon no puede publicar', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anonKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Prenda de prueba Postman\",\n  \"descripcion\": \"Creada por la colección de pruebas\",\n  \"precio\": 15000,\n  \"descuento_porcentaje\": 0,\n  \"stock\": 3,\n  \"categoriaid\": 1,\n  \"imagen_url\": \"\",\n  \"imagenes\": [],\n  \"talles\": [\n    \"M\"\n  ],\n  \"colores\": [\n    \"Negro\"\n  ],\n  \"tipo_prenda\": \"Camisas\",\n  \"temporada\": \"Todo el año\",\n  \"publico\": \"Adulto\",\n  \"creado_por\": \"{{uidVendedor}}\",\n  \"direccion_retiro\": \"Pilar, Buenos Aires\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Precio con descuento fuera de rango → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 por CHECK productos_descuento_rango', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenVendedor}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Prenda de prueba Postman\",\n  \"descripcion\": \"Creada por la colección de pruebas\",\n  \"precio\": 15000,\n  \"descuento_porcentaje\": 150,\n  \"stock\": 3,\n  \"categoriaid\": 1,\n  \"imagen_url\": \"\",\n  \"imagenes\": [],\n  \"talles\": [\n    \"M\"\n  ],\n  \"colores\": [\n    \"Negro\"\n  ],\n  \"tipo_prenda\": \"Camisas\",\n  \"temporada\": \"Todo el año\",\n  \"publico\": \"Adulto\",\n  \"creado_por\": \"{{uidVendedor}}\",\n  \"direccion_retiro\": \"Pilar, Buenos Aires\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Seis imágenes → 400 (TC-HU06-03)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 por CHECK productos_maximo_5_imagenes', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenVendedor}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Prenda de prueba Postman\",\n  \"descripcion\": \"Creada por la colección de pruebas\",\n  \"precio\": 15000,\n  \"descuento_porcentaje\": 0,\n  \"stock\": 3,\n  \"categoriaid\": 1,\n  \"imagen_url\": \"\",\n  \"imagenes\": [\n    \"a\",\n    \"b\",\n    \"c\",\n    \"d\",\n    \"e\",\n    \"f\"\n  ],\n  \"talles\": [\n    \"M\"\n  ],\n  \"colores\": [\n    \"Negro\"\n  ],\n  \"tipo_prenda\": \"Camisas\",\n  \"temporada\": \"Todo el año\",\n  \"publico\": \"Adulto\",\n  \"creado_por\": \"{{uidVendedor}}\",\n  \"direccion_retiro\": \"Pilar, Buenos Aires\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Vendedor A publica (preparación)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('productoAjenoId', pm.response.json()[0].productoid);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenVendedor}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Prenda de prueba Postman\",\n  \"descripcion\": \"Creada por la colección de pruebas\",\n  \"precio\": 15000,\n  \"descuento_porcentaje\": 0,\n  \"stock\": 3,\n  \"categoriaid\": 1,\n  \"imagen_url\": \"\",\n  \"imagenes\": [],\n  \"talles\": [\n    \"M\"\n  ],\n  \"colores\": [\n    \"Negro\"\n  ],\n  \"tipo_prenda\": \"Camisas\",\n  \"temporada\": \"Todo el año\",\n  \"publico\": \"Adulto\",\n  \"creado_por\": \"{{uidVendedor}}\",\n  \"direccion_retiro\": \"Pilar, Buenos Aires\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Vendedor B intenta editar la prenda de A (TC-HU08-02)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('RLS no actualiza ninguna fila', () => pm.expect(pm.response.json()).to.eql([]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenOtro}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos?productoid=eq.{{productoAjenoId}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"precio\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Vendedor B intenta borrar la prenda de A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('RLS no borra ninguna fila', () => pm.expect(pm.response.json()).to.eql([]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenOtro}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Prefer",
+                "value": "return=representation"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos?productoid=eq.{{productoAjenoId}}"
+            }
+          }
+        },
+        {
+          "name": "El precio de A sigue igual",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('precio intacto', () => pm.expect(Number(pm.response.json()[0].precio)).to.eql(15000));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anonKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos?productoid=eq.{{productoAjenoId}}&select=precio"
+            }
+          }
+        },
+        {
+          "name": "Limpieza: A borra su prenda",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenVendedor}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos?productoid=eq.{{productoAjenoId}}"
+            }
+          }
+        },
+        {
+          "name": "Comprador no puede insertar compras directo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rechazado: las compras sólo entran por confirmar_compra', () => pm.expect(pm.response.code).to.be.oneOf([401, 403]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/compras"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario_id\": \"{{uidComprador}}\",\n  \"total\": 1,\n  \"items\": []\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Concurrencia e idempotencia del checkout (TC-HU14-02)",
+      "description": "Correr en el Runner con 10 iteraciones y delay 0. Todas las iteraciones usan la misma operation_key: tiene que existir una sola compra. Requiere `productoCompraId` con stock en el environment.",
+      "item": [
+        {
+          "name": "Confirmar compra con la misma operation_key",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('operationKey')) {",
+                  "  pm.collectionVariables.set('operationKey', 'postman-' + Date.now());",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const compra = pm.response.json();",
+                  "const primera = pm.collectionVariables.get('primeraCompraId');",
+                  "if (!primera) { pm.collectionVariables.set('primeraCompraId', compra.compraid); }",
+                  "pm.test('siempre devuelve la misma compra', () => pm.expect(compra.compraid).to.eql(Number(primera || compra.compraid)));",
+                  "pm.test('el total lo calcula el servidor, no el precio enviado', () => pm.expect(Number(compra.total)).to.be.above(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/rpc/confirmar_compra"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"p_operation_key\": \"{{operationKey}}\",\n  \"p_entrega\": \"local\",\n  \"p_metodo_pago\": \"Efectivo\",\n  \"p_envio\": 0,\n  \"p_direccion_entrega\": null,\n  \"p_items\": [\n    {\n      \"productoId\": \"{{productoCompraId}}\",\n      \"nombre\": \"Prenda\",\n      \"precio\": 1,\n      \"cantidad\": 1,\n      \"talle\": \"M\",\n      \"color\": \"Negro\"\n    }\n  ]\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Performance",
+      "item": [
+        {
+          "name": "Catálogo en menos de 1,5 s (RNF, TC-HU03-01)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('responde en menos de 1500 ms', () => pm.expect(pm.response.responseTime).to.be.below(1500));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{anonKey}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anonKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{supabaseUrl}}/rest/v1/productos?select=productoid,nombre,precio,stock,imagen_url&order=productoid.desc&limit=50"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

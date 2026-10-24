@@ -2,8 +2,6 @@ import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
-  Animated,
   Image,
   Pressable,
   ScrollView,
@@ -13,7 +11,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
+import { BotonFavorito } from "../../components/BotonFavorito";
 import { BottomTabBar } from "../../components/BottomTabBar";
 import { ErrorView } from "../../components/ui/ErrorView";
 import { ResumenReputacion } from "../../components/ui/Estrellas";
@@ -27,6 +27,7 @@ import { ROUTES } from "../../constants/routes";
 import { Colors } from "../../constants/theme";
 import { useProductoById } from "../../hooks/useProductoById";
 import { deleteProducto } from "../../services/productosService";
+import { confirmar } from "../../services/confirmar";
 import { obtenerReputacionProducto } from "../../services/pedidosService";
 import {
   selectTotalItems,
@@ -73,7 +74,7 @@ export default function ProductDetailScreen() {
       return imagenes;
     }
     return producto?.imagen ? [producto.imagen] : [];
-  }, [producto?.imagen, producto?.imagenes]);
+  }, [producto]);
   const detailItems = useMemo(
     () =>
       producto
@@ -97,7 +98,6 @@ export default function ProductDetailScreen() {
   );
   const toggleFavorito = useFavoritosStore((state) => state.toggleFavorito);
   const [purchaseFeedback, setPurchaseFeedback] = useState(false);
-  const favoriteScale = useState(() => new Animated.Value(1))[0];
   const purchaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [reputacion, setReputacion] = useState<{ promedio: number | null; cantidad: number } | null>(null);
 
@@ -114,16 +114,17 @@ export default function ProductDetailScreen() {
     };
   }, [producto?.id]);
 
-  useEffect(() => {
-    if (!producto) {
-      return;
-    }
-
+  // Al cambiar de prenda se reinician las elecciones. Se hace durante el render
+  // (no en un efecto) para no dibujar dos veces; antes el efecto dependía de
+  // `colores`, que es un arreglo nuevo en cada render, y pisaba el color elegido.
+  const [productoMostradoId, setProductoMostradoId] = useState(producto?.id);
+  if (producto && producto.id !== productoMostradoId) {
+    setProductoMostradoId(producto.id);
     setSelectedImageIndex(0);
     setSelectedSize(talles[0]);
     setSelectedColor(colores[0]);
     setQuantity(1);
-  }, [colores, producto, talles]);
+  }
 
   useEffect(
     () => () => {
@@ -138,19 +139,6 @@ export default function ProductDetailScreen() {
     if (producto) {
       toggleFavorito(producto);
     }
-    Animated.sequence([
-      Animated.timing(favoriteScale, {
-        toValue: 1.22,
-        duration: 120,
-        useNativeDriver: true,
-      }),
-      Animated.spring(favoriteScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 5,
-        tension: 140,
-      }),
-    ]).start();
   };
 
   // Valida stock/cantidad antes de agregar al carrito o comprar directo.
@@ -160,15 +148,16 @@ export default function ProductDetailScreen() {
     }
 
     if (producto.stock <= 0) {
-      Alert.alert("Sin stock", "Este producto no tiene unidades disponibles.");
+      Toast.show({ type: "info", text1: "Sin stock", text2: "Este producto no tiene unidades disponibles." });
       return false;
     }
 
     if (quantity > producto.stock) {
-      Alert.alert(
-        "Stock insuficiente",
-        `Solo quedan ${producto.stock} unidades disponibles.`,
-      );
+      Toast.show({
+        type: "info",
+        text1: "Stock insuficiente",
+        text2: `Solo quedan ${producto.stock} unidades disponibles.`,
+      });
       return false;
     }
 
@@ -225,21 +214,20 @@ export default function ProductDetailScreen() {
       return;
     }
 
-    Alert.alert("Eliminar producto", "Esta accion no se puede deshacer.", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Eliminar",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteProducto(producto.id);
-            router.replace(ROUTES.home);
-          } catch {
-            Alert.alert("Error", "No se pudo eliminar el producto.");
-          }
-        },
+    // confirmar() también funciona en la web, donde Alert con botones no hace nada (BUG-05).
+    void confirmar("Eliminar producto", "Esta acción no se puede deshacer.", "Eliminar").then(
+      async (ok) => {
+        if (!ok) {
+          return;
+        }
+        try {
+          await deleteProducto(producto.id);
+          router.replace(ROUTES.home);
+        } catch {
+          Toast.show({ type: "error", text1: "No se pudo eliminar el producto." });
+        }
       },
-    ]);
+    );
   };
 
   if (cargando) {
@@ -295,23 +283,12 @@ export default function ProductDetailScreen() {
             style={styles.logo}
           />
 
-          <Pressable
-            accessibilityLabel="Favorito"
-            onPress={toggleFavorite}
+          <BotonFavorito
+            activo={isFavorite}
+            onToggle={toggleFavorite}
             style={styles.headerIconButton}
-          >
-            <Animated.Image
-              source={
-                isFavorite
-                  ? PRODUCT_DETAIL_ICONS.favoriteOn
-                  : PRODUCT_DETAIL_ICONS.favoriteOff
-              }
-              style={[
-                styles.favoriteIcon,
-                { transform: [{ scale: favoriteScale }] },
-              ]}
-            />
-          </Pressable>
+            iconStyle={styles.favoriteIcon}
+          />
         </View>
 
         <ScrollView

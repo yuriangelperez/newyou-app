@@ -1,0 +1,20 @@
+# TC-E-01 · HU02 Login: validaciones del formulario antes de llamar al servidor.
+appId: com.anonymous.newyouapp
+tags: [auth, smoke]
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "login-boton"
+- assertVisible:
+    id: "login-error"
+    text: "Ingresá tu correo"
+- tapOn:
+    id: "login-correo"
+- inputText: "ana"
+- tapOn:
+    id: "login-contrasena"
+- inputText: "x"
+- tapOn:
+    id: "login-boton"
+- assertVisible: "Ingresá un correo válido"

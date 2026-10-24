@@ -1,0 +1,14 @@
+# TC-E-06 · HU05 y Clase 7: favorito animado en el detalle; el GPS se prueba a mano en un celular.
+appId: com.anonymous.newyouapp
+tags: [detalle]
+---
+- runFlow: _login.yaml
+- tapOn:
+    id: "tarjeta-producto-.*"
+    index: 0
+- tapOn:
+    id: "boton-favorito"
+- assertVisible: "Quitar de favoritos"
+- tapOn:
+    id: "boton-favorito"
+- assertVisible: "Agregar a favoritos"

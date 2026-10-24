@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FlashList } from "@shopify/flash-list";
 import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Animated,
-  FlatList,
   Image,
   Pressable,
   ScrollView,
@@ -104,7 +104,6 @@ export default function HomeScreen() {
         bannerWidth,
         bannerHeight,
         horizontalPadding,
-        cardGap,
         isDesktop,
         topInset: insets.top,
         bottomInset: insets.bottom,
@@ -112,7 +111,6 @@ export default function HomeScreen() {
     [
       bannerHeight,
       bannerWidth,
-      cardGap,
       containerWidth,
       horizontalPadding,
       insets.bottom,
@@ -190,14 +188,15 @@ export default function HomeScreen() {
     selectedTag,
   ]);
 
-  const getAddButtonAnimation = (productId: string) => {
+  const getAddButtonAnimation = useCallback((productId: string) => {
     if (!addButtonAnimationsRef.current[productId]) {
       addButtonAnimationsRef.current[productId] = new Animated.Value(1);
     }
     return addButtonAnimationsRef.current[productId];
-  };
+  }, []);
 
-  const onPressAgregar = (item: Producto) => {
+  // useCallback (Clase 9): referencias estables para no romper el React.memo de TarjetaProducto.
+  const onPressAgregar = useCallback((item: Producto) => {
     if (!item.disponible) {
       return;
     }
@@ -232,30 +231,56 @@ export default function HomeScreen() {
     addedTimersRef.current[item.id] = setTimeout(() => {
       setAddedProductId((current) => (current === item.id ? null : current));
     }, 900);
-  };
+  }, [agregarProducto, getAddButtonAnimation]);
 
-  const renderProductCard = ({ item }: { item: Producto }) => {
-    const isAdded = addedProductId === item.id;
-    const buttonAnimation = getAddButtonAnimation(item.id);
+  const onPressProducto = useCallback(
+    (producto: Producto) =>
+      router.push({
+        pathname: ROUTES.productDetail,
+        params: { id: producto.id },
+      }),
+    [router],
+  );
 
-    return (
-      <TarjetaProducto
-        producto={item}
-        scale={scale}
-        isAdded={isAdded}
-        addButtonScale={buttonAnimation}
-        cardWidth={cardWidth}
-        imageHeight={cardImageHeight}
-        onPressProducto={(producto) =>
-          router.push({
-            pathname: ROUTES.productDetail,
-            params: { id: producto.id },
-          })
-        }
-        onPressAgregar={onPressAgregar}
-      />
-    );
-  };
+  const renderProductCard = useCallback(
+    ({ item, index }: { item: Producto; index: number }) => {
+      // FlashList reparte el ancho en columnas iguales; este margen deja cada
+      // tarjeta donde la ubicaba la grilla con `gap` de la FlatList anterior.
+      const columna = index % numColumns;
+      const margenIzquierdo =
+        horizontalPadding +
+        columna * (cardWidth + cardGap) -
+        (columna * containerWidth) / numColumns;
+
+      return (
+        <View style={[styles.productCell, { marginLeft: margenIzquierdo }]}>
+          <TarjetaProducto
+            producto={item}
+            scale={scale}
+            isAdded={addedProductId === item.id}
+            addButtonScale={getAddButtonAnimation(item.id)}
+            cardWidth={cardWidth}
+            imageHeight={cardImageHeight}
+            onPressProducto={onPressProducto}
+            onPressAgregar={onPressAgregar}
+          />
+        </View>
+      );
+    },
+    [
+      addedProductId,
+      cardImageHeight,
+      cardWidth,
+      containerWidth,
+      getAddButtonAnimation,
+      horizontalPadding,
+      numColumns,
+      onPressAgregar,
+      onPressProducto,
+      scale,
+      styles.productCell,
+    ],
+  );
 
   return (
     <View style={styles.container}>
@@ -284,19 +309,17 @@ export default function HomeScreen() {
       ) : null}
 
       {!cargando && !error ? (
-        <FlatList
+        <View style={styles.listWrapper}>
+        {/* FlashList (Clase 9): recicla las celdas en vez de crearlas y destruirlas. */}
+        <FlashList
           key={`product-grid-${numColumns}`}
           data={visibleProducts}
+          extraData={addedProductId}
           renderItem={renderProductCard}
           keyExtractor={(item) => item.id}
           numColumns={numColumns}
-          initialNumToRender={6}
-          maxToRenderPerBatch={8}
-          windowSize={5}
-          removeClippedSubviews
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
-          columnWrapperStyle={styles.productRow}
           refreshing={refreshing}
           onRefresh={() => void refrescar()}
           ListEmptyComponent={
@@ -312,6 +335,8 @@ export default function HomeScreen() {
               <View style={styles.searchOuter}>
                 <View style={styles.searchContainer}>
                   <TextInput
+                    testID="home-buscar"
+                    accessibilityLabel="Buscar prendas"
                     value={searchText}
                     onChangeText={setSearchText}
                     placeholder="Buscar prendas..."
@@ -393,6 +418,7 @@ export default function HomeScreen() {
             </>
           }
         />
+        </View>
       ) : null}
 
       <BottomTabBar
@@ -417,7 +443,6 @@ interface CreateStylesParams {
   bannerWidth: number;
   bannerHeight: number;
   horizontalPadding: number;
-  cardGap: number;
   isDesktop: boolean;
   topInset: number;
   bottomInset: number;
@@ -429,7 +454,6 @@ function createStyles({
   bannerWidth,
   bannerHeight,
   horizontalPadding,
-  cardGap,
   isDesktop,
   topInset,
   bottomInset,
@@ -565,19 +589,17 @@ function createStyles({
       lineHeight: s(14),
       fontWeight: "400",
     },
-    content: {
+    listWrapper: {
+      flex: 1,
       width: "100%",
       maxWidth: MAX_CONTENT_WIDTH,
       alignSelf: "center",
+    },
+    content: {
       paddingBottom: s(24) + s(78) + bottomInset,
       paddingTop: s(10),
-      flexGrow: 1,
     },
-    productRow: {
-      flexDirection: "row",
-      justifyContent: "flex-start",
-      gap: cardGap,
-      paddingHorizontal: horizontalPadding,
+    productCell: {
       marginTop: s(12),
     },
     emptyState: {

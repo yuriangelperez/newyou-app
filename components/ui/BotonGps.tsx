@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import Toast from 'react-native-toast-message';
 
 import { Colors, FontSize, Radius, Spacing } from '../../constants/theme';
+import { MapaItem } from '../MapaItem';
 import { usePermission } from '../../hooks/usePermission';
 import { abrirDireccionEnMapa, obtenerDireccionActual } from '../../services/locationService';
 
@@ -16,16 +17,19 @@ const formatearDistancia = (metros: number) =>
 interface BotonGpsProps {
   /** Recibe la dirección detectada para que la pantalla la cargue en su campo. */
   onDireccion: (direccion: string) => void;
+  /** Dirección que hay ahora en el campo: si se la corrige, el mapa del GPS deja de mostrarse. */
+  direccionActual?: string;
 }
 
 /**
- * Botón "Usar mi ubicación (GPS)". Tras detectar la ubicación muestra un enlace
- * para verla en el mapa y un aviso para revisar la dirección; si el GPS falla,
+ * Botón "Usar mi ubicación (GPS)". Tras detectar la ubicación muestra el punto en
+ * un mapa (en el celular), un enlace para abrirlo en la app de mapas y un aviso para revisar la dirección; si el GPS falla,
  * avisa y deja la carga manual.
  */
-export function BotonGps({ onDireccion }: BotonGpsProps) {
+export function BotonGps({ onDireccion, direccionActual }: BotonGpsProps) {
   const [buscando, setBuscando] = useState(false);
   const [punto, setPunto] = useState<{
+    direccion: string;
     latitud: number;
     longitud: number;
     soloCoordenadas: boolean;
@@ -55,6 +59,7 @@ export function BotonGps({ onDireccion }: BotonGpsProps) {
     }
 
     setPunto({
+      direccion: resultado.direccion,
       latitud: resultado.latitud,
       longitud: resultado.longitud,
       soloCoordenadas: resultado.soloCoordenadas,
@@ -63,9 +68,18 @@ export function BotonGps({ onDireccion }: BotonGpsProps) {
     onDireccion(resultado.direccion);
   };
 
+  // Si se escribió otra dirección, el punto del GPS ya no corresponde: manda "Ver en el mapa".
+  const puntoVigente =
+    punto && (direccionActual === undefined || direccionActual === punto.direccion) ? punto : null;
+
   return (
     <View style={styles.wrapper}>
-      <Pressable disabled={buscando} onPress={() => void onPress()} style={styles.button}>
+      <Pressable
+        disabled={buscando}
+        onPress={() => void onPress()}
+        style={styles.button}
+        testID="boton-gps"
+      >
         {buscando ? (
           <ActivityIndicator color={Colors.secondary} />
         ) : (
@@ -73,24 +87,25 @@ export function BotonGps({ onDireccion }: BotonGpsProps) {
         )}
       </Pressable>
 
-      {punto ? (
+      {puntoVigente ? (
         <>
           <Text style={styles.hint}>
-            {punto.soloCoordenadas
+            {puntoVigente.soloCoordenadas
               ? 'No pudimos obtener la dirección, solo las coordenadas. Escribí la dirección a mano.'
               : 'Revisá que la dirección sea correcta: el GPS puede tener un margen de error.'}
           </Text>
-          {punto.precisionMetros !== null ? (
-            <Text style={[styles.hint, punto.precisionMetros > PRECISION_ACEPTABLE && styles.warning]}>
-              {punto.precisionMetros > PRECISION_ACEPTABLE
-                ? `Ubicación imprecisa (margen de ${formatearDistancia(punto.precisionMetros)}). Pasa en computadoras o con poca señal: escribí la dirección a mano.`
-                : `Margen de error: ${formatearDistancia(punto.precisionMetros)}.`}
+          {puntoVigente.precisionMetros !== null ? (
+            <Text style={[styles.hint, puntoVigente.precisionMetros > PRECISION_ACEPTABLE && styles.warning]}>
+              {puntoVigente.precisionMetros > PRECISION_ACEPTABLE
+                ? `Ubicación imprecisa (margen de ${formatearDistancia(puntoVigente.precisionMetros)}). Pasa en computadoras o con poca señal: escribí la dirección a mano.`
+                : `Margen de error: ${formatearDistancia(puntoVigente.precisionMetros)}.`}
             </Text>
           ) : null}
+          <MapaItem latitud={puntoVigente.latitud} longitud={puntoVigente.longitud} titulo="Ubicación detectada" />
           {/* Abre el punto exacto que tomó el GPS, no la dirección escrita. */}
           <Pressable
             accessibilityRole="link"
-            onPress={() => void abrirDireccionEnMapa(`${punto.latitud},${punto.longitud}`)}
+            onPress={() => void abrirDireccionEnMapa(`${puntoVigente.latitud},${puntoVigente.longitud}`)}
             style={styles.link}
           >
             <Text style={styles.linkText}>Ver la ubicación detectada en el mapa</Text>

@@ -42,6 +42,13 @@
         }
       ],
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/app-icons/android-icon-monochrome.png",
+          "color": "#F4F4F4"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/app-icons/splash-icon.png",
@@ -55,6 +62,12 @@
       "eas": {
         "projectId": "f1bf8b99-89e4-4dff-90aa-f1679c492a07"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f1bf8b99-89e4-4dff-90aa-f1679c492a07"
     }
   }
 }

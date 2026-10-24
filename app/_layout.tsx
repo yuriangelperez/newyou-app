@@ -3,12 +3,17 @@ import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import NetInfo from '@react-native-community/netinfo';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import Toast, { BaseToast, ToastConfig } from 'react-native-toast-message';
 
 import { BarraNavegacionWeb } from '../components/BarraNavegacionWeb';
+import { TarjetaBienvenida } from '../components/TarjetaBienvenida';
 import { Colors } from '../constants/theme';
 import { useEsEscritorio } from '../hooks/useEsEscritorio';
 import { ROUTES } from '../constants/routes';
+import { bienvenidaVista, marcarBienvenidaVista } from '../services/bienvenidaService';
+import { Notifications } from '../services/notificacionesService';
 import { sincronizarBorradores } from '../services/offlineService';
 import { supabase } from '../services/supabase';
 import { tokenService } from '../services/tokenService';
@@ -34,6 +39,7 @@ export default function RootLayout() {
   const esEscritorio = useEsEscritorio();
   // `undefined` = aún se está resolviendo la sesión inicial.
   const [haySesion, setHaySesion] = useState<boolean | undefined>(undefined);
+  const [mostrarBienvenida, setMostrarBienvenida] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Montserrat_400Regular: require('@expo-google-fonts/montserrat/400Regular/Montserrat_400Regular.ttf'),
@@ -42,13 +48,18 @@ export default function RootLayout() {
     Montserrat_700Bold: require('@expo-google-fonts/montserrat/700Bold/Montserrat_700Bold.ttf'),
   });
 
+  // La primera vez que se abre la app aparece la tarjeta de bienvenida, haya sesión o no
+  // (una sesión guardada salta el login, así que la tarjeta no puede vivir sólo ahí).
   useEffect(() => {
-    if (!supabase) {
-      hidratarDesdeAuthUser(null);
-      setHaySesion(false);
-      return;
-    }
+    void bienvenidaVista().then((vista) => setMostrarBienvenida(!vista));
+  }, []);
 
+  const cerrarBienvenida = () => {
+    setMostrarBienvenida(false);
+    void marcarBienvenidaVista();
+  };
+
+  useEffect(() => {
     supabase.auth
       .getSession()
       .then(({ data }) => {
@@ -113,6 +124,29 @@ export default function RootLayout() {
     return unsubscribe;
   }, [haySesion]);
 
+  // Al tocar una notificación se abre la pantalla que corresponde.
+  useEffect(() => {
+    if (!Notifications || !haySesion) {
+      return;
+    }
+
+    const suscripcion = Notifications.addNotificationResponseReceivedListener((respuesta) => {
+      const datos = respuesta.notification.request.content.data as {
+        tipo?: string;
+        productoId?: string;
+      };
+      if (datos.tipo === 'venta') {
+        router.push(ROUTES.mySales);
+      } else if (datos.tipo === 'compra') {
+        router.push(ROUTES.myPurchases);
+      } else if (datos.productoId) {
+        router.push({ pathname: ROUTES.productDetail, params: { id: datos.productoId } });
+      }
+    });
+
+    return () => suscripcion.remove();
+  }, [haySesion, router]);
+
   // Guardia de rutas: sin sesión sólo se permiten las pantallas de (auth);
   // con sesión activa, (auth) redirige al home.
   useEffect(() => {
@@ -136,34 +170,39 @@ export default function RootLayout() {
   }
 
   return (
-    <>
-      <StatusBar style="auto" />
-      {esEscritorio && haySesion && segments[0] !== '(auth)' ? <BarraNavegacionWeb /> : null}
-      <Stack initialRouteName="(auth)/login" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)/login" />
-        <Stack.Screen name="(auth)/register" />
-        <Stack.Screen name="(auth)/recuperar" />
-        <Stack.Screen name="(auth)/nueva-contrasena" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="producto/[id]" />
-        <Stack.Screen name="producto/nuevo" />
-        <Stack.Screen name="editar/[id]" />
-        <Stack.Screen name="mis-publicaciones" />
-        <Stack.Screen name="mis-compras" />
-        <Stack.Screen name="mis-ventas" />
-        <Stack.Screen name="direcciones" />
-        <Stack.Screen name="ajustes" />
-        <Stack.Screen name="checkout/index" />
-        <Stack.Screen name="empresa/index" />
-        <Stack.Screen name="empresa/nueva" />
-        <Stack.Screen name="empresa/sedes" />
-        <Stack.Screen name="empresa/equipo" />
-        <Stack.Screen name="invitacion" />
-        <Stack.Screen name="tienda/[slug]" />
-        <Stack.Screen name="admin" />
-        <Stack.Screen name="metricas" />
-      </Stack>
-      <Toast config={toastConfig} />
-    </>
+    // Raíz de gestos para el deslizar-para-borrar de Mis publicaciones (Clase 9).
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* Los formularios se corren arriba del teclado (KeyboardAwareScrollView). */}
+      <KeyboardProvider>
+        <StatusBar style="auto" />
+        {esEscritorio && haySesion && segments[0] !== '(auth)' ? <BarraNavegacionWeb /> : null}
+        <Stack initialRouteName="(auth)/login" screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)/login" />
+          <Stack.Screen name="(auth)/register" />
+          <Stack.Screen name="(auth)/recuperar" />
+          <Stack.Screen name="(auth)/nueva-contrasena" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="producto/[id]" />
+          <Stack.Screen name="producto/nuevo" />
+          <Stack.Screen name="editar/[id]" />
+          <Stack.Screen name="mis-publicaciones" />
+          <Stack.Screen name="mis-compras" />
+          <Stack.Screen name="mis-ventas" />
+          <Stack.Screen name="direcciones" />
+          <Stack.Screen name="ajustes" />
+          <Stack.Screen name="checkout/index" />
+          <Stack.Screen name="empresa/index" />
+          <Stack.Screen name="empresa/nueva" />
+          <Stack.Screen name="empresa/sedes" />
+          <Stack.Screen name="empresa/equipo" />
+          <Stack.Screen name="invitacion" />
+          <Stack.Screen name="tienda/[slug]" />
+          <Stack.Screen name="admin" />
+          <Stack.Screen name="metricas" />
+        </Stack>
+        <TarjetaBienvenida visible={mostrarBienvenida} onCerrar={cerrarBienvenida} />
+        <Toast config={toastConfig} />
+      </KeyboardProvider>
+    </GestureHandlerRootView>
   );
 }

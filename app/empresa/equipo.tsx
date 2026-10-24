@@ -1,6 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, Share, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, Share, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -192,7 +193,7 @@ export default function EquipoScreen() {
   return (
     <View style={styles.screen}>
       <EncabezadoPantalla titulo="EQUIPO" />
-      <ScrollView
+      <KeyboardAwareScrollView bottomOffset={24}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.xl }]}
         keyboardShouldPersistTaps="handled"
       >
@@ -306,7 +307,7 @@ export default function EquipoScreen() {
             </View>
           </>
         ) : null}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

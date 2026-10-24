@@ -80,7 +80,7 @@ export async function obtenerDireccionActual(): Promise<UbicacionResultado> {
     }
 
     const posicion = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
+      accuracy: Location.Accuracy.Balanced,
     });
     const { latitude, longitude, accuracy } = posicion.coords;
 
@@ -98,6 +98,40 @@ export async function obtenerDireccionActual(): Promise<UbicacionResultado> {
     };
   } catch {
     return { ok: false, motivo: 'No se pudo obtener la ubicación (¿sin señal GPS?).' };
+  }
+}
+
+/**
+ * Coordenadas de una dirección escrita, para mostrarla en el mapa de la app.
+ * Primero prueba el geocoder del celular y si no encuentra nada usa Nominatim.
+ */
+export async function buscarCoordenadas(
+  direccion: string,
+): Promise<{ latitud: number; longitud: number } | null> {
+  const consulta = direccion.trim();
+  if (!consulta) {
+    return null;
+  }
+
+  if (Platform.OS !== 'web') {
+    try {
+      const [lugar] = await Location.geocodeAsync(consulta);
+      if (lugar) {
+        return { latitud: lugar.latitude, longitud: lugar.longitude };
+      }
+    } catch {
+      // Sigue con Nominatim.
+    }
+  }
+
+  try {
+    const respuesta = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=es&q=${encodeURIComponent(consulta)}`,
+    );
+    const [lugar] = (await respuesta.json()) as { lat: string; lon: string }[];
+    return lugar ? { latitud: Number(lugar.lat), longitud: Number(lugar.lon) } : null;
+  } catch {
+    return null;
   }
 }
 
