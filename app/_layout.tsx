@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import NetInfo from '@react-native-community/netinfo';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Toast, { BaseToast, ToastConfig } from 'react-native-toast-message';
 
 import { BarraNavegacionWeb } from '../components/BarraNavegacionWeb';
@@ -175,7 +176,8 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    // Raíz de gestos para el deslizar-para-borrar de Mis publicaciones (Clase 9).
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="auto" />
       {esEscritorio && haySesion && segments[0] !== '(auth)' ? <BarraNavegacionWeb /> : null}
       <Stack initialRouteName="(auth)/login" screenOptions={{ headerShown: false }}>
@@ -204,6 +206,6 @@ export default function RootLayout() {
       </Stack>
       <TarjetaBienvenida visible={mostrarBienvenida} onCerrar={cerrarBienvenida} />
       <Toast config={toastConfig} />
-    </>
+    </GestureHandlerRootView>
   );
 }

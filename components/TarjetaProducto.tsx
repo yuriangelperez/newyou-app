@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { memo, useMemo } from "react";
 import {
   Animated,
   Image,
@@ -23,7 +23,7 @@ interface TarjetaProductoProps {
   imageHeight?: number;
 }
 
-export default function TarjetaProducto({
+function TarjetaProductoBase({
   producto,
   scale,
   isAdded = false,
@@ -55,7 +55,9 @@ export default function TarjetaProducto({
 
   return (
     <Pressable
+      accessibilityRole="button"
       accessibilityLabel={`Ver ${producto.nombre}`}
+      testID={`tarjeta-producto-${producto.id}`}
       onPress={() => onPressProducto(producto)}
       style={[
         styles.card,
@@ -65,6 +67,8 @@ export default function TarjetaProducto({
     >
       {producto.imagen ? (
         <Image
+          accessibilityRole="image"
+          accessibilityLabel={`Foto de ${producto.nombre}`}
           source={{ uri: producto.imagen }}
           style={[styles.image, imageHeight ? { height: imageHeight } : undefined]}
         />
@@ -106,6 +110,9 @@ export default function TarjetaProducto({
         </View>
 
         <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: agregado, disabled: !producto.disponible }}
+          testID={`agregar-producto-${producto.id}`}
           accessibilityLabel={
             agregado
               ? `Quitar ${producto.nombre}`
@@ -137,6 +144,11 @@ export default function TarjetaProducto({
     </Pressable>
   );
 }
+
+// React.memo (Clase 9): al tipear en el buscador sólo se vuelven a dibujar las
+// tarjetas cuyas props cambiaron; el padre pasa callbacks con useCallback.
+const TarjetaProducto = memo(TarjetaProductoBase);
+export default TarjetaProducto;
 
 function createStyles(scale: number) {
   const s = (value: number) => value * scale;

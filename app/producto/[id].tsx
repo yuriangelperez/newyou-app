@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  Animated,
   Image,
   Pressable,
   ScrollView,
@@ -14,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BotonFavorito } from "../../components/BotonFavorito";
 import { BottomTabBar } from "../../components/BottomTabBar";
 import { ErrorView } from "../../components/ui/ErrorView";
 import { ResumenReputacion } from "../../components/ui/Estrellas";
@@ -97,7 +97,6 @@ export default function ProductDetailScreen() {
   );
   const toggleFavorito = useFavoritosStore((state) => state.toggleFavorito);
   const [purchaseFeedback, setPurchaseFeedback] = useState(false);
-  const favoriteScale = useState(() => new Animated.Value(1))[0];
   const purchaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [reputacion, setReputacion] = useState<{ promedio: number | null; cantidad: number } | null>(null);
 
@@ -138,19 +137,6 @@ export default function ProductDetailScreen() {
     if (producto) {
       toggleFavorito(producto);
     }
-    Animated.sequence([
-      Animated.timing(favoriteScale, {
-        toValue: 1.22,
-        duration: 120,
-        useNativeDriver: true,
-      }),
-      Animated.spring(favoriteScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 5,
-        tension: 140,
-      }),
-    ]).start();
   };
 
   // Valida stock/cantidad antes de agregar al carrito o comprar directo.
@@ -295,23 +281,12 @@ export default function ProductDetailScreen() {
             style={styles.logo}
           />
 
-          <Pressable
-            accessibilityLabel="Favorito"
-            onPress={toggleFavorite}
+          <BotonFavorito
+            activo={isFavorite}
+            onToggle={toggleFavorite}
             style={styles.headerIconButton}
-          >
-            <Animated.Image
-              source={
-                isFavorite
-                  ? PRODUCT_DETAIL_ICONS.favoriteOn
-                  : PRODUCT_DETAIL_ICONS.favoriteOff
-              }
-              style={[
-                styles.favoriteIcon,
-                { transform: [{ scale: favoriteScale }] },
-              ]}
-            />
-          </Pressable>
+            iconStyle={styles.favoriteIcon}
+          />
         </View>
 
         <ScrollView
