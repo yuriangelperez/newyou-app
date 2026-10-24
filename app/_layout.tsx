@@ -6,9 +6,11 @@ import { useEffect, useState } from 'react';
 import Toast, { BaseToast, ToastConfig } from 'react-native-toast-message';
 
 import { BarraNavegacionWeb } from '../components/BarraNavegacionWeb';
+import { TarjetaBienvenida } from '../components/TarjetaBienvenida';
 import { Colors } from '../constants/theme';
 import { useEsEscritorio } from '../hooks/useEsEscritorio';
 import { ROUTES } from '../constants/routes';
+import { bienvenidaVista, marcarBienvenidaVista } from '../services/bienvenidaService';
 import { sincronizarBorradores } from '../services/offlineService';
 import { supabase } from '../services/supabase';
 import { tokenService } from '../services/tokenService';
@@ -34,6 +36,7 @@ export default function RootLayout() {
   const esEscritorio = useEsEscritorio();
   // `undefined` = aún se está resolviendo la sesión inicial.
   const [haySesion, setHaySesion] = useState<boolean | undefined>(undefined);
+  const [mostrarBienvenida, setMostrarBienvenida] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Montserrat_400Regular: require('@expo-google-fonts/montserrat/400Regular/Montserrat_400Regular.ttf'),
@@ -41,6 +44,17 @@ export default function RootLayout() {
     Montserrat_600SemiBold: require('@expo-google-fonts/montserrat/600SemiBold/Montserrat_600SemiBold.ttf'),
     Montserrat_700Bold: require('@expo-google-fonts/montserrat/700Bold/Montserrat_700Bold.ttf'),
   });
+
+  // La primera vez que se abre la app aparece la tarjeta de bienvenida, haya sesión o no
+  // (una sesión guardada salta el login, así que la tarjeta no puede vivir sólo ahí).
+  useEffect(() => {
+    void bienvenidaVista().then((vista) => setMostrarBienvenida(!vista));
+  }, []);
+
+  const cerrarBienvenida = () => {
+    setMostrarBienvenida(false);
+    void marcarBienvenidaVista();
+  };
 
   useEffect(() => {
     if (!supabase) {
@@ -163,6 +177,7 @@ export default function RootLayout() {
         <Stack.Screen name="admin" />
         <Stack.Screen name="metricas" />
       </Stack>
+      <TarjetaBienvenida visible={mostrarBienvenida} onCerrar={cerrarBienvenida} />
       <Toast config={toastConfig} />
     </>
   );

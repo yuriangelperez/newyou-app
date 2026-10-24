@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
@@ -20,7 +20,6 @@ import { ROUTES } from '../../constants/routes';
 import { Colors, Radius, Shadow } from '../../constants/theme';
 import { useEsEscritorio } from '../../hooks/useEsEscritorio';
 import { signInWithPassword } from '../../services/auth';
-import { bienvenidaVista, marcarBienvenidaVista } from '../../services/bienvenidaService';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -31,17 +30,8 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
+  // La tarjeta del primer inicio vive en el layout raíz; acá sólo se vuelve a abrir.
   const [mostrarBienvenida, setMostrarBienvenida] = useState(false);
-
-  // La primera vez que se abre la app aparece la tarjeta de bienvenida.
-  useEffect(() => {
-    void bienvenidaVista().then((vista) => setMostrarBienvenida(!vista));
-  }, []);
-
-  const cerrarBienvenida = () => {
-    setMostrarBienvenida(false);
-    void marcarBienvenidaVista();
-  };
 
   const goToHome = async () => {
     if (!correo.trim() || !contrasena.trim()) {
@@ -148,7 +138,7 @@ export default function LoginScreen() {
         <Text style={styles.welcomeText}>¿Qué es New You?</Text>
       </TouchableOpacity>
       </ScrollView>
-      <TarjetaBienvenida visible={mostrarBienvenida} onCerrar={cerrarBienvenida} />
+      <TarjetaBienvenida visible={mostrarBienvenida} onCerrar={() => setMostrarBienvenida(false)} />
     </KeyboardAvoidingView>
   );
 }
