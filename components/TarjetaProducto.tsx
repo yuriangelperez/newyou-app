@@ -53,95 +53,107 @@ function TarjetaProductoBase({
     onPressAgregar(producto);
   };
 
+  // El botón "Agregar" va al lado de la tarjeta tocable y no adentro: un botón
+  // dentro de otro es HTML inválido en la web y el lector de pantalla no lo alcanza.
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Ver ${producto.nombre}`}
-      testID={`tarjeta-producto-${producto.id}`}
-      onPress={() => onPressProducto(producto)}
+    <View
       style={[
         styles.card,
         cardWidth ? { width: cardWidth } : undefined,
         !producto.disponible && styles.cardDisabled,
       ]}
     >
-      {producto.imagen ? (
-        <Image
-          accessibilityRole="image"
-          accessibilityLabel={`Foto de ${producto.nombre}`}
-          source={{ uri: producto.imagen }}
-          style={[styles.image, imageHeight ? { height: imageHeight } : undefined]}
-        />
-      ) : (
-        <View
-          style={[
-            styles.imagePlaceholder,
-            imageHeight ? { height: imageHeight } : undefined,
-          ]}
-        />
-      )}
-
-      {tieneDescuento ? (
-        <View style={styles.discountBadge}>
-          <Text style={styles.discountText}>-{producto.descuentoPorcentaje}%</Text>
-        </View>
-      ) : null}
-
-      {!producto.disponible ? (
-        <View style={styles.soldOutBadge}>
-          <Text style={styles.soldOutText}>AGOTADO</Text>
-        </View>
-      ) : null}
-
-      <Text numberOfLines={2} style={styles.title}>
-        {producto.nombre}
-      </Text>
-
-      <View style={styles.footer}>
-        <View>
-          {tieneDescuento ? (
-            <Text style={styles.originalPrice}>
-              ${producto.precio.toLocaleString("es-AR")}
-            </Text>
-          ) : null}
-          <Text style={styles.price}>
-            ${calcularPrecioFinal(producto).toLocaleString("es-AR")}
-          </Text>
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ selected: agregado, disabled: !producto.disponible }}
-          testID={`agregar-producto-${producto.id}`}
-          accessibilityLabel={
-            agregado
-              ? `Quitar ${producto.nombre}`
-              : `Agregar ${producto.nombre}`
-          }
-          disabled={!producto.disponible}
-          onPress={onPressAccion}
-        >
-          <Animated.View
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Ver ${producto.nombre}`}
+        testID={`tarjeta-producto-${producto.id}`}
+        onPress={() => onPressProducto(producto)}
+      >
+        {producto.imagen ? (
+          <Image
+            accessibilityRole="image"
+            accessibilityLabel={`Foto de ${producto.nombre}`}
+            source={{ uri: producto.imagen }}
             style={[
-              styles.action,
-              !producto.disponible && styles.actionDisabled,
-              agregado && styles.actionAdded,
-              addButtonScale
-                ? { transform: [{ scale: addButtonScale }] }
-                : undefined,
+              styles.image,
+              imageHeight ? { height: imageHeight } : undefined,
             ]}
-          >
-            <Text style={styles.actionText}>
-              {producto.disponible
-                ? agregado
-                  ? "Agregado"
-                  : "Agregar"
-                : "Agotado"}
+          />
+        ) : (
+          <View
+            style={[
+              styles.imagePlaceholder,
+              imageHeight ? { height: imageHeight } : undefined,
+            ]}
+          />
+        )}
+
+        {tieneDescuento ? (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountText}>
+              -{producto.descuentoPorcentaje}%
             </Text>
-          </Animated.View>
-        </Pressable>
-      </View>
-    </Pressable>
+          </View>
+        ) : null}
+
+        {!producto.disponible ? (
+          <View style={styles.soldOutBadge}>
+            <Text style={styles.soldOutText}>AGOTADO</Text>
+          </View>
+        ) : null}
+
+        <Text numberOfLines={2} style={styles.title}>
+          {producto.nombre}
+        </Text>
+
+        <View style={styles.footer}>
+          <View>
+            {tieneDescuento ? (
+              <Text style={styles.originalPrice}>
+                ${producto.precio.toLocaleString("es-AR")}
+              </Text>
+            ) : null}
+            <Text style={styles.price}>
+              ${calcularPrecioFinal(producto).toLocaleString("es-AR")}
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+
+      <Pressable
+        style={styles.actionButton}
+        accessibilityRole="button"
+        accessibilityState={{
+          selected: agregado,
+          disabled: !producto.disponible,
+        }}
+        testID={`agregar-producto-${producto.id}`}
+        accessibilityLabel={
+          agregado ? `Quitar ${producto.nombre}` : `Agregar ${producto.nombre}`
+        }
+        disabled={!producto.disponible}
+        onPress={onPressAccion}
+      >
+        <Animated.View
+          style={[
+            styles.action,
+            !producto.disponible && styles.actionDisabled,
+            agregado && styles.actionAdded,
+            addButtonScale
+              ? { transform: [{ scale: addButtonScale }] }
+              : undefined,
+          ]}
+        >
+          <Text style={styles.actionText}>
+            {producto.disponible
+              ? agregado
+                ? "Agregado"
+                : "Agregar"
+              : "Agotado"}
+          </Text>
+        </Animated.View>
+      </Pressable>
+    </View>
   );
 }
 
@@ -167,8 +179,8 @@ function createStyles(scale: number) {
     },
     discountBadge: {
       position: "absolute",
-      top: s(10),
-      left: s(10),
+      top: s(6),
+      left: s(6),
       paddingHorizontal: s(7),
       paddingVertical: s(4),
       borderRadius: s(6),
@@ -223,9 +235,15 @@ function createStyles(scale: number) {
     },
     footer: {
       marginTop: s(4),
+      paddingRight: s(65),
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+    },
+    actionButton: {
+      position: "absolute",
+      right: s(12),
+      bottom: s(12),
     },
     price: {
       color: Colors.secondary,

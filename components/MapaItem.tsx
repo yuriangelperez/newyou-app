@@ -1,7 +1,8 @@
-import { Platform, StyleSheet, View } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { StyleSheet, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 
 import { Colors, Radius } from '../constants/theme';
+import { urlMapaOsm } from './mapaOsm';
 
 interface MapaItemProps {
   latitud: number;
@@ -9,27 +10,28 @@ interface MapaItemProps {
   titulo?: string;
 }
 
+const URL_EMBED = 'https://www.openstreetmap.org/export/embed.html';
+
 /**
- * Mapa fijo con un marcador (Clase 7, 7.5). Sin scroll para no pelear con el
- * scroll de la pantalla; en Android usa Google Maps.
+ * Mapa fijo con un marcador (Clase 7, 7.5), con OpenStreetMap dentro de un
+ * WebView: funciona en Expo Go y en el .apk sin clave de Google Maps.
  */
 export function MapaItem({ latitud, longitud, titulo }: MapaItemProps) {
   return (
-    <View style={styles.contenedor} testID="mapa-item">
-      <MapView
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-        style={StyleSheet.absoluteFill}
+    <View
+      style={styles.contenedor}
+      testID="mapa-item"
+      accessible
+      accessibilityLabel={titulo ? `Mapa: ${titulo}` : 'Mapa'}
+    >
+      <WebView
+        source={{ uri: urlMapaOsm(latitud, longitud) }}
+        style={styles.mapa}
         scrollEnabled={false}
-        zoomEnabled={false}
-        initialRegion={{
-          latitude: latitud,
-          longitude: longitud,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        }}
-      >
-        <Marker coordinate={{ latitude: latitud, longitude: longitud }} title={titulo} />
-      </MapView>
+        setSupportMultipleWindows={false}
+        // Los enlaces del mapa ("Ver mapa más grande") no navegan dentro de la tarjeta.
+        onShouldStartLoadWithRequest={(pedido) => pedido.url.startsWith(URL_EMBED)}
+      />
     </View>
   );
 }
@@ -42,4 +44,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  mapa: { flex: 1 },
 });

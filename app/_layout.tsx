@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import NetInfo from '@react-native-community/netinfo';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import Toast, { BaseToast, ToastConfig } from 'react-native-toast-message';
 
 import { BarraNavegacionWeb } from '../components/BarraNavegacionWeb';
@@ -171,34 +172,37 @@ export default function RootLayout() {
   return (
     // Raíz de gestos para el deslizar-para-borrar de Mis publicaciones (Clase 9).
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="auto" />
-      {esEscritorio && haySesion && segments[0] !== '(auth)' ? <BarraNavegacionWeb /> : null}
-      <Stack initialRouteName="(auth)/login" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)/login" />
-        <Stack.Screen name="(auth)/register" />
-        <Stack.Screen name="(auth)/recuperar" />
-        <Stack.Screen name="(auth)/nueva-contrasena" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="producto/[id]" />
-        <Stack.Screen name="producto/nuevo" />
-        <Stack.Screen name="editar/[id]" />
-        <Stack.Screen name="mis-publicaciones" />
-        <Stack.Screen name="mis-compras" />
-        <Stack.Screen name="mis-ventas" />
-        <Stack.Screen name="direcciones" />
-        <Stack.Screen name="ajustes" />
-        <Stack.Screen name="checkout/index" />
-        <Stack.Screen name="empresa/index" />
-        <Stack.Screen name="empresa/nueva" />
-        <Stack.Screen name="empresa/sedes" />
-        <Stack.Screen name="empresa/equipo" />
-        <Stack.Screen name="invitacion" />
-        <Stack.Screen name="tienda/[slug]" />
-        <Stack.Screen name="admin" />
-        <Stack.Screen name="metricas" />
-      </Stack>
-      <TarjetaBienvenida visible={mostrarBienvenida} onCerrar={cerrarBienvenida} />
-      <Toast config={toastConfig} />
+      {/* Los formularios se corren arriba del teclado (KeyboardAwareScrollView). */}
+      <KeyboardProvider>
+        <StatusBar style="auto" />
+        {esEscritorio && haySesion && segments[0] !== '(auth)' ? <BarraNavegacionWeb /> : null}
+        <Stack initialRouteName="(auth)/login" screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)/login" />
+          <Stack.Screen name="(auth)/register" />
+          <Stack.Screen name="(auth)/recuperar" />
+          <Stack.Screen name="(auth)/nueva-contrasena" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="producto/[id]" />
+          <Stack.Screen name="producto/nuevo" />
+          <Stack.Screen name="editar/[id]" />
+          <Stack.Screen name="mis-publicaciones" />
+          <Stack.Screen name="mis-compras" />
+          <Stack.Screen name="mis-ventas" />
+          <Stack.Screen name="direcciones" />
+          <Stack.Screen name="ajustes" />
+          <Stack.Screen name="checkout/index" />
+          <Stack.Screen name="empresa/index" />
+          <Stack.Screen name="empresa/nueva" />
+          <Stack.Screen name="empresa/sedes" />
+          <Stack.Screen name="empresa/equipo" />
+          <Stack.Screen name="invitacion" />
+          <Stack.Screen name="tienda/[slug]" />
+          <Stack.Screen name="admin" />
+          <Stack.Screen name="metricas" />
+        </Stack>
+        <TarjetaBienvenida visible={mostrarBienvenida} onCerrar={cerrarBienvenida} />
+        <Toast config={toastConfig} />
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

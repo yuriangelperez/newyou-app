@@ -5,16 +5,14 @@ import { Controller, useForm } from 'react-hook-form';
 import { useRouter } from 'expo-router';
 import {
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { BRANDING_LOGO } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
@@ -75,10 +73,8 @@ export default function RegisterScreen() {
   });
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
+    <View style={styles.screen}>
+      <KeyboardAwareScrollView bottomOffset={24}
         contentContainerStyle={[styles.container, esEscritorio && styles.containerEscritorio]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
@@ -240,8 +236,8 @@ export default function RegisterScreen() {
         disabled={cargando}>
         <Text style={styles.buttonText}>{cargando ? 'CREANDO...' : 'REGISTRARSE'}</Text>
       </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </View>
   );
 }
 

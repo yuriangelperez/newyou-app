@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { EncabezadoPantalla } from "../../components/ui/EncabezadoPantalla";
 import { estilosFormulario as styles } from "../../constants/estilosFormulario";
@@ -38,7 +39,7 @@ export default function RecuperarScreen() {
   return (
     <View style={styles.screen}>
       <EncabezadoPantalla titulo="RECUPERAR CUENTA" />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {enviado ? (
           <>
             <Text style={styles.aviso}>
@@ -75,7 +76,7 @@ export default function RecuperarScreen() {
             </Pressable>
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }
