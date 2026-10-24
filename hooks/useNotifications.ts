@@ -1,8 +1,8 @@
-import * as Notifications from 'expo-notifications';
 import { useCallback } from 'react';
 
 import {
   notificacionesDisponibles,
+  pedirPermisoNotificaciones,
   programarRecordatorioPublicacion,
 } from '../services/notificacionesService';
 import { usePermission } from './usePermission';
@@ -13,7 +13,7 @@ import { usePermission } from './usePermission';
  */
 export function useNotifications() {
   const permiso = usePermission(
-    Notifications.requestPermissionsAsync,
+    pedirPermisoNotificaciones,
     'Sin permiso de notificaciones no vas a recibir recordatorios de tus publicaciones.',
   );
 

@@ -2,7 +2,6 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import NetInfo from '@react-native-community/netinfo';
-import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Toast, { BaseToast, ToastConfig } from 'react-native-toast-message';
@@ -13,7 +12,7 @@ import { Colors } from '../constants/theme';
 import { useEsEscritorio } from '../hooks/useEsEscritorio';
 import { ROUTES } from '../constants/routes';
 import { bienvenidaVista, marcarBienvenidaVista } from '../services/bienvenidaService';
-import { notificacionesDisponibles } from '../services/notificacionesService';
+import { Notifications } from '../services/notificacionesService';
 import { sincronizarBorradores } from '../services/offlineService';
 import { supabase } from '../services/supabase';
 import { tokenService } from '../services/tokenService';
@@ -126,7 +125,7 @@ export default function RootLayout() {
 
   // Al tocar una notificación se abre la pantalla que corresponde.
   useEffect(() => {
-    if (!notificacionesDisponibles || !haySesion) {
+    if (!Notifications || !haySesion) {
       return;
     }
 
