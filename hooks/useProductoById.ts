@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getProductoById, subscribeToProductos } from '../services/productosService';
 import { Producto } from '../types';
@@ -39,6 +40,19 @@ export function useProductoById(id?: string): UseProductoByIdResult {
     setCargando(true);
     void cargar();
   }, [cargar]);
+
+  // Recarga al volver a la pantalla para reflejar cambios de stock o precio.
+  const primerFoco = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (primerFoco.current) {
+        primerFoco.current = false;
+        return;
+      }
+
+      void cargar();
+    }, [cargar]),
+  );
 
   useEffect(() => {
     if (!id) {

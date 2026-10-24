@@ -5,6 +5,9 @@ import { supabase } from './supabase';
 
 const DEFAULT_BUCKET = process.env.EXPO_PUBLIC_SUPABASE_PRODUCTS_BUCKET || 'productos';
 
+// Compresión previa a la subida (0-1).
+const IMAGE_QUALITY = 0.6;
+
 export interface PickedProductImage {
   uri: string;
   base64: string;
@@ -48,7 +51,7 @@ export async function pickImageFromLibrary() {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
     allowsEditing: true,
-    quality: 0.85,
+    quality: IMAGE_QUALITY,
     base64: true,
   });
 
@@ -60,6 +63,71 @@ export async function pickImageFromLibrary() {
 
   if (!asset.base64) {
     throw new Error('No se pudo leer la imagen seleccionada. Intenta nuevamente.');
+  }
+
+  return {
+    uri: asset.uri,
+    base64: asset.base64,
+    mimeType: asset.mimeType || getMimeType(getFileExtension(asset.uri)),
+  };
+}
+
+/** Varias imágenes de la galería a la vez (sin recorte: el recorte no admite selección múltiple). */
+export async function pickImagesFromLibrary(limite: number): Promise<PickedProductImage[]> {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+  if (!permission.granted) {
+    throw new Error('Se requiere permiso de galeria para subir imagenes.');
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsMultipleSelection: limite > 1,
+    selectionLimit: limite,
+    allowsEditing: limite <= 1,
+    quality: IMAGE_QUALITY,
+    base64: true,
+  });
+
+  if (result.canceled || !result.assets?.length) {
+    return [];
+  }
+
+  return result.assets.slice(0, limite).map((asset) => {
+    if (!asset.base64) {
+      throw new Error('No se pudo leer una de las imágenes. Intenta nuevamente.');
+    }
+
+    return {
+      uri: asset.uri,
+      base64: asset.base64,
+      mimeType: asset.mimeType || getMimeType(getFileExtension(asset.uri)),
+    };
+  });
+}
+
+export async function pickImageFromCamera(): Promise<PickedProductImage | null> {
+  const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+  if (!permission.granted) {
+    throw new Error('Se requiere permiso de cámara para tomar la foto.');
+  }
+
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    quality: IMAGE_QUALITY,
+    base64: true,
+  });
+
+  if (result.canceled || !result.assets?.length) {
+    return null;
+  }
+
+  const asset = result.assets[0];
+
+  if (!asset.base64) {
+    throw new Error('No se pudo leer la foto tomada. Intenta nuevamente.');
   }
 
   return {

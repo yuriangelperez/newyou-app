@@ -18,13 +18,14 @@ export const productoSchema = z.object({
     .number()
     .positive('El precio debe ser mayor a 0.'),
 
-  descuentoActivo: z.boolean(),
+  descuentoActivo: z.boolean().default(false),
 
   descuentoPorcentaje: z
     .coerce
     .number()
     .min(0, 'El descuento no puede ser negativo.')
-    .max(100, 'El descuento no puede superar el 100%.'),
+    .max(100, 'El descuento no puede superar el 100%.')
+    .default(0),
 
   stock: z
     .coerce
@@ -38,6 +39,9 @@ export const productoSchema = z.object({
     z.literal(''),
     z.string().url('Ingresa una URL de imagen valida.'),
   ]),
+
+  // Hasta 5 imágenes; la primera es la principal. `imagen` queda como la principal.
+  imagenes: z.array(z.string().url('Imagen invalida.')).max(5, 'Podés subir hasta 5 imágenes.').default([]),
 
   tipoPrenda: z.enum(TIPOS_PRENDA),
 
@@ -58,6 +62,9 @@ export const productoSchema = z.object({
     .string()
     .trim()
     .min(1, 'Ingresa al menos un color.'),
+
+  // Dirección de la tienda: GPS o carga manual. Opcional.
+  direccion: z.string().trim().optional(),
 
   descripcion: z
     .string()

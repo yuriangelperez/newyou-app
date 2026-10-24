@@ -1,10 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
-  ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,25 +12,30 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
+import { SelectorDireccion } from "../../components/ui/SelectorDireccion";
 import { InputField } from "../../components/ui/InputField";
 import { CategoriaProductoSelector } from "../../components/ui/CategoriaProductoSelector";
 import { ColoresSelector } from "../../components/ui/ColoresSelector";
 import { CATEGORIA_PRODUCTO_POR_DEFECTO } from "../../constants/categoriasProductos";
 import { ROUTES } from "../../constants/routes";
-import { Colors, Radius } from "../../constants/theme";
+import { Colors, Radius, Spacing } from "../../constants/theme";
 import {
   ProductoFormOutput,
   ProductoFormValues,
   productoSchema,
 } from "../../schemas/productoSchema";
-import { createProducto } from "../../services/productosService";
-import {
-  pickImageFromLibrary,
-  uploadProductImage,
-} from "../../services/storageService";
-import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { createProducto, ProductoInput } from "../../services/productosService";
+import { useDirecciones } from "../../hooks/useDirecciones";
+import { guardarSiEsNueva } from "../../services/direccionesService";
+import { encolarBorrador, hayConexion } from "../../services/offlineService";
+import { SelectorImagenes } from "../../components/ui/SelectorImagenes";
+import { StockPorSede } from "../../components/ui/StockPorSede";
+import { usePuedeVender } from "../../hooks/usePuedeVender";
+import { useSedesEmpresa } from "../../hooks/useSedesEmpresa";
+import { selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
 
 const DEFAULT_VALUES: ProductoFormValues = {
   nombre: "",
@@ -41,20 +44,23 @@ const DEFAULT_VALUES: ProductoFormValues = {
   descuentoPorcentaje: "0",
   stock: "1",
   imagen: "",
+  imagenes: [],
   categoria: "Camisas",
   ...CATEGORIA_PRODUCTO_POR_DEFECTO,
   disponible: true,
   talle: "",
   colores: "",
+  direccion: "",
   descripcion: "",
 };
 
 export default function NuevoProductoScreen() {
   const router = useRouter();
-  const esVendedor = useUsuarioStore(
-    (state) => state.usuario?.role === "vendedor",
-  );
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  const esVendedor = usePuedeVender();
+  const empresaActiva = useEmpresaStore(selectEmpresaActiva);
+  const { editables: sedesEditables } = useSedesEmpresa(empresaActiva);
+  const [stockSedes, setStockSedes] = useState<Record<number, string>>({});
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const {
@@ -69,9 +75,20 @@ export default function NuevoProductoScreen() {
     defaultValues: DEFAULT_VALUES,
   });
 
+  const { direcciones } = useDirecciones();
+  const direccionElegida = watch("direccion") ?? "";
+  const setDireccion = useCallback(
+    (valor: string) => setValue("direccion", valor, { shouldDirty: true }),
+    [setValue],
+  );
+
   const disponible = watch("disponible");
   const descuentoActivo = watch("descuentoActivo");
-  const imageField = watch("imagen");
+  const imagenes = watch("imagenes") ?? [];
+  const setImagenes = (lista: string[]) => {
+    setValue("imagenes", lista, { shouldValidate: true, shouldDirty: true });
+    setValue("imagen", lista[0] ?? "", { shouldValidate: true });
+  };
 
   if (!esVendedor) {
     return (
@@ -90,36 +107,6 @@ export default function NuevoProductoScreen() {
     );
   }
 
-  const onPickAndUploadImage = async () => {
-    try {
-      setUploadingImage(true);
-      const image = await pickImageFromLibrary();
-
-      if (!image) {
-        return;
-      }
-
-      setImagePreview(image.uri);
-      const publicUrl = await uploadProductImage(image);
-      setValue("imagen", publicUrl, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
-
-      Toast.show({
-        type: "success",
-        text1: "Imagen subida",
-        text2: "Se cargo correctamente en Supabase Storage.",
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "No se pudo subir la imagen.";
-      Toast.show({ type: "error", text1: "Error de imagen", text2: message });
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
   const onSubmit = handleSubmit(async (values) => {
     try {
       const talles = values.talle
@@ -127,14 +114,13 @@ export default function NuevoProductoScreen() {
         .map((item) => item.trim())
         .filter(Boolean);
 
-      const nuevoProducto = await createProducto({
+      const payload: ProductoInput = {
         nombre: values.nombre.trim(),
         precio: values.precio,
-        descuentoPorcentaje: values.descuentoActivo
-          ? values.descuentoPorcentaje
-          : 0,
+        descuentoPorcentaje: values.descuentoActivo ? values.descuentoPorcentaje : 0,
         stock: values.stock,
-        imagen: values.imagen.trim(),
+        imagen: values.imagenes[0] ?? "",
+        imagenes: values.imagenes,
         categoria: values.categoria,
         tipoPrenda: values.tipoPrenda,
         temporada: values.temporada,
@@ -146,7 +132,55 @@ export default function NuevoProductoScreen() {
           .map((item) => item.trim())
           .filter(Boolean),
         descripcion: values.descripcion.trim(),
-      });
+        direccionRetiro: values.direccion?.trim() || undefined,
+      };
+
+      if (empresaActiva) {
+        if (empresaActiva.estado !== "verificada") {
+          Toast.show({
+            type: "error",
+            text1: "Tu empresa todavía no está verificada",
+            text2: "Vas a poder publicar cuando se verifique el CUIT.",
+          });
+          return;
+        }
+        if (sedesEditables.length === 0) {
+          Toast.show({ type: "error", text1: "No tenés sedes asignadas para publicar" });
+          return;
+        }
+        if (!(await hayConexion())) {
+          Toast.show({ type: "error", text1: "Necesitás conexión para publicar como empresa" });
+          return;
+        }
+
+        const stockPorSede = sedesEditables.map((sede) => ({
+          sedeId: sede.id,
+          cantidad: Number(stockSedes[sede.id]) || 0,
+        }));
+        // La sede principal (dirección de retiro) es la primera con stock.
+        const principal = stockPorSede.find((item) => item.cantidad > 0) ?? stockPorSede[0];
+        payload.stock = stockPorSede.reduce((total, item) => total + item.cantidad, 0);
+        payload.direccionRetiro = undefined;
+        payload.empresa = { empresaId: empresaActiva.empresaId, sedeId: principal.sedeId, stockPorSede };
+      }
+
+      if (!(await hayConexion())) {
+        await encolarBorrador({ tipo: "producto", payload });
+        Toast.show({
+          type: "offline",
+          text1: "Sin conexión. Guardado en borradores locales.",
+          text2: "La publicación se subirá al recuperar la red.",
+        });
+        router.replace(ROUTES.home);
+        return;
+      }
+
+      const nuevoProducto = await createProducto(payload);
+
+      // Si escribió una dirección nueva, queda guardada en sus direcciones.
+      if (!payload.empresa) {
+        guardarSiEsNueva(payload.direccionRetiro ?? "", direcciones).catch(() => {});
+      }
 
       Toast.show({
         type: "success",
@@ -175,10 +209,16 @@ export default function NuevoProductoScreen() {
       keyboardVerticalOffset={Platform.OS === "ios" ? 84 : 0}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 24 }]}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>Nueva Publicacion</Text>
+        {empresaActiva ? (
+          <Text style={styles.companyBanner}>
+            Publicando como {empresaActiva.nombre}
+            {empresaActiva.estado !== "verificada" ? " (pendiente de verificación: todavía no podés publicar)" : ""}
+          </Text>
+        ) : null}
 
         <InputField
           control={control}
@@ -200,7 +240,7 @@ export default function NuevoProductoScreen() {
           <Switch
             value={descuentoActivo}
             onValueChange={(value) =>
-              setValue("descuentoActivo", value, { shouldValidate: true })
+              setValue("descuentoActivo", value, { shouldValidate: true, shouldDirty: true })
             }
             trackColor={{ true: Colors.secondary, false: "#CFCFCF" }}
           />
@@ -216,39 +256,30 @@ export default function NuevoProductoScreen() {
           />
         ) : null}
 
-        <InputField
-          control={control}
-          name="stock"
-          label="Stock"
-          placeholder="10"
-          textInputProps={{
-            keyboardType: "numeric",
-          }}
-        />
-
-        <Pressable
-          onPress={() => void onPickAndUploadImage()}
-          disabled={uploadingImage || isSubmitting}
-          style={[
-            styles.uploadButton,
-            (uploadingImage || isSubmitting) && styles.submitDisabled,
-          ]}
-        >
-          {uploadingImage ? (
-            <ActivityIndicator color="#2D1F16" />
-          ) : (
-            <Text style={styles.uploadButtonText}>
-              Seleccionar imagen desde la galería
-            </Text>
-          )}
-        </Pressable>
-
-        {imagePreview || imageField ? (
-          <Image
-            source={{ uri: imagePreview ?? imageField }}
-            style={styles.previewImage}
+        {empresaActiva ? (
+          <StockPorSede
+            sedes={sedesEditables}
+            valores={stockSedes}
+            onChange={(sedeId, valor) => setStockSedes((actual) => ({ ...actual, [sedeId]: valor }))}
           />
-        ) : null}
+        ) : (
+          <InputField
+            control={control}
+            name="stock"
+            label="Stock"
+            placeholder="10"
+            textInputProps={{
+              keyboardType: "numeric",
+            }}
+          />
+        )}
+
+        <SelectorImagenes
+          imagenes={imagenes}
+          onChange={setImagenes}
+          onSubiendoChange={setUploadingImage}
+          deshabilitado={isSubmitting}
+        />
 
         <CategoriaProductoSelector control={control} />
 
@@ -261,6 +292,17 @@ export default function NuevoProductoScreen() {
         />
 
         <ColoresSelector control={control} />
+
+        {empresaActiva ? null : (
+          <>
+            <Text style={styles.addressTitle}>Dirección de retiro</Text>
+            <SelectorDireccion
+              direcciones={direcciones}
+              value={direccionElegida}
+              onChange={setDireccion}
+            />
+          </>
+        )}
 
         <InputField
           control={control}
@@ -305,6 +347,14 @@ export default function NuevoProductoScreen() {
 }
 
 const styles = StyleSheet.create({
+  companyBanner: {
+    backgroundColor: Colors.tertiary,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    color: Colors.primary,
+    fontFamily: "Montserrat_600SemiBold",
+  },
   screen: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -338,9 +388,9 @@ const styles = StyleSheet.create({
   },
   content: {
     width: "100%",
-    maxWidth: 680,
+    maxWidth: 800,
     alignSelf: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 24,
     paddingBottom: 40,
   },
@@ -373,27 +423,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Montserrat_500Medium",
   },
-  uploadButton: {
-    marginTop: 6,
-    minHeight: 44,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.secondary,
-    backgroundColor: "#EFE5DE",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  uploadButtonText: {
-    color: "#2D1F16",
+  addressTitle: {
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+    color: Colors.primary,
     fontSize: 14,
     fontFamily: "Montserrat_600SemiBold",
-  },
-  previewImage: {
-    width: "100%",
-    height: 180,
-    borderRadius: Radius.md,
-    marginTop: 10,
-    backgroundColor: Colors.surface,
   },
   submitButton: {
     marginTop: 18,

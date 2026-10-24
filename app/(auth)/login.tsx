@@ -16,11 +16,14 @@ import {
 
 import { BRANDING_LOGO } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
-import { Colors, Radius } from '../../constants/theme';
+import { Colors, Radius, Shadow } from '../../constants/theme';
+import { useEsEscritorio } from '../../hooks/useEsEscritorio';
 import { signInWithPassword } from '../../services/auth';
 
 export default function LoginScreen() {
   const router = useRouter();
+  // En la web de escritorio el formulario va en una tarjeta centrada.
+  const esEscritorio = useEsEscritorio();
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState('');
@@ -59,7 +62,7 @@ export default function LoginScreen() {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, esEscritorio && styles.containerEscritorio]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
       <View style={styles.logoContainer}>
@@ -124,8 +127,8 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity onPress={goToRegister}>
-        <Text style={styles.resetText}>¿REESTABLECER CONTRASEÑA?</Text>
+      <TouchableOpacity onPress={() => router.push(ROUTES.forgotPassword)}>
+        <Text style={styles.resetText}>¿OLVIDASTE TU CONTRASEÑA?</Text>
       </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -133,6 +136,19 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  containerEscritorio: {
+    flexGrow: 0,
+    alignSelf: 'center',
+    width: 480,
+    marginVertical: 48,
+    paddingTop: 48,
+    paddingHorizontal: 24,
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadow.card,
+  },
   screen: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -175,9 +191,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 56,
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.secondary,
     fontSize: 16,
     textAlign: 'left',
     paddingHorizontal: 18,
@@ -188,9 +204,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.secondary,
     paddingLeft: 18,
     paddingRight: 10,
   },
@@ -223,7 +239,7 @@ const styles = StyleSheet.create({
   loginButton: {
     width: 168,
     height: 46,
-    backgroundColor: Colors.tertiary,
+    backgroundColor: Colors.secondary,
     borderRadius: Radius.md,
     justifyContent: 'center',
     alignItems: 'center',
@@ -231,7 +247,7 @@ const styles = StyleSheet.create({
   registerButton: {
     width: '100%',
     height: 46,
-    backgroundColor: Colors.tertiary,
+    backgroundColor: Colors.secondary,
     borderRadius: Radius.md,
     justifyContent: 'center',
     alignItems: 'center',
@@ -239,7 +255,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 20,
     fontWeight: '400',
-    color: Colors.text,
+    color: Colors.white,
     textAlign: 'center',
     fontFamily: 'Montserrat_700Bold',
   },

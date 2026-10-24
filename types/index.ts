@@ -15,6 +15,10 @@ export interface Producto {
   talle?: string[];
   colores?: string[];
   descripcion: string;
+  /** Prenda de empresa (null = de un particular). */
+  empresaId?: number | null;
+  sedeId?: number | null;
+  creadoPor?: string;
 }
 
 export function calcularPrecioFinal(producto: Pick<Producto, 'precio' | 'descuentoPorcentaje'>) {
@@ -25,5 +29,5 @@ export interface Usuario {
   id: string;
   nombre: string;
   email: string;
-  role: 'vendedor' | 'comprador';
+  role: 'particular' | 'comprador';
 }

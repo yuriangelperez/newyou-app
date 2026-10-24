@@ -7,11 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/app-icons/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/app-icons/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F4F4F4"
-    },
     "ios": {
       "supportsTablet": true,
       "icon": "./assets/app-icons/icon.png"
@@ -36,9 +31,30 @@
         "expo-image-picker",
         {
           "photosPermission": "Permite que NewYou acceda a tus fotos para publicar prendas.",
+          "cameraPermission": "Permite que NewYou use la cámara para fotografiar tus prendas.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permite que NewYou use tu ubicación para completar la dirección de tu tienda."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/app-icons/splash-icon.png",
+          "backgroundColor": "#F4F4F4",
+          "resizeMode": "contain"
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f1bf8b99-89e4-4dff-90aa-f1679c492a07"
+      }
+    }
   }
 }

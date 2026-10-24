@@ -20,11 +20,12 @@ import { ErrorView } from "../../components/ui/ErrorView";
 import { SkeletonList } from "../../components/ui/SkeletonList";
 import { BRANDING_LOGO, CATEGORY_DIAGONAL_CUT } from "../../constants/assets";
 import { CategoriaProducto } from "../../constants/categoriasProductos";
-import { Colors } from "../../constants/theme";
+import { Colors, Radius, Shadow } from "../../constants/theme";
 import { ROUTES } from "../../constants/routes";
 import { useProductos } from "../../hooks/useProductos";
 import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { usePuedeVender } from "../../hooks/usePuedeVender";
 import { Producto } from "../../types";
 
 const CANVAS_WIDTH = 412;
@@ -56,6 +57,7 @@ const PRODUCT_FILTER_BY_ID: Record<
   boxers: { categoria: "Boxers", categoriaId: 13, tipoPrenda: "Interior" },
   buzos: { categoria: "Buzos", tipoPrenda: "Torso" },
   faldas: { categoria: "Faldas", tipoPrenda: "Falda" },
+  vestidos: { categoria: "Vestidos", tipoPrenda: "Vestido" },
   pantalones: { categoria: "Jeans", tipoPrenda: "Pantalón" },
   shorts: { categoria: "Short", tipoPrenda: "Short" },
   jeans: { categoria: "Jeans", tipoPrenda: "Pantalón" },
@@ -98,6 +100,12 @@ const CATEGORY_BY_FILTER: Record<
       label: "FALDAS",
       image:
         "https://images.unsplash.com/photo-1577900232427-18219b9166a0?w=600",
+    },
+    {
+      id: "vestidos",
+      label: "VESTIDOS",
+      image:
+        "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600",
     },
     {
       id: "pantalones",
@@ -182,6 +190,12 @@ const CATEGORY_BY_FILTER: Record<
     },
   ],
   TORSO: [
+    {
+      id: "vestidos",
+      label: "VESTIDOS",
+      image:
+        "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600",
+    },
     {
       id: "camisas",
       label: "CAMISAS",
@@ -321,9 +335,7 @@ export default function CategoriasScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const totalItems = useCarritoStore(selectTotalItems);
-  const esVendedor = useUsuarioStore(
-    (state) => state.usuario?.role === "vendedor",
-  );
+  const esVendedor = usePuedeVender();
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
   const { productos, cargando, error, refrescar } = useProductos();
   const [activeFilter, setActiveFilter] = useState("TODO");
@@ -682,8 +694,10 @@ function createStyles({
       minWidth: s(40),
       height: s(29),
       paddingHorizontal: s(9),
-      borderRadius: s(10),
-      backgroundColor: "#D9D9D9",
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Colors.secondary,
+      backgroundColor: Colors.surface,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -716,14 +730,17 @@ function createStyles({
     filterChip: {
       minWidth: s(104),
       height: s(27),
-      borderRadius: s(10),
-      backgroundColor: "#D9D9D9",
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Colors.secondary,
+      backgroundColor: Colors.surface,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: s(10),
     },
     filterChipActive: {
       backgroundColor: Colors.tertiary,
+      ...Shadow.selected,
     },
     filterText: {
       color: "#000000",

@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 
-import { Colors } from "../constants/theme";
+import { Colors, Radius } from "../constants/theme";
 import { useCarritoStore } from "../stores/useCarritoStore";
 import { calcularPrecioFinal, Producto } from "../types";
 
@@ -39,7 +39,6 @@ export default function TarjetaProducto({
   );
   const eliminarProducto = useCarritoStore((state) => state.eliminarProducto);
   const agregado = productoEnCarrito;
-  const precioFinal = calcularPrecioFinal(producto);
   const tieneDescuento = producto.descuentoPorcentaje > 0;
 
   const onPressAccion = () => {
@@ -80,9 +79,13 @@ export default function TarjetaProducto({
 
       {tieneDescuento ? (
         <View style={styles.discountBadge}>
-          <Text style={styles.discountText}>
-            -{producto.descuentoPorcentaje}%
-          </Text>
+          <Text style={styles.discountText}>-{producto.descuentoPorcentaje}%</Text>
+        </View>
+      ) : null}
+
+      {!producto.disponible ? (
+        <View style={styles.soldOutBadge}>
+          <Text style={styles.soldOutText}>AGOTADO</Text>
         </View>
       ) : null}
 
@@ -97,7 +100,9 @@ export default function TarjetaProducto({
               ${producto.precio.toLocaleString("es-AR")}
             </Text>
           ) : null}
-          <Text style={styles.price}>${precioFinal.toLocaleString("es-AR")}</Text>
+          <Text style={styles.price}>
+            ${calcularPrecioFinal(producto).toLocaleString("es-AR")}
+          </Text>
         </View>
 
         <Pressable
@@ -140,11 +145,46 @@ function createStyles(scale: number) {
     card: {
       width: s(175),
       minHeight: s(180),
-      borderRadius: s(10),
-      backgroundColor: "#E4E0E1",
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Colors.secondary,
+      backgroundColor: Colors.surface,
       paddingHorizontal: s(12),
       paddingTop: s(10),
       paddingBottom: s(12),
+    },
+    discountBadge: {
+      position: "absolute",
+      top: s(10),
+      left: s(10),
+      paddingHorizontal: s(7),
+      paddingVertical: s(4),
+      borderRadius: s(6),
+      backgroundColor: Colors.danger,
+    },
+    discountText: {
+      color: Colors.white,
+      fontSize: s(10),
+      fontWeight: "700",
+    },
+    originalPrice: {
+      color: Colors.textMuted,
+      fontSize: s(10),
+      lineHeight: s(12),
+      textDecorationLine: "line-through",
+    },
+    soldOutBadge: {
+      alignSelf: "flex-start",
+      marginTop: s(4),
+      paddingHorizontal: s(6),
+      paddingVertical: s(2),
+      borderRadius: s(4),
+      backgroundColor: Colors.danger,
+    },
+    soldOutText: {
+      color: Colors.white,
+      fontSize: s(8),
+      fontFamily: "Montserrat_700Bold",
     },
     cardDisabled: {
       opacity: 0.62,
@@ -160,20 +200,6 @@ function createStyles(scale: number) {
       height: s(100),
       borderRadius: s(10),
       backgroundColor: Colors.secondary,
-    },
-    discountBadge: {
-      position: "absolute",
-      top: s(10),
-      left: s(10),
-      paddingHorizontal: s(7),
-      paddingVertical: s(4),
-      borderRadius: s(6),
-      backgroundColor: "#B84A39",
-    },
-    discountText: {
-      color: "#FFFFFF",
-      fontSize: s(10),
-      fontWeight: "700",
     },
     title: {
       marginTop: s(8),
@@ -195,12 +221,6 @@ function createStyles(scale: number) {
       lineHeight: s(20),
       fontWeight: "700",
     },
-    originalPrice: {
-      color: "#8A7B73",
-      fontSize: s(10),
-      lineHeight: s(12),
-      textDecorationLine: "line-through",
-    },
     action: {
       minWidth: s(61),
       height: s(20),
@@ -217,7 +237,7 @@ function createStyles(scale: number) {
       backgroundColor: "#9C928D",
     },
     actionText: {
-      color: "#2D1F16",
+      color: Colors.white,
       fontSize: s(8),
       lineHeight: s(10),
       fontWeight: "700",

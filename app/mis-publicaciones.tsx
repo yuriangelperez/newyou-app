@@ -14,18 +14,19 @@ import { useFocusEffect, useRouter } from "expo-router";
 
 import { Colors, Radius, Spacing } from "../constants/theme";
 import { ROUTES } from "../constants/routes";
-import { useUsuarioStore } from "../stores/useUsuarioStore";
+import { selectEmpresaActiva, useEmpresaStore } from "../stores/useEmpresaStore";
+import { usePuedeVender } from "../hooks/usePuedeVender";
 import { useMisProductos } from "../hooks/useMisProductos";
 import { deleteProducto } from "../services/productosService";
-import { Producto } from "../types";
-import { calcularPrecioFinal } from "../types";
+import { calcularPrecioFinal, Producto } from "../types";
 
 const backIcon = require("../assets/images/product-detail/back.png");
 
 export default function MisPublicacionesScreen() {
   const router = useRouter();
 
-  const usuario = useUsuarioStore((state) => state.usuario);
+  const puedeVender = usePuedeVender();
+  const empresaActiva = useEmpresaStore(selectEmpresaActiva);
 
   const {
     productos,
@@ -33,7 +34,7 @@ export default function MisPublicacionesScreen() {
     refreshing,
     error,
     refrescar,
-  } = useMisProductos();
+  } = useMisProductos(empresaActiva?.empresaId ?? null);
 
   useFocusEffect(
     useCallback(() => {
@@ -71,6 +72,10 @@ export default function MisPublicacionesScreen() {
     );
   };
 
+  const handleVer = (producto: Producto) => {
+    router.push({ pathname: ROUTES.productDetail, params: { id: producto.id } });
+  };
+
   const handleEditar = (producto: Producto) => {
     router.push({
       pathname: ROUTES.editProduct,
@@ -80,7 +85,7 @@ export default function MisPublicacionesScreen() {
     });
   };
 
-  if (usuario?.role !== "vendedor") {
+  if (!puedeVender) {
     return (
       <SafeAreaView
         style={styles.safeArea}
@@ -96,18 +101,15 @@ export default function MisPublicacionesScreen() {
           </Text>
 
           <Pressable
-            style={styles.backButton}
+            accessibilityLabel="Volver"
+            style={styles.backIconButton}
             onPress={() => router.replace(ROUTES.home)}
           >
             <Image
               source={backIcon}
-              style={styles.backIcon}
+              style={styles.backIconImage}
               resizeMode="contain"
             />
-
-            <Text style={styles.backButtonText}>
-              Volver
-            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -168,27 +170,31 @@ export default function MisPublicacionesScreen() {
     item: Producto;
   }) => (
     <View style={styles.card}>
-      {item.imagen ? (
-        <Image
-          source={{ uri: item.imagen }}
-          style={styles.productImage}
-          resizeMode="cover"
-        />
-      ) : (
-        <View style={styles.productImagePlaceholder}>
-          <Text style={styles.placeholderText}>
-            Sin imagen
-          </Text>
-        </View>
-      )}
+      <Pressable accessibilityLabel={`Ver ${item.nombre}`} onPress={() => handleVer(item)}>
+        {item.imagen ? (
+          <Image
+            source={{ uri: item.imagen }}
+            style={styles.productImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.productImagePlaceholder}>
+            <Text style={styles.placeholderText}>
+              Sin imagen
+            </Text>
+          </View>
+        )}
+      </Pressable>
 
       <View style={styles.info}>
-        <Text
-          style={styles.productName}
-          numberOfLines={2}
-        >
-          {item.nombre}
-        </Text>
+        <Pressable onPress={() => handleVer(item)}>
+          <Text
+            style={styles.productName}
+            numberOfLines={2}
+          >
+            {item.nombre}
+          </Text>
+        </Pressable>
 
         {item.descuentoPorcentaje > 0 ? (
           <Text style={styles.discountLabel}>
@@ -265,7 +271,7 @@ export default function MisPublicacionesScreen() {
 
           <View style={styles.headerTitleContainer}>
             <Text style={styles.title}>
-              Mis publicaciones
+              {empresaActiva ? `Publicaciones de ${empresaActiva.nombre}` : "Mis publicaciones"}
             </Text>
 
             <Text style={styles.counter}>
@@ -576,10 +582,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
-  backIcon: {
-    width: 22,
-    height: 22,
-  },
 
   backButtonText: {
     color: "#2D1F16",

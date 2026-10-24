@@ -15,7 +15,6 @@ Marketplace móvil de indumentaria para la compra y venta de prendas nuevas y pr
 | **Yuriangel Pérez**   | Scrum Master / Desarrolladora     |
 | **Alejandro Terzano** | Project Manager / Diseñador UX/UI |
 | **Daiana Lencina**    | Product Owner / QA                |
-| **Carlos Semeco**     | Desarrollador                     |
 
 **Docente:** Ariel Bulacio
 
@@ -215,14 +214,14 @@ El carrito permite:
 | HU08 | Gestión de publicaciones                    | Implementado    |
 | HU09 | Agregar al carrito                          | Implementado    |
 | HU10 | Modificar carrito                           | Implementado    |
-| HU11 | Selección de retiro/envío                   | Pendiente       |
-| HU12 | Selección de medio de pago                  | Pendiente       |
-| HU13 | Resumen y total                             | Pendiente       |
-| HU14 | Confirmación y código de compra             | Pendiente       |
+| HU11 | Selección de retiro/envío                   | Implementado    |
+| HU12 | Selección de medio de pago                  | Implementado    |
+| HU13 | Resumen y total                             | Implementado    |
+| HU14 | Confirmación y código de compra             | Implementado    |
 | HU15 | Chat interno                                | Segunda entrega |
-| HU16 | Persistencia ante pérdida de conectividad   | Segunda entrega |
-| HU17 | Ubicación manual                            | Segunda entrega |
-| HU18 | Perfil                                      | Segunda entrega |
+| HU16 | Persistencia ante pérdida de conectividad   | Implementado    |
+| HU17 | Ubicación manual                            | Implementado    |
+| HU18 | Perfil                                      | Implementado    |
 | HU19 | Configuración, modo oscuro y notificaciones | Posterior       |
 | HU20 | Indicador de producto agotado               | Implementado    |
 
@@ -232,44 +231,82 @@ El Product Backlog oficial contiene 20 historias de usuario y clasifica HU01–H
 
 # Checkout
 
-El checkout forma parte del alcance funcional definido para el MVP, pero **todavía no se encuentra implementado en la versión actual del proyecto**.
+El checkout está implementado (`app/checkout/index.tsx`) y se puede llegar a él de dos formas:
 
-El flujo previsto contempla:
+* **Desde el carrito**, para pagar todo el contenido.
+* **Con "Comprar ahora"** en el detalle de una prenda, para pagar solo esa prenda y cantidad sin tocar el carrito.
 
-1. Selección de retiro en local o envío a domicilio.
-2. Selección de medio de pago.
-3. Resumen del pedido.
-4. Subtotal.
-5. Comisión de servicio.
-6. Total.
-7. Confirmación.
-8. Generación de código único de compra.
-9. Limpieza del carrito.
-10. Protección contra operaciones duplicadas mediante `operationKey`.
+Flujo:
 
-La documentación de Etapa 2 especifica este flujo y la utilización de `operationKey` para garantizar la idempotencia de las compras.
+1. Selección de **retiro en el local** o **envío a domicilio**.
+   * Retiro: se muestra la dirección de retiro de cada prenda (la dirección elegida por el vendedor al publicar).
+   * Domicilio: el comprador elige una de sus direcciones guardadas o escribe una nueva (con GPS opcional y enlace "Ver en el mapa").
+2. Medio de pago: efectivo, tarjeta, Mercado Pago o transferencia (checkout lógico, sin pasarela real).
+3. Resumen: productos, descuentos, envío, impuestos y total.
+4. Confirmación con clave de operación única (`operationKey`, formato `NY-ORD-…`).
+5. La función `confirmar_compra` de Supabase registra la orden y descuenta el stock en una sola transacción; reintentar con la misma clave devuelve la orden ya creada, sin duplicar.
+6. Un producto sin stock queda como **AGOTADO** (la disponibilidad se deriva de `stock > 0`).
+
+Después de comprar, el historial se consulta en **Perfil → Mis compras**; los vendedores ven además **Mis ventas**.
+
+### Modo offline
+
+Si no hay conexión al publicar una prenda o confirmar una compra, la operación se guarda en AsyncStorage (`ny_drafts`) y se muestra un aviso ámbar. Al volver la red, un listener de NetInfo sincroniza los borradores automáticamente. Las compras no se duplican gracias a la `operationKey`.
 
 ### Pago
 
-La integración de una pasarela de pago real, como Mercado Pago, queda fuera del alcance del First Delivery.
-
-El MVP utiliza un **checkout lógico** para representar el proceso de compra.
+La integración de una pasarela de pago real, como Mercado Pago, queda fuera del alcance del First Delivery. El MVP utiliza un **checkout lógico**.
 
 ---
 
-# Geolocalización
+# Geolocalización y direcciones
 
-La geolocalización corresponde al requisito **S1 — Should Have**.
+Implementado con `expo-location`:
 
-El diseño contempla:
+* **GPS con fallback manual:** el botón "Usar mi ubicación (GPS)" obtiene la dirección mediante geocodificación inversa (con OpenStreetMap como alternativa en web). Si el GPS falla, se deniegan los permisos o no hay señal, el campo de texto manual siempre queda disponible.
+* **Verificación:** el enlace "Ver en el mapa" abre la dirección escrita en Google Maps para comprobarla.
+* **Direcciones guardadas:** en **Perfil → Direcciones** cada usuario administra sus direcciones y elige una como principal. Al publicar una prenda se elige la dirección de retiro (o se carga una nueva); las publicaciones anteriores sin dirección toman automáticamente la principal.
 
-* Obtención de ubicación mediante GPS.
-* Identificación de la ubicación de comercios.
-* Fallback mediante ingreso manual de la ubicación cuando el GPS no está disponible.
+---
 
-El fallback manual está contemplado específicamente para escenarios donde el GPS falla en interiores.
+# Puesta en marcha
 
-La implementación completa permanece pendiente.
+```bash
+npm install
+npm start        # o: npm run android / npm run web
+npm test         # pruebas unitarias (Jest)
+npx tsc --noEmit # chequeo de tipos
+```
+
+Variables de entorno (archivo `.env`):
+
+```text
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+```
+
+### Configuración de Supabase
+
+1. Crear el bucket **público** `productos-fotos` en Storage, con una política de `INSERT` para usuarios autenticados y lectura pública.
+2. Ejecutar en el SQL Editor, **en este orden**, los scripts de [`supabase/migraciones/`](supabase/migraciones/):
+   1. `01-checkout.sql`: clave de idempotencia (`operation_key`), numeración de órdenes y la función `confirmar_compra`, que registra la compra y descuenta el stock en una sola transacción.
+   2. `02-historial.sql`: política RLS de lectura de las propias compras y la función `mis_ventas()` para el vendedor.
+   3. `03-direcciones.sql`: columnas de dirección y la dirección de entrega en `compras`.
+   4. `04-mis-direcciones.sql`: tabla `direcciones` con RLS, dirección de retiro por publicación (con relleno automático de las anteriores) y la función `direcciones_retiro()`.
+   5. `05-particular.sql`: el rol `vendedor` pasa a `particular` (C2C), se eliminan políticas duplicadas que dejaban publicar a cualquier comprador y crear compras sin `confirmar_compra`, se agregan políticas a `categorias`, y el tipo de cuenta sólo se cambia con la función `activar_modo_particular()`. Publicarlo junto con la versión de la app que usa `particular`.
+   6. `06-empresas.sql`: modo empresa. Tablas `empresas`, `sedes`, `empresa_miembros` (rol y sedes permitidas) e `invitaciones`, catálogo de roles y permisos, `tiene_permiso()` para las políticas y las funciones `crear_empresa`, `mis_empresas`, `equipo_empresa`, `aceptar_invitacion`, `cambiar_rol_miembro` y `quitar_miembro`. Una empresa nace pendiente; para publicarla: `UPDATE public.empresas SET estado = 'verificada' WHERE cuit = '<cuit>';`.
+   7. `07-admin.sql`: panel de administrador. Tabla `plataforma_admins`, historial `empresa_revisiones` y las funciones `admin_empresas` y `admin_cambiar_estado_empresa` (verificar, suspender con motivo, reactivar). Para nombrar administrador a una cuenta: `INSERT INTO public.plataforma_admins (usuario_id) SELECT id FROM auth.users WHERE email = '<correo>';`. El botón "Panel de administrador" aparece en Perfil al volver a iniciar sesión.
+   8. `08-stock-sedes.sql`: publicar como empresa. Tabla `stock_sede` (el `stock` de la prenda pasa a ser la suma, mantenida por trigger), políticas para que los miembros con permiso publiquen sólo en sus sedes y sólo si la empresa está verificada, el precio sólo lo cambia quien tiene `productos.precio`, y `confirmar_compra` descuenta de la sede principal o de la que tenga stock.
+   9. `09-imagenes.sql`: hasta 5 imágenes por prenda (`CHECK` en la base; completa `imagenes` con `imagen_url` en publicaciones viejas y recorta las que tengan más de 5).
+   10. `10-pedidos.sql`: pedidos con estados. Cada compra se divide en un pedido por vendedor (particular o sede de empresa) con estado (pendiente, confirmado, preparando, listo para retirar o enviado, entregado, cancelado) e historial en `pedido_eventos`. `confirmar_compra` calcula el envío con el costo de cada sede, `cambiar_estado_pedido` valida la transición y el permiso y repone el stock al cancelar, y `mis_compras_pedidos` / `pedidos_venta` reemplazan a `mis_ventas`. Las compras anteriores se convierten en pedidos. Publicarlo junto con la versión de la app que usa pedidos.
+   11. `11-envios-metricas.sql`: gestor de envíos (correo, código de seguimiento y fechas de envío y entrega en cada pedido, con `marcar_pedido_enviado`) y `metricas_ventas` (ingresos, pedidos, unidades, por día, más vendidos, por sede y stock bajo; las de empresa exigen `metricas.ver`).
+   12. `12-calificaciones.sql`: el comprador califica cada pedido entregado (1 a 5 estrellas y comentario, una vez) y el vendedor puede responder; `reputacion` (tienda o particular) y `reputacion_producto` son públicas.
+
+Para recuperar la contraseña, en Supabase > Authentication > URL Configuration agregar a *Redirect URLs* `newyou://**` (app) y `http://localhost:8081/**` (web en desarrollo). El enlace del correo abre la pantalla *Nueva contraseña*.
+
+Para versionar las políticas, funciones y triggers que hoy sólo están en Supabase, ejecutar [`supabase/consultas/exportar-esquema.sql`](supabase/consultas/exportar-esquema.sql). El resultado del 2026-10-23 quedó en `supabase/migraciones/00-base.sql` (referencia, no se ejecuta).
+
+Sin estos scripts fallan el checkout, "Mis compras/ventas" y las direcciones.
 
 ---
 
@@ -281,48 +318,25 @@ El proyecto utiliza una arquitectura basada en Expo Router y separación por res
 newyou-app/
 │
 ├── app/
-│   ├── (auth)/
-│   │   ├── login.tsx
-│   │   └── register.tsx
-│   │
-│   ├── (tabs)/
-│   │   ├── index.tsx
-│   │   ├── categorias.tsx
-│   │   ├── carrito.tsx
-│   │   └── perfil.tsx
-│   │
-│   ├── producto/
-│   │   ├── [id].tsx
-│   │   └── nuevo.tsx
-│   │
-│   ├── editar/
-│   │   └── [id].tsx
-│   │
+│   ├── (auth)/           login.tsx, register.tsx
+│   ├── (tabs)/           index, categorias, carrito, favoritos, perfil
+│   ├── checkout/         index.tsx
+│   ├── producto/         [id].tsx, nuevo.tsx
+│   ├── editar/           [id].tsx
+│   ├── direcciones.tsx
+│   ├── mis-compras.tsx
+│   ├── mis-ventas.tsx
 │   ├── mis-publicaciones.tsx
-│   └── _layout.tsx
+│   └── _layout.tsx       guardia de rutas y sincronización offline
 │
-├── components/
-│   └── TarjetaProducto.tsx
-│
-├── constants/
-│   ├── theme.ts
-│   └── routes.ts
-│
-├── hooks/
-│   ├── useProductos.ts
-│   └── useMisProductos.ts
-│
-├── schemas/
-│   └── productoSchema.ts
-│
-├── services/
-│   ├── productosService.ts
-│   └── storageService.ts
-│
-├── stores/
-│   ├── useCarritoStore.ts
-│   └── useUsuarioStore.ts
-│
+├── components/           TarjetaProducto, BottomTabBar, HistorialPedidos, ui/
+├── constants/            theme.ts, routes.ts, categorías
+├── hooks/                useProductos, useProductoById, useMisProductos, useDirecciones
+├── schemas/              productoSchema.ts
+├── services/             supabase, productos, compras, direcciones, storage, location, offline
+├── stores/               useCarritoStore, useUsuarioStore, useFavoritosStore
+├── supabase/migraciones/ scripts SQL
+├── __tests__/            pruebas unitarias (carrito y esquema de producto)
 └── types/
 ```
 
@@ -361,63 +375,32 @@ La documentación define Expo Router como sistema de navegación, una estructura
 * Expo Location
 * NetInfo
 
+### Testing
+
+* Jest + jest-expo
+
 La documentación de Etapa 2 especifica este stack como el utilizado efectivamente en el proyecto.
 
 ---
 
 # Modelo de datos
 
-## Usuario
-
-Los usuarios se gestionan mediante Supabase Auth.
-
-Información principal:
+Principales tablas de Supabase:
 
 ```text
-Usuario
-├── id (UUID)
-├── email
-├── nombre
-└── rol
+profiles      id, email, username, role (comprador | vendedor)
+productos     productoid, nombre, precio, stock, categoriaid, imagen_url, talles, colores,
+              tipo_prenda, temporada, publico, creado_por, direccion_retiro
+categorias    categoriaid, nombre
+direcciones   id, usuario_id, alias, direccion, es_principal
+compras       compraid, usuario_id, numero_orden, entrega, metodo_pago, subtotal_original,
+              descuentos, envio, impuestos, total, items (JSONB), operation_key (único),
+              direccion_entrega
 ```
 
-Roles contemplados:
-
-* Particular.
-* Comercio/Vendedor.
-
-## Producto
-
-```text
-Producto
-├── id
-├── vendedor_id
-├── nombre
-├── precio
-├── categoria
-├── talle
-├── descripcion
-├── imagen_url
-├── stock
-└── disponible
-```
-
-## Orden
-
-La estructura prevista para completar el flujo transaccional es:
-
-```text
-Orden
-├── id
-├── comprador_id
-├── total
-├── estado
-├── codigo_confirmacion
-├── operationKey
-└── created_at
-```
-
-La documentación define estos datos como parte del modelo de órdenes del MVP.
+* La disponibilidad de un producto se deriva del stock (`stock > 0`).
+* Roles: comprador y vendedor. Un comprador puede pasar a vendedor desde el Perfil.
+* Las compras guardan los ítems en formato JSONB y se registran con la función `confirmar_compra`.
 
 ---
 
@@ -433,8 +416,9 @@ Estos requisitos forman parte de los requisitos no funcionales del proyecto.
 
 * Autenticación con Supabase: implementada.
 * Asociación de publicaciones al usuario: implementada.
-* Protección completa de rutas: pendiente de verificación final.
-* Políticas RLS: pendientes de verificación/configuración final.
+* Protección de rutas: implementada (sin sesión se redirige a login; con sesión, `(auth)` redirige al home).
+* Roles: el botón de publicar, Mis publicaciones y Mis ventas se muestran solo a vendedores.
+* RLS: aplicado a `compras` y `direcciones` mediante los scripts de `supabase/migraciones/`; las funciones `SECURITY DEFINER` solo exponen lo necesario. Verificar las políticas de `productos` y `profiles` en el panel de Supabase.
 
 ---
 
@@ -505,33 +489,27 @@ Estas funcionalidades corresponden a etapas posteriores o a funcionalidades clas
 
 # Estado actual del proyecto
 
-El proyecto cuenta actualmente con una parte importante del MVP implementada:
+El MVP está implementado de punta a punta:
 
-* Autenticación.
-* Catálogo.
-* Búsqueda.
-* Categorías.
-* Filtros por talle.
-* Detalle de productos.
-* Alta de prendas.
-* Imágenes opcionales.
-* Gestión de publicaciones.
-* Control de stock.
-* Carrito global con Zustand.
-* Persistencia del carrito con AsyncStorage.
+* Autenticación con guardia de rutas y roles (comprador / vendedor).
+* Catálogo, búsqueda, categorías y filtros por talle.
+* Detalle de producto con **Agregar al carrito** y **Comprar ahora**.
+* Alta y edición de prendas con foto (cámara o galería) y dirección de retiro.
+* Gestión de publicaciones, control de stock e indicador AGOTADO.
+* Carrito global con Zustand y persistencia con AsyncStorage.
+* Checkout con idempotencia, descuento de stock y modo offline con sincronización automática.
+* Mis compras, Mis ventas y Direcciones guardadas.
+* GPS con fallback manual y verificación en mapa.
+* Pruebas unitarias del carrito y del esquema de producto.
 
-Los principales puntos pendientes para completar el First Delivery son:
+Pendientes o mejoras opcionales:
 
-1. Protección definitiva de rutas.
-2. Verificación y configuración de RLS.
-3. Checkout.
-4. Selección de retiro/envío.
-5. Método de pago lógico.
-6. Resumen con comisión y total.
-7. Generación de órdenes.
-8. Código único de confirmación.
-9. Idempotencia mediante `operationKey`.
-10. Geolocalización y fallback manual.
+1. Editar la dirección de retiro de una publicación ya creada.
+2. Límite de 1080 px para las fotos (requiere `expo-image-manipulator`).
+3. `getItemLayout` en la lista del Home.
+4. Comisión de servicio C2C en el resumen.
+5. Descuentos e impuestos reales en el resumen (hoy se muestran en $0).
+6. Revisión final de las políticas RLS de `productos` y `profiles`.
 
 ---
 

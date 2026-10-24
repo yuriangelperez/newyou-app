@@ -3,6 +3,7 @@ import { CategoriaProducto } from "../constants/categoriasProductos";
 import { supabase } from "./supabase";
 
 const TABLA_PRODUCTOS = "productos";
+export const MAX_IMAGENES = 5;
 
 const CATEGORY_NAME_BY_ID: Record<number, string> = {
   1: "Camisas",
@@ -34,6 +35,7 @@ const CATEGORY_ID_BY_NAME: Record<string, number> = {
   Pantalones: 2,
   Camperas: 4,
   Buzos: 5,
+  Vestidos: 6,
   Faldas: 7,
   Short: 8,
   Shorts: 8,
@@ -66,6 +68,9 @@ interface ProductoRow {
   temporada: CategoriaProducto["temporada"] | null;
   publico: CategoriaProducto["publico"] | null;
   categorias?: { nombre: string }[] | null;
+  empresa_id?: number | null;
+  sede_id?: number | null;
+  creado_por?: string;
 }
 
 interface ProductoPersistData {
@@ -83,6 +88,9 @@ interface ProductoPersistData {
   temporada: CategoriaProducto["temporada"];
   publico: CategoriaProducto["publico"];
   creado_por: string;
+  direccion_retiro?: string;
+  empresa_id?: number;
+  sede_id?: number;
 }
 
 export interface ProductoInput {
@@ -91,6 +99,8 @@ export interface ProductoInput {
   descuentoPorcentaje: number;
   stock: number;
   imagen: string;
+  /** Hasta 5; la primera es la principal. Si falta, se usa `imagen`. */
+  imagenes?: string[];
   categoria: string;
   tipoPrenda: CategoriaProducto["tipoPrenda"];
   temporada: CategoriaProducto["temporada"];
@@ -99,6 +109,19 @@ export interface ProductoInput {
   talle: string[];
   colores: string[];
   descripcion: string;
+  /** Dirección de retiro; si falta, la base usa la principal del vendedor. */
+  direccionRetiro?: string;
+  /** Publicación de empresa: el stock se guarda por sede y la sede principal da la dirección de retiro. */
+  empresa?: {
+    empresaId: number;
+    sedeId: number;
+    stockPorSede: StockSede[];
+  };
+}
+
+export interface StockSede {
+  sedeId: number;
+  cantidad: number;
 }
 
 function assertSupabaseConfigured() {
@@ -297,6 +320,9 @@ function mapRowToProducto(row: ProductoRow): Producto {
     talle: row.talles ?? [],
     colores: row.colores ?? [],
     descripcion: row.descripcion,
+    empresaId: row.empresa_id ?? null,
+    sedeId: row.sede_id ?? null,
+    creadoPor: row.creado_por,
   };
 }
 
@@ -321,7 +347,11 @@ async function mapInputToPersistData(
    */
   const stock = payload.disponible ? Math.max(0, payload.stock) : 0;
 
-  const imagen = payload.imagen.trim();
+  const imagenes = (payload.imagenes ?? [payload.imagen])
+    .map((url) => url.trim())
+    .filter(Boolean)
+    .slice(0, MAX_IMAGENES);
+  const imagen = imagenes[0] ?? "";
   const { data: authData, error: authError } = await supabase.auth.getUser();
 
   if (authError || !authData.user) {
@@ -336,7 +366,7 @@ async function mapInputToPersistData(
     stock,
     categoriaid,
     imagen_url: imagen,
-    imagenes: imagen ? [imagen] : [],
+    imagenes,
     talles: payload.talle,
     colores: payload.colores,
     tipo_prenda: tipoPrendaPersistido(
@@ -346,6 +376,11 @@ async function mapInputToPersistData(
     temporada: categoriaProducto.temporada,
     publico: categoriaProducto.publico,
     creado_por: authData.user.id,
+    ...(payload.empresa
+      ? { empresa_id: payload.empresa.empresaId, sede_id: payload.empresa.sedeId }
+      : payload.direccionRetiro?.trim()
+        ? { direccion_retiro: payload.direccionRetiro.trim() }
+        : {}),
   };
 }
 
@@ -372,7 +407,10 @@ export async function getProductos() {
         colores,
         tipo_prenda,
         temporada,
-        publico
+        publico,
+        empresa_id,
+        sede_id,
+        creado_por
         ,categorias ( nombre )
       `,
     )
@@ -418,10 +456,55 @@ export async function getMisProductos() {
         tipo_prenda,
         temporada,
         publico,
+        empresa_id,
+        sede_id,
+        creado_por,
         categorias ( nombre )
       `,
     )
     .eq("creado_por", authData.user.id)
+    .is("empresa_id", null)
+    .order("productoid", {
+      ascending: false,
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => mapRowToProducto(row as ProductoRow));
+}
+
+/*
+ * Publicaciones de una empresa (página de la tienda).
+ */
+export async function getProductosDeEmpresa(empresaId: number) {
+  const client = assertSupabaseConfigured();
+
+  const { data, error } = await client
+    .from(TABLA_PRODUCTOS)
+    .select(
+      `
+        productoid,
+        nombre,
+        descripcion,
+        precio,
+        stock,
+        categoriaid,
+        imagen_url,
+        imagenes,
+        talles,
+        colores,
+        tipo_prenda,
+        temporada,
+        publico,
+        empresa_id,
+        sede_id,
+        creado_por,
+        categorias ( nombre )
+      `,
+    )
+    .eq("empresa_id", empresaId)
     .order("productoid", {
       ascending: false,
     });
@@ -462,7 +545,10 @@ export async function getProductoById(id: string) {
         colores,
         tipo_prenda,
         temporada,
-        publico
+        publico,
+        empresa_id,
+        sede_id,
+        creado_por
         ,categorias ( nombre )
       `,
     )
@@ -506,7 +592,10 @@ export async function createProducto(payload: ProductoInput) {
         colores,
         tipo_prenda,
         temporada,
-        publico
+        publico,
+        empresa_id,
+        sede_id,
+        creado_por
         ,categorias ( nombre )
       `,
     )
@@ -518,7 +607,14 @@ export async function createProducto(payload: ProductoInput) {
     );
   }
 
-  return mapRowToProducto(data as ProductoRow);
+  const producto = mapRowToProducto(data as ProductoRow);
+
+  if (payload.empresa) {
+    const stock = await guardarStockSedes(producto.id, payload.empresa.stockPorSede, payload.disponible);
+    return { ...producto, stock, disponible: stock > 0 };
+  }
+
+  return producto;
 }
 
 /*
@@ -533,7 +629,10 @@ export async function updateProducto(id: string, payload: ProductoInput) {
     throw new Error("ID de producto invalido.");
   }
 
-  const dataToUpdate = await mapInputToPersistData(payload);
+  const persistData = await mapInputToPersistData(payload);
+  // En prendas de empresa, quien edita no pasa a ser el autor.
+  const { creado_por, ...datosEmpresa } = persistData;
+  const dataToUpdate = payload.empresa ? datosEmpresa : { ...persistData, creado_por };
 
   const { data, error } = await client
     .from(TABLA_PRODUCTOS)
@@ -554,7 +653,10 @@ export async function updateProducto(id: string, payload: ProductoInput) {
         colores,
         tipo_prenda,
         temporada,
-        publico
+        publico,
+        empresa_id,
+        sede_id,
+        creado_por
         ,categorias ( nombre )
       `,
     )
@@ -564,7 +666,56 @@ export async function updateProducto(id: string, payload: ProductoInput) {
     throw error;
   }
 
-  return mapRowToProducto(data as ProductoRow);
+  const producto = mapRowToProducto(data as ProductoRow);
+
+  if (payload.empresa) {
+    const stock = await guardarStockSedes(producto.id, payload.empresa.stockPorSede, payload.disponible);
+    return { ...producto, stock, disponible: stock > 0 };
+  }
+
+  return producto;
+}
+
+/*
+ * Stock de una prenda de empresa en cada sede.
+ */
+export async function getStockSedes(productoId: string): Promise<StockSede[]> {
+  const client = assertSupabaseConfigured();
+
+  const { data, error } = await client
+    .from("stock_sede")
+    .select("sede_id, cantidad")
+    .eq("producto_id", Number(productoId));
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => ({ sedeId: row.sede_id, cantidad: row.cantidad }));
+}
+
+/*
+ * Guarda el stock por sede (la base recalcula productos.stock) y devuelve el total.
+ * Si la prenda no está disponible, todas las sedes quedan en 0.
+ */
+export async function guardarStockSedes(productoId: string, stockPorSede: StockSede[], disponible = true) {
+  const client = assertSupabaseConfigured();
+
+  const filas = stockPorSede.map((item) => ({
+    producto_id: Number(productoId),
+    sede_id: item.sedeId,
+    cantidad: disponible ? Math.max(0, Math.trunc(item.cantidad)) : 0,
+  }));
+
+  if (filas.length > 0) {
+    const { error } = await client.from("stock_sede").upsert(filas, { onConflict: "producto_id,sede_id" });
+
+    if (error) {
+      throw new Error(`No se pudo guardar el stock por sede: ${formatSupabaseError(error)}`);
+    }
+  }
+
+  return filas.reduce((total, fila) => total + fila.cantidad, 0);
 }
 
 /*

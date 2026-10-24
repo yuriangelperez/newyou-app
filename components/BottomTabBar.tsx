@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { TAB_BAR_ICONS } from '../constants/assets';
 import { Colors } from '../constants/theme';
+import { useEsEscritorio } from '../hooks/useEsEscritorio';
 
 type TabKey = 'home' | 'bag' | 'cart' | 'menu';
 
@@ -34,6 +35,12 @@ export function BottomTabBar({
   onPressCreate,
 }: BottomTabBarProps) {
   const styles = createStyles(scale, canvasWidth, bottomInset);
+  const esEscritorio = useEsEscritorio();
+
+  // En la web de escritorio la navegación está en la barra superior (BarraNavegacionWeb).
+  if (esEscritorio) {
+    return null;
+  }
 
   return (
     <View style={styles.tabBar}>

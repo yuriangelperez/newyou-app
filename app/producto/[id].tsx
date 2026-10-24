@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar } from "../../components/BottomTabBar";
 import { ErrorView } from "../../components/ui/ErrorView";
+import { ResumenReputacion } from "../../components/ui/Estrellas";
 import { SkeletonList } from "../../components/ui/SkeletonList";
 import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from "../../constants/assets";
 import {
@@ -26,11 +27,14 @@ import { ROUTES } from "../../constants/routes";
 import { Colors } from "../../constants/theme";
 import { useProductoById } from "../../hooks/useProductoById";
 import { deleteProducto } from "../../services/productosService";
+import { obtenerReputacionProducto } from "../../services/pedidosService";
 import {
   selectTotalItems,
   useCarritoStore,
 } from "../../stores/useCarritoStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { usePuedeGestionarProducto, usePuedeVender } from "../../hooks/usePuedeVender";
+import { useEsEscritorio } from "../../hooks/useEsEscritorio";
 import { useFavoritosStore } from "../../stores/useFavoritosStore";
 import { calcularPrecioFinal } from "../../types";
 
@@ -44,21 +48,19 @@ export default function ProductDetailScreen() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
-  const eliminarProductoDelCarrito = useCarritoStore(
-    (state) => state.eliminarProducto,
-  );
-  const itemsDelCarrito = useCarritoStore((state) => state.items);
+  const setCompraDirecta = useCarritoStore((state) => state.setCompraDirecta);
   const totalItems = useCarritoStore(selectTotalItems);
-  const esVendedor = useUsuarioStore(
-    (state) => state.usuario?.role === "vendedor",
-  );
+  const esVendedor = usePuedeVender();
   const { producto, cargando, error, refrescar } = useProductoById(id);
+  const puedeGestionar = usePuedeGestionarProducto(producto);
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
+  // En la web de escritorio: fotos a la izquierda y datos a la derecha.
+  const esEscritorio = useEsEscritorio();
   const styles = useMemo(
-    () => createStyles(scale, canvasWidth, insets.top, insets.bottom),
-    [canvasWidth, insets.bottom, insets.top, scale],
+    () => createStyles(scale, canvasWidth, insets.top, insets.bottom, esEscritorio),
+    [canvasWidth, insets.bottom, insets.top, scale, esEscritorio],
   );
 
   const talles = producto?.talle?.length ? producto.talle : DEFAULT_SIZES;
@@ -94,12 +96,23 @@ export default function ProductDetailScreen() {
     producto ? state.favoritos.some((item) => item.id === producto.id) : false,
   );
   const toggleFavorito = useFavoritosStore((state) => state.toggleFavorito);
-  const productoEnCarrito = useCarritoStore((state) =>
-    producto
-      ? state.items.some((item) => item.productoId === producto.id)
-      : false,
-  );
+  const [purchaseFeedback, setPurchaseFeedback] = useState(false);
   const favoriteScale = useState(() => new Animated.Value(1))[0];
+  const purchaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [reputacion, setReputacion] = useState<{ promedio: number | null; cantidad: number } | null>(null);
+
+  // Opiniones de los pedidos entregados que incluyeron esta prenda.
+  useEffect(() => {
+    if (!producto?.id) {
+      return;
+    }
+
+    let vigente = true;
+    obtenerReputacionProducto(producto.id).then((datos) => vigente && setReputacion(datos));
+    return () => {
+      vigente = false;
+    };
+  }, [producto?.id]);
 
   useEffect(() => {
     if (!producto) {
@@ -111,6 +124,15 @@ export default function ProductDetailScreen() {
     setSelectedColor(colores[0]);
     setQuantity(1);
   }, [colores, producto, talles]);
+
+  useEffect(
+    () => () => {
+      if (purchaseTimerRef.current) {
+        clearTimeout(purchaseTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const toggleFavorite = () => {
     if (producto) {
@@ -131,46 +153,15 @@ export default function ProductDetailScreen() {
     ]).start();
   };
 
-  const onPressComprar = () => {
-    if (!producto || !producto.disponible || producto.stock <= 0) {
-      return;
-    }
-
-    const varianteEnCarrito = itemsDelCarrito.some(
-      (item) =>
-        item.productoId === producto.id &&
-        item.talle === selectedSize &&
-        item.color === selectedColor,
-    );
-
-    if (!varianteEnCarrito) {
-      agregarProducto({
-        producto,
-        talle: selectedSize,
-        color: selectedColor,
-        cantidad: quantity,
-      });
-    }
-
-    router.push(ROUTES.checkout);
-  };
-
-  const onPressAgregarAlCarrito = () => {
+  // Valida stock/cantidad antes de agregar al carrito o comprar directo.
+  const puedeComprar = () => {
     if (!producto || !producto.disponible) {
-      return;
-    }
-
-    if (productoEnCarrito) {
-      useCarritoStore
-        .getState()
-        .items.filter((item) => item.productoId === producto.id)
-        .forEach((item) => eliminarProductoDelCarrito(item.key));
-      return;
+      return false;
     }
 
     if (producto.stock <= 0) {
       Alert.alert("Sin stock", "Este producto no tiene unidades disponibles.");
-      return;
+      return false;
     }
 
     if (quantity > producto.stock) {
@@ -178,6 +169,14 @@ export default function ProductDetailScreen() {
         "Stock insuficiente",
         `Solo quedan ${producto.stock} unidades disponibles.`,
       );
+      return false;
+    }
+
+    return true;
+  };
+
+  const onPressAgregarAlCarrito = () => {
+    if (!producto || !puedeComprar()) {
       return;
     }
 
@@ -187,6 +186,38 @@ export default function ProductDetailScreen() {
       color: selectedColor,
       cantidad: quantity,
     });
+
+    setPurchaseFeedback(true);
+    if (purchaseTimerRef.current) {
+      clearTimeout(purchaseTimerRef.current);
+    }
+    purchaseTimerRef.current = setTimeout(
+      () => setPurchaseFeedback(false),
+      900,
+    );
+  };
+
+  // Compra sólo esta prenda (y cantidad), sin tocar el carrito.
+  const onPressComprarAhora = () => {
+    if (!producto || !puedeComprar()) {
+      return;
+    }
+
+    setCompraDirecta({
+      key: `directa::${producto.id}::${selectedSize}::${selectedColor}`,
+      productoId: producto.id,
+      nombre: producto.nombre,
+      precio: producto.precio,
+      imagen: producto.imagen,
+      categoria: producto.categoria,
+      disponible: producto.disponible,
+      stock: producto.stock,
+      descripcion: producto.descripcion,
+      talle: selectedSize,
+      color: selectedColor,
+      cantidad: quantity,
+    });
+    router.push(ROUTES.checkout);
   };
 
   const onPressEliminar = () => {
@@ -288,6 +319,7 @@ export default function ProductDetailScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.galleryColumn}>
           <View style={styles.carouselFrame}>
             <ScrollView
               horizontal
@@ -323,24 +355,26 @@ export default function ProductDetailScreen() {
               ))}
             </View>
           ) : null}
+          </View>
 
           <View style={styles.infoSection}>
             <Text numberOfLines={2} style={styles.productName}>
               {producto.nombre}
             </Text>
             {producto.descuentoPorcentaje > 0 ? (
-              <Text style={styles.discountLabel}>
-                -{producto.descuentoPorcentaje}% de descuento
-              </Text>
-            ) : null}
-            {producto.descuentoPorcentaje > 0 ? (
-              <Text style={styles.originalPrice}>
-                ${producto.precio.toLocaleString("es-AR")}
-              </Text>
+              <>
+                <Text style={styles.discountLabel}>
+                  -{producto.descuentoPorcentaje}% de descuento
+                </Text>
+                <Text style={styles.originalPrice}>
+                  ${producto.precio.toLocaleString("es-AR")}
+                </Text>
+              </>
             ) : null}
             <Text style={styles.price}>
               ${calcularPrecioFinal(producto).toLocaleString("es-AR")}
             </Text>
+            {reputacion ? <ResumenReputacion promedio={reputacion.promedio} cantidad={reputacion.cantidad} /> : null}
 
             <View style={styles.sizeSelector}>
               <View style={styles.sizeLabelsRow}>
@@ -445,7 +479,7 @@ export default function ProductDetailScreen() {
               ))}
             </View>
 
-            {esVendedor ? (
+            {puedeGestionar ? (
               <View style={styles.adminActionsRow}>
                 <Pressable
                   onPress={() =>
@@ -467,51 +501,37 @@ export default function ProductDetailScreen() {
               </View>
             ) : null}
 
-            <View style={styles.purchaseActions}>
-              <Pressable
-                accessibilityLabel="Comprar producto"
-                onPress={onPressComprar}
-                disabled={!producto.disponible}
-                style={[
-                  styles.buyButton,
-                  !producto.disponible && styles.buyButtonDisabled,
-                ]}
-              >
-                <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}
-                  numberOfLines={1}
-                  style={styles.buyButtonText}
-                >
-                  {producto.disponible ? "COMPRAR" : "AGOTADO"}
-                </Text>
-              </Pressable>
+            <Pressable
+              accessibilityLabel="Agregar al carrito"
+              onPress={onPressAgregarAlCarrito}
+              disabled={!producto.disponible}
+              style={[
+                styles.buyButton,
+                styles.cartButton,
+                !producto.disponible && styles.buyButtonDisabled,
+                purchaseFeedback && styles.buyButtonAdded,
+              ]}
+            >
+              <Text style={[styles.buyButtonText, styles.cartButtonText]}>
+                {producto.disponible
+                  ? purchaseFeedback
+                    ? "AGREGADO"
+                    : "AGREGAR AL CARRITO"
+                  : "AGOTADO"}
+              </Text>
+            </Pressable>
 
-              <Pressable
-                accessibilityLabel="Agregar producto al carrito"
-                onPress={onPressAgregarAlCarrito}
-                disabled={!producto.disponible}
-                style={[
-                  styles.buyButton,
-                  styles.cartButton,
-                  !producto.disponible && styles.buyButtonDisabled,
-                  productoEnCarrito && styles.buyButtonAdded,
-                ]}
-              >
-                <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}
-                  numberOfLines={1}
-                  style={styles.cartButtonText}
-                >
-                  {producto.disponible
-                    ? productoEnCarrito
-                      ? "AGREGADO"
-                      : "AGREGAR AL CARRITO"
-                    : "AGOTADO"}
-                </Text>
-              </Pressable>
-            </View>
+            <Pressable
+              accessibilityLabel="Comprar ahora"
+              onPress={onPressComprarAhora}
+              disabled={!producto.disponible}
+              style={[
+                styles.buyButton,
+                !producto.disponible && styles.buyButtonDisabled,
+              ]}
+            >
+              <Text style={styles.buyButtonText}>COMPRAR AHORA</Text>
+            </Pressable>
           </View>
         </ScrollView>
       </View>
@@ -538,8 +558,10 @@ function createStyles(
   canvasWidth: number,
   topInset: number,
   bottomInset: number,
+  esEscritorio = false,
 ) {
   const s = (value: number) => value * scale;
+  const foto = esEscritorio ? 440 : s(275);
 
   return StyleSheet.create({
     screen: {
@@ -549,7 +571,7 @@ function createStyles(
     canvas: {
       flex: 1,
       width: "100%",
-      maxWidth: 600,
+      maxWidth: esEscritorio ? 1100 : 600,
       alignSelf: "center",
       backgroundColor: Colors.background,
     },
@@ -587,11 +609,15 @@ function createStyles(
     },
     scrollContent: {
       paddingTop: s(23),
-      paddingBottom: s(122) + bottomInset,
+      paddingBottom: (esEscritorio ? 48 : s(122)) + bottomInset,
+      ...(esEscritorio
+        ? { flexDirection: "row" as const, alignItems: "flex-start" as const, columnGap: 48, paddingHorizontal: 24 }
+        : {}),
     },
+    galleryColumn: esEscritorio ? { flexShrink: 0 } : {},
     carouselFrame: {
-      width: s(275),
-      height: s(275),
+      width: foto,
+      height: foto,
       alignSelf: "center",
       borderRadius: s(10),
       borderWidth: s(5),
@@ -600,8 +626,8 @@ function createStyles(
       overflow: "hidden",
     },
     carouselImage: {
-      width: s(275),
-      height: s(275),
+      width: foto,
+      height: foto,
       resizeMode: "cover",
     },
     carouselDots: {
@@ -619,16 +645,31 @@ function createStyles(
     carouselDotActive: {
       backgroundColor: Colors.secondary,
     },
-    infoSection: {
-      marginTop: s(14),
-      marginLeft: s(38),
-      marginRight: s(38),
-    },
+    infoSection: esEscritorio
+      ? { flex: 1, maxWidth: 520 }
+      : {
+          marginTop: s(14),
+          marginLeft: s(38),
+          marginRight: s(38),
+        },
     productName: {
       color: "#2D1F16",
       fontSize: s(30),
       lineHeight: s(36),
       fontWeight: "600",
+    },
+    discountLabel: {
+      marginTop: s(8),
+      color: Colors.danger,
+      fontSize: s(14),
+      fontWeight: "700",
+    },
+    originalPrice: {
+      marginTop: s(8),
+      color: Colors.textMuted,
+      fontSize: s(16),
+      lineHeight: s(20),
+      textDecorationLine: "line-through",
     },
     price: {
       marginTop: s(8),
@@ -636,19 +677,6 @@ function createStyles(
       fontSize: s(30),
       lineHeight: s(36),
       fontWeight: "700",
-    },
-    discountLabel: {
-      marginTop: s(8),
-      color: "#B84A39",
-      fontSize: s(14),
-      fontWeight: "700",
-    },
-    originalPrice: {
-      marginTop: s(8),
-      color: "#8A7B73",
-      fontSize: s(16),
-      lineHeight: s(20),
-      textDecorationLine: "line-through",
     },
     sizeSelector: {
       marginTop: s(18),
@@ -805,14 +833,11 @@ function createStyles(
       fontSize: s(13),
       fontFamily: "Montserrat_700Bold",
     },
-    purchaseActions: {
-      marginTop: s(18),
-      alignItems: "center",
-      rowGap: s(10),
-    },
     buyButton: {
-      width: s(280),
-      minHeight: s(58),
+      width: s(225),
+      minHeight: s(48),
+      marginTop: s(10),
+      marginBottom: s(8),
       borderRadius: s(10),
       alignItems: "center",
       justifyContent: "center",
@@ -820,9 +845,16 @@ function createStyles(
       paddingVertical: s(8),
     },
     cartButton: {
-      width: s(225),
-      minHeight: s(48),
-      backgroundColor: Colors.tertiary,
+      marginTop: s(18),
+      marginBottom: 0,
+      backgroundColor: Colors.surface,
+      borderWidth: 1,
+      borderColor: Colors.secondary,
+    },
+    cartButtonText: {
+      color: Colors.primary,
+      fontSize: s(16),
+      lineHeight: s(20),
     },
     buyButtonDisabled: {
       opacity: 0.7,
@@ -831,18 +863,11 @@ function createStyles(
       backgroundColor: "#87B279",
     },
     buyButtonText: {
-      color: "#2D1F16",
-      fontSize: s(20),
-      lineHeight: s(24),
-      fontWeight: "600",
-      textAlign: "center",
-    },
-    cartButtonText: {
-      color: "#2D1F16",
-      fontSize: s(13),
-      lineHeight: s(16),
-      fontWeight: "600",
-      textAlign: "center",
+      color: Colors.white,
+      fontSize: s(22),
+      lineHeight: s(27),
+      fontFamily: "Montserrat_700Bold",
+      letterSpacing: s(0.4),
     },
   });
 }

@@ -28,6 +28,7 @@ import {
   useCarritoStore,
 } from "../../stores/useCarritoStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { usePuedeVender } from "../../hooks/usePuedeVender";
 import { Producto } from "../../types";
 
 const CANVAS_WIDTH = 412;
@@ -66,6 +67,7 @@ export default function HomeScreen() {
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
   const totalItems = useCarritoStore(selectTotalItems);
   const usuario = useUsuarioStore((state) => state.usuario);
+  const puedeVender = usePuedeVender();
 
   const isDesktop = width >= 768;
   const containerWidth = Math.min(width, MAX_CONTENT_WIDTH);
@@ -288,6 +290,10 @@ export default function HomeScreen() {
           renderItem={renderProductCard}
           keyExtractor={(item) => item.id}
           numColumns={numColumns}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
           columnWrapperStyle={styles.productRow}
@@ -395,7 +401,7 @@ export default function HomeScreen() {
         scale={scale}
         bottomInset={insets.bottom}
         cartCount={totalItems}
-        esVendedor={usuario?.role === "vendedor"}
+        esVendedor={puedeVender}
         onPressCreate={() => router.push(ROUTES.newProduct)}
         onPressBag={() => router.push(ROUTES.categories)}
         onPressCart={() => router.push(ROUTES.cart)}

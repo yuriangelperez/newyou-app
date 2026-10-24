@@ -1,6 +1,8 @@
 export const ROUTES = {
   login: '/login',
   register: '/register',
+  forgotPassword: '/recuperar',
+  newPassword: '/nueva-contrasena',
 
   home: '/(tabs)',
 
@@ -9,7 +11,18 @@ export const ROUTES = {
   editProduct: '/editar/[id]',
   myProducts: '/mis-publicaciones',
   myPurchases: '/mis-compras',
+  mySales: '/mis-ventas',
+  addresses: '/direcciones',
   settings: '/ajustes',
+
+  companyPanel: '/empresa',
+  newCompany: '/empresa/nueva',
+  companyBranches: '/empresa/sedes',
+  companyTeam: '/empresa/equipo',
+  invitation: '/invitacion',
+  store: '/tienda/[slug]',
+  admin: '/admin',
+  metrics: '/metricas',
 
   categories: '/categorias',
   cart: '/carrito',

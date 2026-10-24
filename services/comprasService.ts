@@ -1,119 +1,123 @@
-import { CarritoItem } from "../stores/useCarritoStore";
-import { supabase } from "./supabase";
+import { CarritoItem } from '../stores/useCarritoStore';
+import { supabase } from './supabase';
 
-export interface Compra {
-  id: string;
-  numeroOrden: number;
-  creadaEn: string;
-  entrega: "domicilio" | "local";
-  metodoPago: string;
-  subtotalOriginal: number;
-  descuentos: number;
-  envio: number;
-  impuestos: number;
-  total: number;
+export type EntregaCompra = 'domicilio' | 'local';
+export type MedioPago = 'Efectivo' | 'Tarjeta' | 'Mercado Pago' | 'Transferencia';
+
+
+export interface ConfirmarCompraParams {
+  operationKey: string;
+  entrega: EntregaCompra;
+  metodoPago: MedioPago;
   items: CarritoItem[];
+  /** Domicilio del comprador o dirección de la tienda donde retira. */
+  direccionEntrega?: string;
 }
 
-interface CrearCompraInput {
-  entrega: "domicilio" | "local";
-  metodoPago: string;
-  subtotalOriginal: number;
-  descuentos: number;
-  envio: number;
-  impuestos: number;
-  total: number;
-  items: CarritoItem[];
-}
-
-function mapCompra(row: {
+export interface CompraConfirmada {
   compraid: number;
   numero_orden: number;
-  created_at: string;
-  entrega: "domicilio" | "local";
-  metodo_pago: string;
-  subtotal_original: number;
-  descuentos: number;
-  envio: number;
-  impuestos: number;
   total: number;
-  items: CarritoItem[];
-}): Compra {
-  return {
-    id: row.compraid.toString(),
-    numeroOrden: Number(row.numero_orden),
-    creadaEn: row.created_at,
-    entrega: row.entrega,
-    metodoPago: row.metodo_pago,
-    subtotalOriginal: Number(row.subtotal_original),
-    descuentos: Number(row.descuentos),
-    envio: Number(row.envio),
-    impuestos: Number(row.impuestos),
-    total: Number(row.total),
-    items: row.items ?? [],
-  };
 }
 
-const COMPRA_COLUMNS = `
-  compraid,
-  numero_orden,
-  created_at,
+export function generarOperationKey() {
+  return `NY-ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+}
+
+/**
+ * Envío estimado: el costo de cada sede de empresa involucrada (una vez por sede);
+ * los particulares no cobran envío. El servidor recalcula el valor final.
+ */
+export function calcularEnvio(entrega: EntregaCompra, tiendas: TiendaRetiro[] = []) {
+  if (entrega !== 'domicilio') {
+    return 0;
+  }
+
+  const costoPorSede = new Map<number, number>();
+  tiendas.forEach((tienda) => {
+    if (tienda.sedeId !== null) {
+      costoPorSede.set(tienda.sedeId, tienda.costoEnvio);
+    }
+  });
+
+  return Array.from(costoPorSede.values()).reduce((total, costo) => total + costo, 0);
+}
+
+/**
+ * Registra la compra y descuenta el stock en una sola transacción (RPC
+ * `confirmar_compra`). Reintentar con la misma `operationKey` devuelve la
+ * orden ya creada en lugar de duplicarla.
+ */
+export async function confirmarCompra({
+  operationKey,
   entrega,
-  metodo_pago,
-  subtotal_original,
-  descuentos,
-  envio,
-  impuestos,
-  total,
-  items
-`;
-
-export async function crearCompra(input: CrearCompraInput) {
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !authData.user) {
-    throw new Error("Debes iniciar sesión para guardar tu compra.");
-  }
-
-  const { data, error } = await supabase
-    .from("compras")
-    .insert({
-      usuario_id: authData.user.id,
-      entrega: input.entrega,
-      metodo_pago: input.metodoPago,
-      subtotal_original: input.subtotalOriginal,
-      descuentos: input.descuentos,
-      envio: input.envio,
-      impuestos: input.impuestos,
-      total: input.total,
-      items: input.items,
-    })
-    .select(COMPRA_COLUMNS)
-    .single();
+  metodoPago,
+  items,
+  direccionEntrega,
+}: ConfirmarCompraParams): Promise<CompraConfirmada> {
+  const { data, error } = await supabase.rpc('confirmar_compra', {
+    p_operation_key: operationKey,
+    p_entrega: entrega,
+    p_metodo_pago: metodoPago,
+    p_envio: calcularEnvio(entrega),
+    p_direccion_entrega: direccionEntrega ?? null,
+    p_items: items.map((item) => ({
+      productoId: item.productoId,
+      nombre: item.nombre,
+      precio: item.precio,
+      cantidad: item.cantidad,
+      talle: item.talle,
+      color: item.color,
+    })),
+  });
 
   if (error) {
-    throw new Error(`No se pudo guardar la compra: ${error.message}`);
+    throw new Error(error.message);
   }
 
-  return mapCompra(data);
+  return data as CompraConfirmada;
 }
 
-export async function getMisCompras() {
-  const { data: authData, error: authError } = await supabase.auth.getUser();
+export interface TiendaRetiro {
+  productoId: string;
+  vendedor: string;
+  direccion: string | null;
+  /** Sede de empresa (null para particulares). */
+  sedeId: number | null;
+  haceRetiro: boolean;
+  haceEnvio: boolean;
+  costoEnvio: number;
+}
 
-  if (authError || !authData.user) {
-    throw new Error("Debes iniciar sesión para ver tus compras.");
-  }
-
-  const { data, error } = await supabase
-    .from("compras")
-    .select(COMPRA_COLUMNS)
-    .eq("usuario_id", authData.user.id)
-    .order("created_at", { ascending: false });
+/** Dirección de retiro de cada producto del carrito (la de su publicación). */
+export async function obtenerTiendasDeRetiro(
+  productoIds: string[],
+): Promise<TiendaRetiro[]> {
+  const { data, error } = await supabase.rpc('direcciones_retiro', {
+    p_producto_ids: productoIds.map(Number),
+  });
 
   if (error) {
-    throw new Error(`No se pudieron cargar tus compras: ${error.message}`);
+    throw new Error(error.message);
   }
 
-  return (data ?? []).map(mapCompra);
+  return (data ?? []).map(
+    (row: {
+      productoid: number;
+      vendedor: string;
+      direccion: string | null;
+      sede_id: number | null;
+      hace_retiro: boolean | null;
+      hace_envio: boolean | null;
+      costo_envio: number | string | null;
+    }) => ({
+      productoId: String(row.productoid),
+      vendedor: row.vendedor,
+      direccion: row.direccion?.trim() || null,
+      sedeId: row.sede_id ?? null,
+      haceRetiro: row.hace_retiro ?? true,
+      haceEnvio: row.hace_envio ?? true,
+      costoEnvio: Number(row.costo_envio ?? 0),
+    }),
+  );
 }

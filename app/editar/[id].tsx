@@ -3,8 +3,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
-  ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,6 +12,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { ErrorView } from "../../components/ui/ErrorView";
@@ -30,12 +29,12 @@ import {
   ProductoFormValues,
   productoSchema,
 } from "../../schemas/productoSchema";
-import { updateProducto } from "../../services/productosService";
-import {
-  pickImageFromLibrary,
-  uploadProductImage,
-} from "../../services/storageService";
-import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { getStockSedes, ProductoInput, updateProducto } from "../../services/productosService";
+import { SelectorImagenes } from "../../components/ui/SelectorImagenes";
+import { StockPorSede } from "../../components/ui/StockPorSede";
+import { usePuedeGestionarProducto } from "../../hooks/usePuedeVender";
+import { useSedesEmpresa } from "../../hooks/useSedesEmpresa";
+import { puede, useEmpresaStore } from "../../stores/useEmpresaStore";
 
 const DEFAULT_VALUES: ProductoFormValues = {
   nombre: "",
@@ -44,6 +43,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
   descuentoPorcentaje: "0",
   stock: "1",
   imagen: "",
+  imagenes: [],
   categoria: "Camisas",
   ...CATEGORIA_PRODUCTO_POR_DEFECTO,
   disponible: true,
@@ -54,12 +54,22 @@ const DEFAULT_VALUES: ProductoFormValues = {
 
 export default function EditarProductoScreen() {
   const router = useRouter();
-  const esVendedor = useUsuarioStore(
-    (state) => state.usuario?.role === "vendedor",
-  );
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { producto, cargando, error, refrescar } = useProductoById(id);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const puedeGestionar = usePuedeGestionarProducto(producto);
+
+  // Prendas de empresa: stock por sede y permiso de precio según el rol en esa empresa.
+  const membresia = useEmpresaStore(
+    (state) => state.membresias.find((item) => item.empresaId === producto?.empresaId) ?? null,
+  );
+  const { editables: sedesEditables, soloLectura: sedesSoloLectura } = useSedesEmpresa(membresia);
+  const [stockSedes, setStockSedes] = useState<Record<number, string>>({});
+  const [stockGuardado, setStockGuardado] = useState<Record<number, number>>({});
+  const [stockCambiado, setStockCambiado] = useState(false);
+  const esDeEmpresa = Boolean(producto?.empresaId);
+  const puedeCambiarPrecio = !esDeEmpresa || puede(membresia, "productos.precio");
 
   const {
     control,
@@ -76,7 +86,11 @@ export default function EditarProductoScreen() {
 
   const disponible = watch("disponible");
   const descuentoActivo = watch("descuentoActivo");
-  const imageField = watch("imagen");
+  const imagenes = watch("imagenes") ?? [];
+  const setImagenes = (lista: string[]) => {
+    setValue("imagenes", lista, { shouldValidate: true, shouldDirty: true });
+    setValue("imagen", lista[0] ?? "", { shouldValidate: true });
+  };
 
   useEffect(() => {
     if (!producto) {
@@ -90,6 +104,7 @@ export default function EditarProductoScreen() {
       descuentoPorcentaje: producto.descuentoPorcentaje.toString(),
       stock: producto.stock.toString(),
       imagen: producto.imagen,
+      imagenes: (producto.imagenes?.length ? producto.imagenes : [producto.imagen]).filter(Boolean).slice(0, 5),
       categoria: producto.categoria as ProductoFormValues["categoria"],
       tipoPrenda:
         producto.categoriaProducto?.tipoPrenda ??
@@ -107,7 +122,22 @@ export default function EditarProductoScreen() {
     });
   }, [producto, reset]);
 
-  if (!esVendedor) {
+  useEffect(() => {
+    if (!producto?.empresaId) {
+      return;
+    }
+
+    getStockSedes(producto.id)
+      .then((filas) => {
+        const cantidades = Object.fromEntries(filas.map((fila) => [fila.sedeId, fila.cantidad]));
+        setStockGuardado(cantidades);
+        setStockSedes(Object.fromEntries(filas.map((fila) => [fila.sedeId, String(fila.cantidad)])));
+        setStockCambiado(false);
+      })
+      .catch(() => {});
+  }, [producto?.id, producto?.empresaId]);
+
+  const accesoDenegado = () => {
     return (
       <View style={styles.accessDenied}>
         <Text style={styles.title}>Editar publicación</Text>
@@ -122,34 +152,6 @@ export default function EditarProductoScreen() {
         </Pressable>
       </View>
     );
-  }
-
-  const onPickAndUploadImage = async () => {
-    try {
-      setUploadingImage(true);
-      const image = await pickImageFromLibrary();
-
-      if (!image) {
-        return;
-      }
-
-      const publicUrl = await uploadProductImage(image);
-      setValue("imagen", publicUrl, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
-      Toast.show({
-        type: "success",
-        text1: "Imagen actualizada",
-        text2: "La nueva imagen se subió correctamente.",
-      });
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "No se pudo subir la imagen.";
-      Toast.show({ type: "error", text1: "Error de imagen", text2: message });
-    } finally {
-      setUploadingImage(false);
-    }
   };
 
   const onSubmit = handleSubmit(async (values) => {
@@ -158,14 +160,13 @@ export default function EditarProductoScreen() {
     }
 
     try {
-      await updateProducto(id, {
+      const payload: ProductoInput = {
         nombre: values.nombre.trim(),
         precio: values.precio,
-        descuentoPorcentaje: values.descuentoActivo
-          ? values.descuentoPorcentaje
-          : 0,
+        descuentoPorcentaje: values.descuentoActivo ? values.descuentoPorcentaje : 0,
         stock: values.stock,
-        imagen: values.imagen.trim(),
+        imagen: values.imagenes[0] ?? "",
+        imagenes: values.imagenes,
         categoria: values.categoria,
         tipoPrenda: values.tipoPrenda,
         temporada: values.temporada,
@@ -180,7 +181,20 @@ export default function EditarProductoScreen() {
           .map((item) => item.trim())
           .filter(Boolean),
         descripcion: values.descripcion.trim(),
-      });
+      };
+
+      if (producto?.empresaId && producto.sedeId) {
+        payload.empresa = {
+          empresaId: producto.empresaId,
+          sedeId: producto.sedeId,
+          stockPorSede: sedesEditables.map((sede) => ({
+            sedeId: sede.id,
+            cantidad: Number(stockSedes[sede.id]) || 0,
+          })),
+        };
+      }
+
+      await updateProducto(id, payload);
 
       Toast.show({
         type: "success",
@@ -219,6 +233,13 @@ export default function EditarProductoScreen() {
     );
   }
 
+  if (!puedeGestionar) {
+    return accesoDenegado();
+  }
+
+  const guardarDeshabilitado =
+    isSubmitting || uploadingImage || !isValid || (!isDirty && !stockCambiado);
+
   return (
     <KeyboardAvoidingView
       style={styles.screen}
@@ -226,7 +247,7 @@ export default function EditarProductoScreen() {
       keyboardVerticalOffset={Platform.OS === "ios" ? 84 : 0}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 24 }]}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>Editar Publicacion</Text>
@@ -241,20 +262,18 @@ export default function EditarProductoScreen() {
         <InputField
           control={control}
           name="precio"
-          label="Precio"
+          label={puedeCambiarPrecio ? "Precio" : "Precio (tu rol no puede cambiarlo)"}
           placeholder="35000"
-          textInputProps={{ keyboardType: "numeric" }}
+          textInputProps={{ keyboardType: "numeric", editable: puedeCambiarPrecio }}
         />
 
         <View style={styles.switchRow}>
           <Text style={styles.switchLabel}>Aplicar descuento</Text>
           <Switch
             value={descuentoActivo}
+            disabled={!puedeCambiarPrecio}
             onValueChange={(value) =>
-              setValue("descuentoActivo", value, {
-                shouldValidate: true,
-                shouldDirty: true,
-              })
+              setValue("descuentoActivo", value, { shouldValidate: true, shouldDirty: true })
             }
             trackColor={{ true: Colors.secondary, false: "#CFCFCF" }}
           />
@@ -266,40 +285,39 @@ export default function EditarProductoScreen() {
             name="descuentoPorcentaje"
             label="Descuento (%)"
             placeholder="10"
-            textInputProps={{ keyboardType: "numeric" }}
+            textInputProps={{ keyboardType: "numeric", editable: puedeCambiarPrecio }}
           />
         ) : null}
 
-        <InputField
-          control={control}
-          name="stock"
-          label="Stock"
-          placeholder="10"
-          textInputProps={{
-            keyboardType: "numeric",
-          }}
+        {esDeEmpresa ? (
+          <StockPorSede
+            sedes={sedesEditables}
+            valores={stockSedes}
+            onChange={(sedeId, valor) => {
+              setStockSedes((actual) => ({ ...actual, [sedeId]: valor }));
+              setStockCambiado(true);
+            }}
+            sedesSoloLectura={sedesSoloLectura}
+            cantidadesSoloLectura={stockGuardado}
+          />
+        ) : (
+          <InputField
+            control={control}
+            name="stock"
+            label="Stock"
+            placeholder="10"
+            textInputProps={{
+              keyboardType: "numeric",
+            }}
+          />
+        )}
+
+        <SelectorImagenes
+          imagenes={imagenes}
+          onChange={setImagenes}
+          onSubiendoChange={setUploadingImage}
+          deshabilitado={isSubmitting}
         />
-
-        <Pressable
-          onPress={() => void onPickAndUploadImage()}
-          disabled={uploadingImage || isSubmitting}
-          style={[
-            styles.uploadButton,
-            (uploadingImage || isSubmitting) && styles.submitDisabled,
-          ]}
-        >
-          {uploadingImage ? (
-            <ActivityIndicator color="#2D1F16" />
-          ) : (
-            <Text style={styles.uploadButtonText}>
-              Reemplazar imagen desde la galería
-            </Text>
-          )}
-        </Pressable>
-
-        {imageField ? (
-          <Image source={{ uri: imageField }} style={styles.previewImage} />
-        ) : null}
 
         <CategoriaProductoSelector control={control} />
 
@@ -336,13 +354,9 @@ export default function EditarProductoScreen() {
         </View>
 
         <Pressable
-          disabled={isSubmitting || uploadingImage || !isValid || !isDirty}
+          disabled={guardarDeshabilitado}
           onPress={() => void onSubmit()}
-          style={[
-            styles.submitButton,
-            (isSubmitting || uploadingImage || !isValid || !isDirty) &&
-              styles.submitDisabled,
-          ]}
+          style={[styles.submitButton, guardarDeshabilitado && styles.submitDisabled]}
         >
           <Text style={styles.submitText}>
             {isSubmitting ? "Guardando..." : "Guardar Cambios"}
@@ -387,9 +401,9 @@ const styles = StyleSheet.create({
   },
   content: {
     width: "100%",
-    maxWidth: 680,
+    maxWidth: 800,
     alignSelf: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 24,
     paddingBottom: 40,
   },
@@ -410,28 +424,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginTop: 4,
-  },
-  uploadButton: {
-    marginTop: 6,
-    minHeight: 44,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.secondary,
-    backgroundColor: "#EFE5DE",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  uploadButtonText: {
-    color: "#2D1F16",
-    fontSize: 14,
-    fontFamily: "Montserrat_600SemiBold",
-  },
-  previewImage: {
-    width: "100%",
-    height: 180,
-    borderRadius: Radius.md,
-    marginTop: 10,
-    backgroundColor: Colors.surface,
   },
   switchLabel: {
     color: Colors.primary,

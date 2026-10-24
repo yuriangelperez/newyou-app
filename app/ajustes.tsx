@@ -18,7 +18,7 @@ import { PRODUCT_DETAIL_ICONS } from "../constants/assets";
 import { ROUTES } from "../constants/routes";
 import { Colors, Radius } from "../constants/theme";
 import { selectTotalItems, useCarritoStore } from "../stores/useCarritoStore";
-import { useUsuarioStore } from "../stores/useUsuarioStore";
+import { usePuedeVender } from "../hooks/usePuedeVender";
 
 const CANVAS_WIDTH = 412;
 
@@ -27,7 +27,7 @@ export default function AjustesScreen() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const totalItems = useCarritoStore(selectTotalItems);
-  const esVendedor = useUsuarioStore((state) => state.usuario?.role === "vendedor");
+  const esVendedor = usePuedeVender();
   const [notificacionesPush, setNotificacionesPush] = useState(true);
   const [notificacionesCorreo, setNotificacionesCorreo] = useState(false);
   const [promociones, setPromociones] = useState(true);
