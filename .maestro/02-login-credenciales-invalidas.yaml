@@ -1,0 +1,18 @@
+# TC-E-02 · HU02 Login: credenciales inválidas muestran el error de Supabase y no entran.
+appId: com.anonymous.newyouapp
+tags: [auth]
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "login-correo"
+- inputText: "noexiste@prueba.com"
+- tapOn:
+    id: "login-contrasena"
+- inputText: "ClaveIncorrecta1"
+- tapOn:
+    id: "login-boton"
+- assertVisible:
+    id: "login-error"
+- assertNotVisible:
+    id: "home-buscar"

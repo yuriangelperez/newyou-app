@@ -1,0 +1,8 @@
+# Flujos E2E móviles con Maestro (cátedra de Testing, clase 6: herramientas de soporte).
+# Correr con un build de desarrollo o preview instalado en el emulador o celular:
+#   maestro test .maestro -e EMAIL=comprador@prueba.com -e PASSWORD=Clave123
+flows:
+  - "*.yaml"
+excludeTags:
+  - manual
+  - subflujo

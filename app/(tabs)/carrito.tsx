@@ -89,18 +89,32 @@ export default function CarritoScreen() {
 
               <View style={styles.actionsRow}>
                 <View style={styles.quantityRow}>
-                  <Pressable onPress={() => restarUnidad(item.key)} style={styles.quantityButton}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Restar una unidad de ${item.nombre}`}
+                    testID={`carrito-restar-${item.key}`}
+                    onPress={() => restarUnidad(item.key)}
+                    style={styles.quantityButton}>
                     <Text style={styles.quantitySymbol}>-</Text>
                   </Pressable>
                   <View style={styles.quantityValueBox}>
-                    <Text style={styles.quantityValue}>{item.cantidad}</Text>
+                    <Text style={styles.quantityValue} testID={`carrito-cantidad-${item.key}`}>{item.cantidad}</Text>
                   </View>
-                  <Pressable onPress={() => incrementarUnidad(item.key)} style={styles.quantityButton}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Sumar una unidad de ${item.nombre}`}
+                    testID={`carrito-sumar-${item.key}`}
+                    onPress={() => incrementarUnidad(item.key)}
+                    style={styles.quantityButton}>
                     <Text style={styles.quantitySymbol}>+</Text>
                   </Pressable>
                 </View>
 
-                <Pressable onPress={() => eliminarProducto(item.key)} style={styles.removeButton}>
+                <Pressable
+                  accessibilityRole="button"
+                  testID={`carrito-eliminar-${item.key}`}
+                  onPress={() => eliminarProducto(item.key)}
+                  style={styles.removeButton}>
                   <Text style={styles.removeText}>Eliminar</Text>
                 </Pressable>
               </View>
@@ -111,8 +125,8 @@ export default function CarritoScreen() {
 
       <View style={styles.checkoutBar}>
         <View style={styles.checkoutBarInner}>
-          <Text style={styles.totalText}>TOTAL: ${subtotal.toLocaleString('es-AR')}</Text>
-          <Pressable disabled={items.length === 0} onPress={() => router.push(ROUTES.checkout)} style={[styles.checkoutButton, items.length === 0 && styles.checkoutButtonDisabled]}>
+          <Text style={styles.totalText} testID="carrito-total">TOTAL: ${subtotal.toLocaleString('es-AR')}</Text>
+          <Pressable testID="carrito-completar" accessibilityRole="button" disabled={items.length === 0} onPress={() => router.push(ROUTES.checkout)} style={[styles.checkoutButton, items.length === 0 && styles.checkoutButtonDisabled]}>
             <Text style={styles.checkoutText}>COMPLETAR COMPRA</Text>
           </Pressable>
         </View>

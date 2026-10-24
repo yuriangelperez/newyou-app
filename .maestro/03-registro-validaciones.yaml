@@ -1,0 +1,34 @@
+# TC-E-03 · HU01 Registro: contraseña débil y contraseñas distintas (refine de Zod).
+appId: com.anonymous.newyouapp
+tags: [auth, smoke]
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: "login-ir-registro"
+- tapOn:
+    id: "registro-correo"
+- inputText: "nueva@prueba.com"
+- tapOn:
+    id: "registro-usuario"
+- inputText: "nueva"
+- tapOn:
+    id: "registro-contrasena"
+- inputText: "clave123"
+- tapOn:
+    id: "registro-repetir"
+- inputText: "clave123"
+- tapOn:
+    id: "registro-boton"
+- assertVisible: "La contraseña necesita una mayúscula"
+- tapOn:
+    id: "registro-contrasena"
+- eraseText: 20
+- inputText: "Clave123"
+- tapOn:
+    id: "registro-repetir"
+- eraseText: 20
+- inputText: "Clave124"
+- tapOn:
+    id: "registro-boton"
+- assertVisible: "Las contraseñas no coinciden"
