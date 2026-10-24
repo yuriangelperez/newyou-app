@@ -2,7 +2,6 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -13,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import { confirmar } from "../services/confirmar";
 
 import { BotonGps } from "../components/ui/BotonGps";
 import { VerEnMapa } from "../components/ui/VerEnMapa";
@@ -69,22 +69,16 @@ export default function DireccionesScreen() {
     }
   };
 
-  const onEliminar = (id: number, texto: string) => {
-    Alert.alert("Eliminar dirección", `¿Eliminar "${texto}"?`, [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Eliminar",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await eliminarDireccion(id);
-            await recargar();
-          } catch (err) {
-            avisarError("No se pudo eliminar", err);
-          }
-        },
-      },
-    ]);
+  const onEliminar = async (id: number, texto: string) => {
+    if (!(await confirmar("Eliminar dirección", `¿Eliminar "${texto}"?`, "Eliminar"))) {
+      return;
+    }
+    try {
+      await eliminarDireccion(id);
+      await recargar();
+    } catch (err) {
+      avisarError("No se pudo eliminar", err);
+    }
   };
 
   return (
