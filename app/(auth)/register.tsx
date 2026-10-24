@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Controller, useForm } from 'react-hook-form';
 import { useRouter } from 'expo-router';
 import {
   Image,
@@ -18,69 +20,59 @@ import { BRANDING_LOGO } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
 import { Colors, Radius, Shadow } from '../../constants/theme';
 import { useEsEscritorio } from '../../hooks/useEsEscritorio';
+import { RegisterForm, registerSchema } from '../../schemas/authSchemas';
 import { signUpWithPassword } from '../../services/auth';
 
 export default function RegisterScreen() {
   const router = useRouter();
   // En la web de escritorio el formulario va en una tarjeta centrada.
   const esEscritorio = useEsEscritorio();
-  const [correo, setCorreo] = useState('');
-  const [usuario, setUsuario] = useState('');
-  const [contrasena, setContrasena] = useState('');
-  const [repetirContrasena, setRepetirContrasena] = useState('');
-  const [error, setError] = useState('');
-  const [cargando, setCargando] = useState(false);
+  const [errorServidor, setErrorServidor] = useState('');
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
   const [mostrarRepetirContrasena, setMostrarRepetirContrasena] = useState(false);
-  const [quiereVender, setQuiereVender] = useState(false);
+  // RHF + Zod (Clase 8): `.refine()` valida que las dos contraseñas coincidan.
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterForm>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      correo: '',
+      usuario: '',
+      contrasena: '',
+      repetirContrasena: '',
+      quiereVender: false,
+    },
+  });
+  const quiereVender = watch('quiereVender');
+  const setQuiereVender = (valor: boolean) => setValue('quiereVender', valor);
+  const error =
+    errors.correo?.message ??
+    errors.usuario?.message ??
+    errors.contrasena?.message ??
+    errors.repetirContrasena?.message ??
+    errorServidor;
+  const cargando = isSubmitting;
 
-  const handleRegister = async () => {
-    if (!correo.trim() || !usuario.trim() || !contrasena || !repetirContrasena) {
-      setError('Completá todos los campos');
+  const handleRegister = handleSubmit(async (datos) => {
+    setErrorServidor('');
+    const { error: authError } = await signUpWithPassword(
+      datos.correo,
+      datos.contrasena,
+      datos.usuario,
+      datos.quiereVender ? 'particular' : 'comprador',
+    );
+
+    if (authError) {
+      setErrorServidor(authError.message);
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.trim())) {
-      setError('Ingresá un correo válido');
-      return;
-    }
-
-    if (usuario.trim().length < 3) {
-      setError('El usuario debe tener al menos 3 caracteres');
-      return;
-    }
-
-    if (contrasena.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
-    if (contrasena !== repetirContrasena) {
-      setError('Las contraseñas no coinciden');
-      return;
-    }
-
-    setError('');
-    setCargando(true);
-
-    try {
-      const { error: authError } = await signUpWithPassword(
-        correo.trim(),
-        contrasena,
-        usuario.trim(),
-        quiereVender ? 'particular' : 'comprador',
-      );
-
-      if (authError) {
-        setError(authError.message);
-        return;
-      }
-
-      router.replace(ROUTES.login);
-    } finally {
-      setCargando(false);
-    }
-  };
+    router.replace(ROUTES.login);
+  });
 
   return (
     <KeyboardAvoidingView
@@ -99,48 +91,72 @@ export default function RegisterScreen() {
       <View style={styles.inputContainer}>
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>Correo</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="tu@email.com"
-            placeholderTextColor={Colors.textMuted}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={correo}
-            onChangeText={(value) => {
-              setCorreo(value);
-              setError('');
-            }}
+          <Controller
+            control={control}
+            name="correo"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                testID="registro-correo"
+                style={styles.input}
+                placeholder="tu@email.com"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={value}
+                onBlur={onBlur}
+                onChangeText={(texto) => {
+                  onChange(texto);
+                  setErrorServidor('');
+                }}
+              />
+            )}
           />
         </View>
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>Usuario</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Elegí tu nombre de usuario"
-            placeholderTextColor={Colors.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={usuario}
-            onChangeText={(value) => {
-              setUsuario(value);
-              setError('');
-            }}
+          <Controller
+            control={control}
+            name="usuario"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                testID="registro-usuario"
+                style={styles.input}
+                placeholder="Elegí tu nombre de usuario"
+                placeholderTextColor={Colors.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={value}
+                onBlur={onBlur}
+                onChangeText={(texto) => {
+                  onChange(texto);
+                  setErrorServidor('');
+                }}
+              />
+            )}
           />
         </View>
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>Contraseña</Text>
           <View style={styles.passwordField}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Mínimo 6 caracteres"
-              placeholderTextColor={Colors.textMuted}
-              secureTextEntry={!mostrarContrasena}
-              value={contrasena}
-              onChangeText={(value) => {
-                setContrasena(value);
-                setError('');
-              }}
+            <Controller
+              control={control}
+              name="contrasena"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  testID="registro-contrasena"
+                  style={styles.passwordInput}
+                  placeholder="6+ caracteres, una mayúscula y un número"
+                  placeholderTextColor={Colors.textMuted}
+                  secureTextEntry={!mostrarContrasena}
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={(texto) => {
+                    onChange(texto);
+                    setErrorServidor('');
+                  }}
+                />
+              )}
             />
             <Pressable
               accessibilityRole="button"
@@ -158,16 +174,24 @@ export default function RegisterScreen() {
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>Repetir contraseña</Text>
           <View style={styles.passwordField}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Repetí tu contraseña"
-              placeholderTextColor={Colors.textMuted}
-              secureTextEntry={!mostrarRepetirContrasena}
-              value={repetirContrasena}
-              onChangeText={(value) => {
-                setRepetirContrasena(value);
-                setError('');
-              }}
+            <Controller
+              control={control}
+              name="repetirContrasena"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  testID="registro-repetir"
+                  style={styles.passwordInput}
+                  placeholder="Repetí tu contraseña"
+                  placeholderTextColor={Colors.textMuted}
+                  secureTextEntry={!mostrarRepetirContrasena}
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={(texto) => {
+                    onChange(texto);
+                    setErrorServidor('');
+                  }}
+                />
+              )}
             />
             <Pressable
               accessibilityRole="button"
@@ -203,9 +227,17 @@ export default function RegisterScreen() {
         </View>
       </View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <Text style={styles.errorText} testID="registro-error">
+          {error}
+        </Text>
+      ) : null}
 
-      <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={cargando}>
+      <TouchableOpacity
+        testID="registro-boton"
+        style={styles.registerButton}
+        onPress={() => void handleRegister()}
+        disabled={cargando}>
         <Text style={styles.buttonText}>{cargando ? 'CREANDO...' : 'REGISTRARSE'}</Text>
       </TouchableOpacity>
       </ScrollView>

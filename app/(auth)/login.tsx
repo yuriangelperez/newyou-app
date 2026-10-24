@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Controller, useForm } from 'react-hook-form';
 import { useRouter } from 'expo-router';
 import {
   Image,
@@ -19,42 +21,40 @@ import { BRANDING_LOGO } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
 import { Colors, Radius, Shadow } from '../../constants/theme';
 import { useEsEscritorio } from '../../hooks/useEsEscritorio';
+import { LoginForm, loginSchema } from '../../schemas/authSchemas';
 import { signInWithPassword } from '../../services/auth';
 
 export default function LoginScreen() {
   const router = useRouter();
   // En la web de escritorio el formulario va en una tarjeta centrada.
   const esEscritorio = useEsEscritorio();
-  const [correo, setCorreo] = useState('');
-  const [contrasena, setContrasena] = useState('');
-  const [error, setError] = useState('');
-  const [cargando, setCargando] = useState(false);
+  const [errorServidor, setErrorServidor] = useState('');
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
   // La tarjeta del primer inicio vive en el layout raíz; acá sólo se vuelve a abrir.
   const [mostrarBienvenida, setMostrarBienvenida] = useState(false);
+  // RHF + Zod (Clase 8): se valida en el cliente antes de llamar a Supabase.
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { correo: '', contrasena: '' },
+  });
+  const error = errors.correo?.message ?? errors.contrasena?.message ?? errorServidor;
+  const cargando = isSubmitting;
 
-  const goToHome = async () => {
-    if (!correo.trim() || !contrasena.trim()) {
-      setError('Completá correo y contraseña');
+  const goToHome = handleSubmit(async ({ correo, contrasena }) => {
+    setErrorServidor('');
+    const { error: authError } = await signInWithPassword(correo, contrasena);
+
+    if (authError) {
+      setErrorServidor(authError.message);
       return;
     }
 
-    setError('');
-    setCargando(true);
-
-    try {
-      const { error: authError } = await signInWithPassword(correo.trim(), contrasena);
-
-      if (authError) {
-        setError(authError.message);
-        return;
-      }
-
-      router.replace(ROUTES.home);
-    } finally {
-      setCargando(false);
-    }
-  };
+    router.replace(ROUTES.home);
+  });
 
   const goToRegister = () => {
     router.push(ROUTES.register);
@@ -75,33 +75,49 @@ export default function LoginScreen() {
       <View style={styles.inputContainer}>
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>Correo</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor={Colors.text}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            value={correo}
-            onChangeText={(value) => {
-              setCorreo(value);
-              setError('');
-            }}
+          <Controller
+            control={control}
+            name="correo"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                testID="login-correo"
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor={Colors.text}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                value={value}
+                onBlur={onBlur}
+                onChangeText={(texto) => {
+                  onChange(texto);
+                  setErrorServidor('');
+                }}
+              />
+            )}
           />
         </View>
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>Contraseña</Text>
           <View style={styles.passwordField}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Contraseña"
-              placeholderTextColor={Colors.text}
-              secureTextEntry={!mostrarContrasena}
-              value={contrasena}
-              onChangeText={(value) => {
-                setContrasena(value);
-                setError('');
-              }}
+            <Controller
+              control={control}
+              name="contrasena"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  testID="login-contrasena"
+                  style={styles.passwordInput}
+                  placeholder="Contraseña"
+                  placeholderTextColor={Colors.text}
+                  secureTextEntry={!mostrarContrasena}
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={(texto) => {
+                    onChange(texto);
+                    setErrorServidor('');
+                  }}
+                />
+              )}
             />
             <Pressable
               accessibilityRole="button"
@@ -118,14 +134,26 @@ export default function LoginScreen() {
         </View>
       </View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <Text style={styles.errorText} testID="login-error">
+          {error}
+        </Text>
+      ) : null}
 
       <View style={styles.buttonsContainer}>
-        <TouchableOpacity style={styles.loginButton} onPress={goToHome} disabled={cargando}>
+        <TouchableOpacity
+          testID="login-boton"
+          style={styles.loginButton}
+          onPress={() => void goToHome()}
+          disabled={cargando}>
           <Text style={styles.buttonText}>{cargando ? 'INGRESANDO...' : 'LOGIN'}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.registerButton} onPress={goToRegister} disabled={cargando}>
+        <TouchableOpacity
+          testID="login-ir-registro"
+          style={styles.registerButton}
+          onPress={goToRegister}
+          disabled={cargando}>
           <Text style={styles.buttonText}>REGISTRARSE</Text>
         </TouchableOpacity>
       </View>
