@@ -2,16 +2,17 @@ import React, { useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 
+import { FilaDeslizable } from "../components/FilaDeslizable";
 import { Colors, Radius, Spacing } from "../constants/theme";
 import { ROUTES } from "../constants/routes";
 import { selectEmpresaActiva, useEmpresaStore } from "../stores/useEmpresaStore";
@@ -21,6 +22,9 @@ import { deleteProducto } from "../services/productosService";
 import { calcularPrecioFinal, Producto } from "../types";
 
 const backIcon = require("../assets/images/product-detail/back.png");
+
+// FlashList no admite `gap` en el contenedor: el espacio va como separador.
+const Separador = () => <View style={styles.separador} />;
 
 export default function MisPublicacionesScreen() {
   const router = useRouter();
@@ -169,7 +173,8 @@ export default function MisPublicacionesScreen() {
   }: {
     item: Producto;
   }) => (
-    <View style={styles.card}>
+    <FilaDeslizable onEliminar={() => handleEliminar(item)}>
+    <View style={styles.card} testID={`publicacion-${item.id}`}>
       <Pressable accessibilityLabel={`Ver ${item.nombre}`} onPress={() => handleVer(item)}>
         {item.imagen ? (
           <Image
@@ -248,6 +253,7 @@ export default function MisPublicacionesScreen() {
         </Pressable>
       </View>
     </View>
+    </FilaDeslizable>
   );
 
   return (
@@ -317,11 +323,12 @@ export default function MisPublicacionesScreen() {
             </Pressable>
           </View>
         ) : (
-          <FlatList
+          <FlashList
             data={productos}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             contentContainerStyle={styles.list}
+            ItemSeparatorComponent={Separador}
             showsVerticalScrollIndicator={false}
             refreshing={refreshing}
             onRefresh={() => void refrescar()}
@@ -386,8 +393,8 @@ const styles = StyleSheet.create({
   list: {
     paddingTop: 2,
     paddingBottom: 24,
-    gap: Spacing.sm,
   },
+  separador: { height: Spacing.sm },
 
   card: {
     backgroundColor: "#E4E0E1",
