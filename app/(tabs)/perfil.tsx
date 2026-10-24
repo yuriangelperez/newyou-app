@@ -44,17 +44,19 @@ export default function PerfilScreen() {
   const setEmpresaActiva = useEmpresaStore((state) => state.setEmpresaActiva);
 
   const cerrarSesion = async () => {
-    try {
-      // Antes de salir: este celular deja de recibir los push de esta cuenta.
-      await desregistrarDispositivoPush().catch(() => undefined);
-      await supabase.auth.signOut();
-    } catch {
+    // Antes de salir: este celular deja de recibir los push de esta cuenta.
+    await desregistrarDispositivoPush().catch(() => undefined);
+
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      // Si el servidor no responde, se cierra igual en este dispositivo (Clase 8):
+      // borra la sesión de SecureStore para no dejar al usuario atrapado.
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
       Toast.show({
-        type: "error",
-        text1: "No se pudo cerrar la sesión",
-        text2: "Revisa tu conexión e intenta nuevamente.",
+        type: "info",
+        text1: "Sesión cerrada en este dispositivo",
+        text2: "No pudimos avisar al servidor; revisá tu conexión.",
       });
-      return;
     }
 
     clearUsuario();
