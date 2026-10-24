@@ -27,9 +27,8 @@ export function BotonFavorito({ activo, onToggle, style, iconStyle }: BotonFavor
   }));
 
   const onPress = () => {
-    escala.value = withSequence(
-      withTiming(1.25, { duration: 120 }),
-      withSpring(1, { damping: 6, stiffness: 160 }),
+    escala.set(
+      withSequence(withTiming(1.25, { duration: 120 }), withSpring(1, { damping: 6, stiffness: 160 })),
     );
     onToggle();
   };

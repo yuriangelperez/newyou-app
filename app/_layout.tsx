@@ -60,12 +60,6 @@ export default function RootLayout() {
   };
 
   useEffect(() => {
-    if (!supabase) {
-      hidratarDesdeAuthUser(null);
-      setHaySesion(false);
-      return;
-    }
-
     supabase.auth
       .getSession()
       .then(({ data }) => {

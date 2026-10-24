@@ -1,5 +1,7 @@
 # New You
 
+[![Tests](https://github.com/yuriangelperez/newyou-app/actions/workflows/test.yml/badge.svg)](https://github.com/yuriangelperez/newyou-app/actions/workflows/test.yml)
+
 Marketplace móvil de indumentaria para la compra y venta de prendas nuevas y pre-owned.
 
 **Proyecto Integrador — Aplicaciones Móviles**
@@ -72,7 +74,7 @@ La documentación establece además el uso de RLS para proteger los recursos aso
 El catálogo permite:
 
 * Consultar productos desde Supabase PostgreSQL.
-* Visualizar publicaciones mediante `FlatList`.
+* Visualizar publicaciones mediante `FlashList`.
 * Manejar estados de carga, vacío, error y datos.
 * Mostrar disponibilidad y stock.
 * Acceder al detalle de una publicación.
@@ -137,7 +139,7 @@ La documentación establece el carrito global con Zustand y el cálculo de subto
 ## Catálogo
 
 * Catálogo dinámico desde Supabase.
-* `FlatList`.
+* `FlashList` con tarjetas memoizadas (`React.memo`).
 * Pull-to-refresh.
 * Estados de carga, error, vacío y datos.
 * Indicador de productos agotados.
@@ -269,12 +271,44 @@ Implementado con `expo-location`:
 
 ---
 
+# Descargar la app
+
+El instalable para Android (`.apk`) se genera con EAS Build en el perfil `preview`:
+
+```bash
+npm install -g eas-cli
+eas login
+eas build --platform android --profile preview
+```
+
+Al terminar, EAS muestra un link y un QR para descargar el `.apk` e instalarlo en el celular
+(también se puede compartir el archivo por Drive o WhatsApp). Los builds quedan listados en
+expo.dev, en el proyecto `newyou-app`.
+
+Perfiles de [`eas.json`](eas.json):
+
+| Perfil | Para qué | Resultado |
+| --- | --- | --- |
+| `development` | Desarrollo con Dev Client | build de desarrollo |
+| `preview` | Pruebas en celulares del equipo | `.apk` instalable |
+| `production` | Tiendas | `.aab` (Play Store) |
+
+Las correcciones de JavaScript se publican sin recompilar con EAS Update (OTA):
+
+```bash
+eas update --branch production --message "Fix: ..."
+```
+
+Las variables `EXPO_PUBLIC_*` se cargan en EAS como variables de entorno del proyecto
+(`eas env:create`), nunca en el repositorio.
+
 # Puesta en marcha
 
 ```bash
 npm install
 npm start        # o: npm run android / npm run web
-npm test         # pruebas unitarias (Jest)
+npm test         # pruebas unitarias y de componentes (Jest + RNTL)
+npm run lint     # ESLint
 npx tsc --noEmit # chequeo de tipos
 ```
 
@@ -283,7 +317,11 @@ Variables de entorno (archivo `.env`):
 ```text
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
+EXPO_PUBLIC_GOOGLE_MAPS_KEY=      # mapa embebido en Android (builds de EAS)
 ```
+
+El mapa embebido, las notificaciones y el deslizar para borrar usan módulos nativos: funcionan en
+Expo Go para probar, pero las notificaciones push sólo llegan en un build de EAS en un celular real.
 
 ### Configuración de Supabase
 
@@ -301,6 +339,8 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
    10. `10-pedidos.sql`: pedidos con estados. Cada compra se divide en un pedido por vendedor (particular o sede de empresa) con estado (pendiente, confirmado, preparando, listo para retirar o enviado, entregado, cancelado) e historial en `pedido_eventos`. `confirmar_compra` calcula el envío con el costo de cada sede, `cambiar_estado_pedido` valida la transición y el permiso y repone el stock al cancelar, y `mis_compras_pedidos` / `pedidos_venta` reemplazan a `mis_ventas`. Las compras anteriores se convierten en pedidos. Publicarlo junto con la versión de la app que usa pedidos.
    11. `11-envios-metricas.sql`: gestor de envíos (correo, código de seguimiento y fechas de envío y entrega en cada pedido, con `marcar_pedido_enviado`) y `metricas_ventas` (ingresos, pedidos, unidades, por día, más vendidos, por sede y stock bajo; las de empresa exigen `metricas.ver`).
    12. `12-calificaciones.sql`: el comprador califica cada pedido entregado (1 a 5 estrellas y comentario, una vez) y el vendedor puede responder; `reputacion` (tienda o particular) y `reputacion_producto` son públicas.
+   13. `13-descuentos.sql`: descuento por prenda; `confirmar_compra` cobra el precio con descuento.
+   14. `14-push-tokens.sql`: notificaciones push de pedidos. Antes, habilitar la extensión `pg_net` (Database → Extensions). Crea `push_tokens` con RLS, `registrar_push_token` y un trigger en `pedido_eventos` que avisa al particular que vende cuando entra un pedido y al comprador cuando cambia el estado.
 
 Para recuperar la contraseña, en Supabase > Authentication > URL Configuration agregar a *Redirect URLs* `newyou://**` (app) y `http://localhost:8081/**` (web en desarrollo). El enlace del correo abre la pantalla *Nueva contraseña*.
 
@@ -359,7 +399,8 @@ La documentación define Expo Router como sistema de navegación, una estructura
 * Zustand
 * React Hook Form
 * Zod
-* AsyncStorage
+* AsyncStorage (carrito, borradores, preferencias)
+* Expo SecureStore (sesión y JWT, cifrados)
 
 ### Backend
 
@@ -372,12 +413,25 @@ La documentación define Expo Router como sistema de navegación, una estructura
 ### APIs nativas
 
 * Expo Image Picker
-* Expo Location
+* Expo Location + react-native-maps
+* Expo Notifications (locales y push)
 * NetInfo
+
+### Performance y animaciones
+
+* FlashList (Shopify)
+* React Native Reanimated + Gesture Handler
+
+### Producción
+
+* EAS Build (3 perfiles) y EAS Update (OTA)
+* GitHub Actions (tipos, lint y tests en cada push y PR)
 
 ### Testing
 
 * Jest + jest-expo
+* React Native Testing Library
+* ESLint (eslint-config-expo)
 
 La documentación de Etapa 2 especifica este stack como el utilizado efectivamente en el proyecto.
 
@@ -500,16 +554,41 @@ El MVP está implementado de punta a punta:
 * Checkout con idempotencia, descuento de stock y modo offline con sincronización automática.
 * Mis compras, Mis ventas y Direcciones guardadas.
 * GPS con fallback manual y verificación en mapa.
-* Pruebas unitarias del carrito y del esquema de producto.
+* Sesión cifrada en SecureStore, interceptor ante 401 y login/registro con React Hook Form + Zod.
+* Mapa embebido con el punto del GPS, recordatorio local al publicar y push de pedidos.
+* Catálogo con FlashList y React.memo, favoritos animados y deslizar para borrar con Reanimated.
+* 64 pruebas (servicios, stores, esquemas, hooks y componentes) que corren en GitHub Actions.
 
 Pendientes o mejoras opcionales:
 
 1. Editar la dirección de retiro de una publicación ya creada.
 2. Límite de 1080 px para las fotos (requiere `expo-image-manipulator`).
-3. `getItemLayout` en la lista del Home.
+3. Capturas de pantalla del build en el README (pedido de la Clase 10).
 4. Comisión de servicio C2C en el resumen.
 5. Descuentos e impuestos reales en el resumen (hoy se muestran en $0).
 6. Revisión final de las políticas RLS de `productos` y `profiles`.
+
+---
+
+# Uso de inteligencia artificial
+
+El equipo usó asistentes de IA como *pair programmers*, revisando y probando cada cambio antes de
+integrarlo. Desafíos resueltos con ayuda de Claude (Anthropic):
+
+* **Sesión en SecureStore sin pasar el límite de 2048 bytes.** La sesión de Supabase pesa más de lo
+  que admite SecureStore por valor; se diseñó un adaptador que la guarda en partes y migra sola la
+  sesión vieja que estaba en AsyncStorage (`services/secureSessionStorage.ts`).
+* **Interceptor sobre el cliente de Supabase.** Como Supabase no usa Axios, el interceptor se armó
+  como un `fetch` propio que renueva el token ante un 401 y cierra la sesión si no puede
+  (`services/interceptor.ts`).
+* **Grilla de FlashList igual a la anterior.** FlashList no tiene `columnWrapperStyle`; se calculó el
+  margen de cada celda para conservar el diseño del home.
+* **Push sin servidor propio.** Un trigger de PostgreSQL con `pg_net` llama a la API de Expo cuando
+  cambia un pedido (`supabase/migraciones/14-push-tokens.sql`).
+* **Auditoría contra los materiales de la cátedra**, pruebas unitarias con mocks y documentación de
+  testing.
+
+<!-- Completar con las experiencias propias del equipo con Gemini, Claude u otros asistentes. -->
 
 ---
 
