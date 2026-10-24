@@ -73,7 +73,7 @@ export default function ProductDetailScreen() {
       return imagenes;
     }
     return producto?.imagen ? [producto.imagen] : [];
-  }, [producto?.imagen, producto?.imagenes]);
+  }, [producto]);
   const detailItems = useMemo(
     () =>
       producto
@@ -113,16 +113,17 @@ export default function ProductDetailScreen() {
     };
   }, [producto?.id]);
 
-  useEffect(() => {
-    if (!producto) {
-      return;
-    }
-
+  // Al cambiar de prenda se reinician las elecciones. Se hace durante el render
+  // (no en un efecto) para no dibujar dos veces; antes el efecto dependía de
+  // `colores`, que es un arreglo nuevo en cada render, y pisaba el color elegido.
+  const [productoMostradoId, setProductoMostradoId] = useState(producto?.id);
+  if (producto && producto.id !== productoMostradoId) {
+    setProductoMostradoId(producto.id);
     setSelectedImageIndex(0);
     setSelectedSize(talles[0]);
     setSelectedColor(colores[0]);
     setQuantity(1);
-  }, [colores, producto, talles]);
+  }
 
   useEffect(
     () => () => {
