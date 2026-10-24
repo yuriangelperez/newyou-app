@@ -1,8 +1,17 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getProductos, subscribeToProductos } from '../services/productosService';
+import { getProductos as getProductosApi } from '../services/productosApiService';
+import {
+  getProductos as getProductosSupabase,
+  subscribeToProductos,
+} from '../services/productosService';
 import { Producto } from '../types';
+
+// Clase 12: la UI no sabe de dónde vienen los datos. Por defecto Supabase; con
+// EXPO_PUBLIC_FUENTE_PRODUCTOS=dummyjson se usa la API REST de prueba con Axios.
+const usarApiRest = process.env.EXPO_PUBLIC_FUENTE_PRODUCTOS === 'dummyjson';
+const getProductos = usarApiRest ? getProductosApi : getProductosSupabase;
 
 interface UseProductosResult {
   productos: Producto[];
@@ -64,6 +73,11 @@ export function useProductos(): UseProductosResult {
   );
 
   useEffect(() => {
+    // La API REST no tiene tiempo real: sólo Supabase avisa cambios.
+    if (usarApiRest) {
+      return;
+    }
+
     let unsubscribe = () => {};
 
     try {

@@ -9,6 +9,7 @@ jest.mock('../services/productosService', () => ({
   getProductos: () => mockGetProductos(),
   subscribeToProductos: () => () => undefined,
 }));
+jest.mock('../services/productosApiService', () => ({ getProductos: jest.fn() }));
 jest.mock('expo-router', () => ({ useFocusEffect: jest.fn() }));
 
 const prenda = (id: string, nombre: string): Producto => ({
