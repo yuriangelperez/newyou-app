@@ -1,7 +1,7 @@
-import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useState } from 'react';
 import Toast from 'react-native-toast-message';
 
+import { pedirPermisoNotificaciones } from '../services/notificacionesService';
 import {
   desregistrarDispositivoPush,
   obtenerTokenPushGuardado,
@@ -14,7 +14,7 @@ export function usePushNotifications() {
   const [activas, setActivas] = useState(false);
   const [cargando, setCargando] = useState(true);
   const permiso = usePermission(
-    Notifications.requestPermissionsAsync,
+    pedirPermisoNotificaciones,
     'Sin permiso de notificaciones no vas a recibir avisos de tus pedidos.',
   );
 

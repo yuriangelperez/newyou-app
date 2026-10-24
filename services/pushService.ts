@@ -1,10 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import { asegurarCanalAndroid, notificacionesDisponibles } from './notificacionesService';
+import { asegurarCanalAndroid, Notifications } from './notificacionesService';
 import { supabase } from './supabase';
 
 const CLAVE_TOKEN_PUSH = 'ny_push_token';
@@ -18,8 +17,8 @@ export const obtenerTokenPushGuardado = () => AsyncStorage.getItem(CLAVE_TOKEN_P
  * un celular real: en Expo Go y en simuladores no hay token push.
  */
 export async function registrarDispositivoPush(): Promise<string> {
-  if (!notificacionesDisponibles || !Device.isDevice) {
-    throw new Error('Las notificaciones push sólo funcionan en un celular real.');
+  if (!Notifications || !Device.isDevice) {
+    throw new Error('Las notificaciones push sólo funcionan en un build de EAS en un celular real (no en Expo Go).');
   }
 
   const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
