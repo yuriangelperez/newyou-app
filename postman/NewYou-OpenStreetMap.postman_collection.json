@@ -1,0 +1,305 @@
+{
+  "info": {
+    "_postman_id": "c0b7d7a1-8d90-4e73-b5f1-0f47a7d6a1e2",
+    "name": "NewYou - OpenStreetMap Nominatim",
+    "description": "Pruebas de los endpoints Nominatim usados por NewYou para convertir direcciones en coordenadas y coordenadas en direcciones. La app usa estos endpoints como fallback del geocoder nativo de Expo Location.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://nominatim.openstreetmap.org",
+      "type": "string"
+    },
+    {
+      "key": "address",
+      "value": "Obelisco, Buenos Aires, Argentina",
+      "type": "string"
+    },
+    {
+      "key": "empty_address",
+      "value": "direccion-inexistente-ny-{{$timestamp}}",
+      "type": "string"
+    },
+    {
+      "key": "latitude",
+      "value": "-34.603722",
+      "type": "string"
+    },
+    {
+      "key": "longitude",
+      "value": "-58.381592",
+      "type": "string"
+    },
+    {
+      "key": "language",
+      "value": "es",
+      "type": "string"
+    },
+    {
+      "key": "contact_email",
+      "value": "completar-email-del-equipo@example.com",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Geocodificacion directa",
+      "description": "Convierte la dirección escrita en la pantalla de checkout a coordenadas para mostrar el mapa.",
+      "item": [
+        {
+          "name": "Buscar coordenadas de una dirección",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "User-Agent",
+                "value": "NewYou/1.0 ({{contact_email}})"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/search?format=jsonv2&limit=1&accept-language={{language}}&q={{address}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "jsonv2"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "accept-language",
+                  "value": "{{language}}"
+                },
+                {
+                  "key": "q",
+                  "value": "{{address}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('La respuesta es una lista', function () {",
+                  "  pm.expect(body).to.be.an('array');",
+                  "});",
+                  "pm.test('La búsqueda devuelve al menos un resultado', function () {",
+                  "  pm.expect(body.length).to.be.above(0);",
+                  "});",
+                  "",
+                  "if (body.length > 0) {",
+                  "  pm.expect(body[0]).to.have.property('lat');",
+                  "  pm.expect(body[0]).to.have.property('lon');",
+                  "  pm.expect(Number(body[0].lat)).to.be.a('number');",
+                  "  pm.expect(Number(body[0].lon)).to.be.a('number');",
+                  "  pm.collectionVariables.set('latitude', body[0].lat);",
+                  "  pm.collectionVariables.set('longitude', body[0].lon);",
+                  "  pm.collectionVariables.set('display_name', body[0].display_name || '');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dirección sin resultados",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "User-Agent",
+                "value": "NewYou/1.0 ({{contact_email}})"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/search?format=jsonv2&limit=1&accept-language={{language}}&q={{empty_address}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "jsonv2"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                },
+                {
+                  "key": "accept-language",
+                  "value": "{{language}}"
+                },
+                {
+                  "key": "q",
+                  "value": "{{empty_address}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Una dirección inexistente devuelve una lista vacía', function () {",
+                  "  pm.expect(body).to.be.an('array').that.is.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Geocodificacion inversa",
+      "description": "Convierte las coordenadas obtenidas por GPS en una dirección legible, como hace obtenerDireccionActual().",
+      "item": [
+        {
+          "name": "Buscar dirección desde coordenadas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "User-Agent",
+                "value": "NewYou/1.0 ({{contact_email}})"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reverse?format=jsonv2&accept-language={{language}}&lat={{latitude}}&lon={{longitude}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reverse"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "jsonv2"
+                },
+                {
+                  "key": "accept-language",
+                  "value": "{{language}}"
+                },
+                {
+                  "key": "lat",
+                  "value": "{{latitude}}"
+                },
+                {
+                  "key": "lon",
+                  "value": "{{longitude}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('La respuesta es un objeto JSON', function () {",
+                  "  pm.expect(body).to.be.an('object');",
+                  "});",
+                  "pm.test('Incluye display_name y address', function () {",
+                  "  pm.expect(body).to.have.property('display_name');",
+                  "  pm.expect(body).to.have.property('address');",
+                  "});",
+                  "pm.collectionVariables.set('reverse_display_name', body.display_name || '');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Coordenadas inválidas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "User-Agent",
+                "value": "NewYou/1.0 ({{contact_email}})"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reverse?format=jsonv2&accept-language={{language}}&lat=999&lon=999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reverse"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "jsonv2"
+                },
+                {
+                  "key": "accept-language",
+                  "value": "{{language}}"
+                },
+                {
+                  "key": "lat",
+                  "value": "999"
+                },
+                {
+                  "key": "lon",
+                  "value": "999"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('La API rechaza las coordenadas fuera de rango', function () {",
+                  "  pm.expect([200, 400]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('Cuando responde 200, informa el error en el cuerpo', function () {",
+                  "    pm.expect(body).to.have.property('error');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
