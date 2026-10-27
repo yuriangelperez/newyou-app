@@ -32,7 +32,7 @@ export function BarraNavegacionWeb() {
     <View style={styles.bar}>
       <View style={styles.inner}>
         <Pressable accessibilityLabel="Ir al inicio" onPress={() => router.replace(ROUTES.home)}>
-          <Image source={BRANDING_LOGO} style={styles.logo} />
+          <Image source={BRANDING_LOGO} tintColor={Colors.textStrong} style={styles.logo} />
         </Pressable>
 
         <View style={styles.links}>

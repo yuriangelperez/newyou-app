@@ -1,4 +1,4 @@
-# TC-E-02 · HU02 Login: credenciales inválidas muestran el error de Supabase y no entran.
+# TC-E-02 · HU02 Login: credenciales inválidas muestran el error en español y no entran.
 appId: com.anonymous.newyouapp
 tags: [auth]
 ---
@@ -14,5 +14,6 @@ tags: [auth]
     id: "login-boton"
 - assertVisible:
     id: "login-error"
+    text: "Correo/usuario o contraseña incorrectos."
 - assertNotVisible:
     id: "home-buscar"

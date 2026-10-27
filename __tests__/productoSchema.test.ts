@@ -12,7 +12,7 @@ const valido = {
   disponible: true,
   talle: 'S, M',
   colores: 'Azul',
-  descripcion: 'Campera de jean en muy buen estado',
+  descripcion: 'Campera de jean impecable',
 };
 
 const campos = (resultado: ReturnType<typeof productoSchema.safeParse>) =>
@@ -88,5 +88,33 @@ describe('productoSchema: descuentos', () => {
       'descuentoPorcentaje',
     );
     expect(productoSchema.safeParse({ ...valido, descuentoActivo: true, descuentoPorcentaje: '20' }).success).toBe(true);
+  });
+});
+
+describe('productoSchema: Etapa 1 (precio, talles, largos)', () => {
+  const precio = (valor: string) => productoSchema.safeParse({ ...valido, precio: valor });
+
+  it('toma el punto como separador de miles y la coma como decimal', () => {
+    expect(precio('35.000').data?.precio).toBe(35000);
+    expect(precio('1.500,50').data?.precio).toBe(1500.5);
+    expect(precio('35000').data?.precio).toBe(35000);
+  });
+
+  it('rechaza el punto como decimal y las letras, con mensajes en español', () => {
+    expect(precio('1500.50').error?.issues[0].message).toMatch(/punto sólo para separar miles/);
+    expect(precio('abc').error?.issues[0].message).toBe('Ingresá sólo números (sin $ ni letras).');
+  });
+
+  it('sólo acepta talles de la lista (ropa o calzado según la prenda)', () => {
+    expect(campos(productoSchema.safeParse({ ...valido, talle: '38/40' }))).toContain('talle');
+    expect(productoSchema.safeParse({ ...valido, talle: 'S, Único' }).success).toBe(true);
+    expect(campos(productoSchema.safeParse({ ...valido, talle: '40' }))).toContain('talle');
+    expect(productoSchema.safeParse({ ...valido, tipoPrenda: 'Calzado', categoria: 'Botas', talle: '40, 41' }).success).toBe(true);
+  });
+
+  it('limita el nombre y la descripción a 30 caracteres', () => {
+    const largo = 'x'.repeat(31);
+    expect(campos(productoSchema.safeParse({ ...valido, nombre: largo }))).toContain('nombre');
+    expect(campos(productoSchema.safeParse({ ...valido, descripcion: largo }))).toContain('descripcion');
   });
 });

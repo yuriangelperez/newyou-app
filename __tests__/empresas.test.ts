@@ -1,15 +1,19 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { cuitValido, formatearCuit, Membresia, mensajeInvitacion } from '../services/empresasService';
+import { puede, selectEmpresaActiva, selectEsPropietario, useEmpresaStore } from '../stores/useEmpresaStore';
+
 jest.mock('../services/supabase', () => ({ supabase: {} }));
+jest.mock('expo-linking', () => ({
+  createURL: (ruta: string, { queryParams }: { queryParams: Record<string, string> }) =>
+    `newyou://${ruta}?codigo=${queryParams.codigo}`,
+}));
 
 const mockObtenerMisEmpresas = jest.fn();
 jest.mock('../services/empresasService', () => ({
   ...jest.requireActual('../services/empresasService'),
   obtenerMisEmpresas: () => mockObtenerMisEmpresas(),
 }));
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-import { cuitValido, formatearCuit, Membresia, mensajeInvitacion } from '../services/empresasService';
-import { puede, selectEmpresaActiva, useEmpresaStore } from '../stores/useEmpresaStore';
 
 const vendedora: Membresia = {
   empresaId: 7,
@@ -64,8 +68,26 @@ describe('useEmpresaStore', () => {
     expect(selectEmpresaActiva(useEmpresaStore.getState())?.nombre).toBe('Moda Sur');
   });
 
-  it('vuelve a "como yo" si ya no es miembro de la empresa guardada', async () => {
+  it('si ya no es miembro de la empresa guardada, arranca en la empresa donde trabaja', async () => {
     await AsyncStorage.setItem('ny_empresa_activa', '99');
+    mockObtenerMisEmpresas.mockResolvedValue([vendedora]);
+
+    await useEmpresaStore.getState().cargar();
+
+    expect(useEmpresaStore.getState().empresaActivaId).toBe(7);
+  });
+
+  it('un empleado arranca en modo empresa por defecto', async () => {
+    mockObtenerMisEmpresas.mockResolvedValue([vendedora]);
+
+    await useEmpresaStore.getState().cargar();
+
+    expect(selectEmpresaActiva(useEmpresaStore.getState())?.nombre).toBe('Moda Sur');
+  });
+
+  it('si el empleado eligió "como yo", lo recuerda al volver a abrir', async () => {
+    useEmpresaStore.setState({ membresias: [vendedora], empresaActivaId: 7 });
+    await useEmpresaStore.getState().setEmpresaActiva(null);
     mockObtenerMisEmpresas.mockResolvedValue([vendedora]);
 
     await useEmpresaStore.getState().cargar();
@@ -90,12 +112,38 @@ describe('useEmpresaStore', () => {
     await useEmpresaStore.getState().setEmpresaActiva(7);
     expect(useEmpresaStore.getState().empresaActivaId).toBe(7);
   });
+
+  it('el propietario arranca con su empresa y no puede volver a "como yo"', async () => {
+    const duena: Membresia = { ...vendedora, empresaId: 3, nombre: 'Lana Norte', rol: 'propietario' };
+    mockObtenerMisEmpresas.mockResolvedValue([vendedora, duena]);
+
+    await useEmpresaStore.getState().cargar();
+    expect(selectEsPropietario(useEmpresaStore.getState())).toBe(true);
+    expect(useEmpresaStore.getState().empresaActivaId).toBe(3);
+
+    await useEmpresaStore.getState().setEmpresaActiva(null);
+    expect(useEmpresaStore.getState().empresaActivaId).toBe(3);
+
+    // Puede pasar a otra empresa donde es empleado.
+    await useEmpresaStore.getState().setEmpresaActiva(7);
+    expect(useEmpresaStore.getState().empresaActivaId).toBe(7);
+  });
+
+  it('un empleado sí puede volver a "como yo"', async () => {
+    useEmpresaStore.setState({ membresias: [vendedora], empresaActivaId: 7 });
+
+    await useEmpresaStore.getState().setEmpresaActiva(null);
+
+    expect(selectEsPropietario(useEmpresaStore.getState())).toBe(false);
+    expect(useEmpresaStore.getState().empresaActivaId).toBeNull();
+  });
 });
 
 describe('mensajeInvitacion', () => {
-  it('incluye el enlace y el código', () => {
+  it('incluye un enlace https (WhatsApp lo hace tocable) y el código solo en su línea', () => {
     const texto = mensajeInvitacion('Moda Sur', { codigo: 'AB12CD34', rol: 'vendedor' });
-    expect(texto).toContain('newyou://invitacion?codigo=AB12CD34');
+    expect(texto).toMatch(/https:\/\/\S+\?codigo=AB12CD34/);
+    expect(texto.split('\n')).toContain('AB12CD34');
     expect(texto).toContain('como Vendedor');
   });
 });

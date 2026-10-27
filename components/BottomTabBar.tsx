@@ -68,7 +68,7 @@ export function BottomTabBar({
             onPress={onPressCreate}
             style={styles.createTabButton}>
             <View style={styles.createCircle}>
-              <Ionicons name="add" size={30 * scale} color="#2D1F16" />
+              <Ionicons name="add" size={30 * scale} color={Colors.textStrong} />
             </View>
           </Pressable>
         ) : null}
@@ -124,7 +124,8 @@ function TabButton({
       disabled={!onPress && active}
       style={styles.tabItem}>
       <View style={[styles.tabBackground, active && styles.tabBackgroundActive]}>
-        <Image source={icon} style={[compact ? styles.tabIconCompact : styles.tabIcon, active && styles.tabIconActive]} />
+        {/* Los íconos son negros: en modo oscuro se pintan claros. */}
+        <Image source={icon} tintColor={Colors.ink} style={[compact ? styles.tabIconCompact : styles.tabIcon, active && styles.tabIconActive]} />
         {badgeCount > 0 ? (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>

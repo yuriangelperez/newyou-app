@@ -21,7 +21,7 @@ import { SkeletonList } from "../../components/ui/SkeletonList";
 import TarjetaProducto from "../../components/TarjetaProducto";
 import { BRANDING_LOGO, HOME_HERO_IMAGES } from "../../constants/assets";
 import { ROUTES } from "../../constants/routes";
-import { Colors } from "../../constants/theme";
+import { Colors, EstiloBarraEstado } from "../../constants/theme";
 import { useProductos } from "../../hooks/useProductos";
 import {
   selectTotalItems,
@@ -30,6 +30,7 @@ import {
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { usePuedeVender } from "../../hooks/usePuedeVender";
 import { Producto } from "../../types";
+import { incluyeTexto } from "../../utils/texto";
 
 const CANVAS_WIDTH = 412;
 const MAX_CONTENT_WIDTH = 1160;
@@ -63,7 +64,7 @@ export default function HomeScreen() {
   const { category } = useLocalSearchParams<{ category?: string | string[] }>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { productos, cargando, error, refreshing, refrescar } = useProductos();
+  const { productos, cargando, error, sinConexion, refreshing, refrescar } = useProductos();
   const agregarProducto = useCarritoStore((state) => state.agregarProducto);
   const totalItems = useCarritoStore(selectTotalItems);
   const usuario = useUsuarioStore((state) => state.usuario);
@@ -139,9 +140,9 @@ export default function HomeScreen() {
   const selectedCategory = Array.isArray(category) ? category[0] : category;
 
   const visibleProducts = useMemo(() => {
-    const normalizedSearch = searchText.trim().toLowerCase();
+    const normalizedSearch = searchText.trim();
 
-    return productos.filter((item) => {
+    const filtrados = productos.filter((item) => {
       const productType = item.categoriaProducto?.tipoPrenda ?? "";
 
       const productCategories = [
@@ -149,12 +150,12 @@ export default function HomeScreen() {
         ...(PRODUCT_CATEGORY_ALIASES[productType] ?? []),
       ];
 
-      // Filtro por búsqueda
+      // Filtro por búsqueda: sin distinguir mayúsculas ni tildes ("pantalon" = "Pantalón").
       const matchesSearch =
         normalizedSearch.length === 0 ||
-        item.nombre.toLowerCase().includes(normalizedSearch) ||
-        item.descripcion.toLowerCase().includes(normalizedSearch) ||
-        item.categoria.toLowerCase().includes(normalizedSearch);
+        incluyeTexto(item.nombre, normalizedSearch) ||
+        incluyeTexto(item.descripcion, normalizedSearch) ||
+        incluyeTexto(item.categoria, normalizedSearch);
 
       if (!matchesSearch) {
         return false;
@@ -181,6 +182,9 @@ export default function HomeScreen() {
 
       return item.categoriaProducto?.temporada === selectedTag;
     });
+
+    // Las agotadas van al final (grises, con "AGOTADO") para no tapar lo que se puede comprar (CA2).
+    return [...filtrados.filter((item) => item.disponible), ...filtrados.filter((item) => !item.disponible)];
   }, [
     productos,
     searchText,
@@ -203,8 +207,9 @@ export default function HomeScreen() {
 
     agregarProducto({
       producto: item,
-      talle: item.talle?.[0] ?? "M",
-      color: "Marron",
+      talle: item.talle?.[0] ?? "Único",
+      // El primer color cargado de la prenda (antes iba siempre "Marron").
+      color: item.colores?.[0] ?? "",
       cantidad: 1,
     });
 
@@ -284,7 +289,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar style={EstiloBarraEstado} />
 
       <View style={styles.header}>
         <View style={styles.headerInner}>
@@ -296,6 +301,7 @@ export default function HomeScreen() {
           <Image
             accessibilityLabel="New You"
             source={BRANDING_LOGO}
+            tintColor={Colors.textStrong}
             style={styles.logo}
           />
           <View style={[styles.headerSide, styles.headerRightSide]} />
@@ -305,7 +311,11 @@ export default function HomeScreen() {
       {cargando ? <SkeletonList /> : null}
 
       {!cargando && error ? (
-        <ErrorView message={error} onRetry={() => void refrescar()} />
+        <ErrorView
+          title={sinConexion ? "Sin conexión a Internet" : undefined}
+          message={error}
+          onRetry={() => void refrescar()}
+        />
       ) : null}
 
       {!cargando && !error ? (
@@ -515,9 +525,9 @@ function createStyles({
     searchInput: {
       height: s(42),
       borderRadius: s(12),
-      backgroundColor: "#E4E0E1",
+      backgroundColor: Colors.chip,
       paddingHorizontal: s(16),
-      color: "#2D1F16",
+      color: Colors.textStrong,
       fontSize: s(13),
       fontFamily: "Montserrat_400Regular",
     },
@@ -575,7 +585,7 @@ function createStyles({
       minWidth: s(104),
       height: s(28),
       borderRadius: s(10),
-      backgroundColor: "#D9D9D9",
+      backgroundColor: Colors.backgroundMuted,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: s(14),
@@ -584,7 +594,7 @@ function createStyles({
       backgroundColor: Colors.tertiary,
     },
     promoTagText: {
-      color: "#000000",
+      color: Colors.ink,
       fontSize: s(12),
       lineHeight: s(14),
       fontWeight: "400",
@@ -609,7 +619,7 @@ function createStyles({
       paddingHorizontal: s(24),
     },
     emptyTitle: {
-      color: "#2D1F16",
+      color: Colors.textStrong,
       fontSize: s(22),
       fontFamily: "Montserrat_600SemiBold",
       textAlign: "center",

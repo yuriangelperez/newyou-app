@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Toast from "react-native-toast-message";
 import {
   Image,
   Pressable,
@@ -16,10 +17,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomTabBar } from "../components/BottomTabBar";
 import { PRODUCT_DETAIL_ICONS } from "../constants/assets";
 import { ROUTES } from "../constants/routes";
-import { Colors, Radius } from "../constants/theme";
+import { Colors, esModoOscuro, EstiloBarraEstado, Radius } from "../constants/theme";
 import { selectTotalItems, useCarritoStore } from "../stores/useCarritoStore";
 import { usePuedeVender } from "../hooks/usePuedeVender";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+import { traducirError } from "../services/erroresSupabase";
+import { guardarPreferencias, obtenerPreferencias, Preferencias } from "../services/perfilService";
+import { cambiarTema } from "../services/temaService";
 
 const CANVAS_WIDTH = 412;
 
@@ -30,8 +34,34 @@ export default function AjustesScreen() {
   const totalItems = useCarritoStore(selectTotalItems);
   const esVendedor = usePuedeVender();
   const push = usePushNotifications();
-  const [notificacionesCorreo, setNotificacionesCorreo] = useState(false);
-  const [promociones, setPromociones] = useState(true);
+  // Se guardan en el perfil (migración 16) y el correo de compra respeta "Notificaciones por correo".
+  const [preferencias, setPreferencias] = useState<Preferencias | null>(null);
+
+  useEffect(() => {
+    obtenerPreferencias()
+      .then(setPreferencias)
+      .catch(() => setPreferencias({ notifCorreo: true, notifPromos: false }));
+  }, []);
+
+  const cambiarPreferencia = async (clave: keyof Preferencias, valor: boolean) => {
+    const anterior = preferencias;
+    setPreferencias((actual) => (actual ? { ...actual, [clave]: valor } : actual));
+    try {
+      await guardarPreferencias({ [clave]: valor });
+    } catch (error) {
+      setPreferencias(anterior);
+      Toast.show({ type: "error", text1: "No se pudo guardar el ajuste", text2: traducirError(error) });
+    }
+  };
+
+  // El tema se guarda en el celular y la app se recarga para aplicarlo en todas las pantallas.
+  const cambiarModoOscuro = async (oscuro: boolean) => {
+    try {
+      await cambiarTema(oscuro ? "oscuro" : "claro");
+    } catch (error) {
+      Toast.show({ type: "error", text1: "No se pudo cambiar el tema", text2: traducirError(error) });
+    }
+  };
 
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
@@ -42,7 +72,7 @@ export default function AjustesScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="dark" />
+      <StatusBar style={EstiloBarraEstado} />
 
       <View style={styles.header}>
         <Pressable
@@ -60,6 +90,18 @@ export default function AjustesScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <Text style={styles.sectionTitle}>APARIENCIA</Text>
+        <View style={styles.card}>
+          <SettingSwitch
+            title="Modo oscuro"
+            detail="Fondo oscuro y texto claro. La app se reinicia para aplicarlo."
+            value={esModoOscuro}
+            onValueChange={(valor) => void cambiarModoOscuro(valor)}
+            testID="switch-modo-oscuro"
+            styles={styles}
+          />
+        </View>
+
         <Text style={styles.sectionTitle}>NOTIFICACIONES</Text>
         <View style={styles.card}>
           <SettingSwitch
@@ -74,17 +116,21 @@ export default function AjustesScreen() {
           <View style={styles.divider} />
           <SettingSwitch
             title="Notificaciones por correo"
-            detail="Recibí actualizaciones en tu email."
-            value={notificacionesCorreo}
-            onValueChange={setNotificacionesCorreo}
+            detail="Recibí el detalle de cada compra en tu email."
+            value={preferencias?.notifCorreo ?? false}
+            disabled={!preferencias}
+            onValueChange={(valor) => void cambiarPreferencia("notifCorreo", valor)}
+            testID="switch-correo"
             styles={styles}
           />
           <View style={styles.divider} />
           <SettingSwitch
             title="Promociones y novedades"
             detail="Conocé ofertas y nuevos productos."
-            value={promociones}
-            onValueChange={setPromociones}
+            value={preferencias?.notifPromos ?? false}
+            disabled={!preferencias}
+            onValueChange={(valor) => void cambiarPreferencia("notifPromos", valor)}
+            testID="switch-promos"
             styles={styles}
           />
         </View>
@@ -153,8 +199,8 @@ function SettingSwitch({
         onValueChange={onValueChange}
         disabled={disabled}
         testID={testID}
-        trackColor={{ true: Colors.secondary, false: "#CFCFCF" }}
-        thumbColor={Colors.surface}
+        trackColor={{ true: Colors.secondary, false: Colors.switchOff }}
+        thumbColor={Colors.white}
       />
     </View>
   );

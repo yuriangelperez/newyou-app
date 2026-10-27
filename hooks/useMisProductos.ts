@@ -13,7 +13,7 @@ export function useMisProductos(empresaId: number | null = null) {
     try {
       setError(null);
 
-      const data = empresaId ? await getProductosDeEmpresa(empresaId) : await getMisProductos();
+      const data = empresaId ? await getProductosDeEmpresa(empresaId, true) : await getMisProductos();
 
       setProductos(data);
     } catch (err) {

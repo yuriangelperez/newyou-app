@@ -1,4 +1,4 @@
-import { useEmpresaStore, puede, selectEmpresaActiva } from '../stores/useEmpresaStore';
+import { useEmpresaStore, puede, selectEmpresaActiva, selectEsPropietario } from '../stores/useEmpresaStore';
 import { selectPuedeVender, useUsuarioStore } from '../stores/useUsuarioStore';
 import { Producto } from '../types';
 
@@ -9,8 +9,10 @@ import { Producto } from '../types';
 export function usePuedeVender() {
   const particular = useUsuarioStore(selectPuedeVender);
   const empresaActiva = useEmpresaStore(selectEmpresaActiva);
+  // El propietario de una empresa no publica como particular (migración 15).
+  const esPropietario = useEmpresaStore(selectEsPropietario);
 
-  return empresaActiva ? puede(empresaActiva, 'productos.publicar') : particular;
+  return empresaActiva ? puede(empresaActiva, 'productos.publicar') : particular && !esPropietario;
 }
 
 /** Puede editar o eliminar esta prenda: es suya (particular) o de una empresa donde tiene permiso. */

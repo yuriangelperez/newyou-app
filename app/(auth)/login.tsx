@@ -15,12 +15,17 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { TarjetaBienvenida } from '../../components/TarjetaBienvenida';
+import { marcarBienvenidaVista } from '../../services/bienvenidaService';
 import { BRANDING_LOGO } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
 import { Colors, Radius, Shadow } from '../../constants/theme';
 import { useEsEscritorio } from '../../hooks/useEsEscritorio';
 import { LoginForm, loginSchema } from '../../schemas/authSchemas';
 import { signInWithPassword } from '../../services/auth';
+import { obtenerMisEmpresas } from '../../services/empresasService';
+
+// Vive mientras la app está abierta: al cerrar sesión no vuelve a salir la tarjeta.
+let bienvenidaMostradaEnEsteInicio = false;
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -28,8 +33,8 @@ export default function LoginScreen() {
   const esEscritorio = useEsEscritorio();
   const [errorServidor, setErrorServidor] = useState('');
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
-  // La tarjeta del primer inicio vive en el layout raíz; acá sólo se vuelve a abrir.
-  const [mostrarBienvenida, setMostrarBienvenida] = useState(false);
+  // Cada vez que la app abre en el login aparece la tarjeta de bienvenida (una vez por inicio).
+  const [mostrarBienvenida, setMostrarBienvenida] = useState(() => !bienvenidaMostradaEnEsteInicio);
   // RHF + Zod (Clase 8): se valida en el cliente antes de llamar a Supabase.
   const {
     control,
@@ -37,17 +42,24 @@ export default function LoginScreen() {
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { correo: '', contrasena: '' },
+    defaultValues: { identificador: '', contrasena: '' },
   });
-  const error = errors.correo?.message ?? errors.contrasena?.message ?? errorServidor;
+  const error = errors.identificador?.message ?? errors.contrasena?.message ?? errorServidor;
   const cargando = isSubmitting;
 
-  const goToHome = handleSubmit(async ({ correo, contrasena }) => {
+  const goToHome = handleSubmit(async ({ identificador, contrasena }) => {
     setErrorServidor('');
-    const { error: authError } = await signInWithPassword(correo, contrasena);
+    // Se puede ingresar con el correo o con el nombre de usuario.
+    const { error: authError, quiereCrearEmpresa } = await signInWithPassword(identificador, contrasena);
 
     if (authError) {
       setErrorServidor(authError.message);
+      return;
+    }
+
+    // Se registró para vender como empresa y todavía no la creó: va directo al alta.
+    if (quiereCrearEmpresa && (await obtenerMisEmpresas().catch(() => [])).length === 0) {
+      router.replace(ROUTES.newCompany);
       return;
     }
 
@@ -65,20 +77,20 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
       <View style={styles.logoContainer}>
-        <Image source={BRANDING_LOGO} style={styles.logo} />
+        <Image source={BRANDING_LOGO} tintColor={Colors.textStrong} style={styles.logo} />
       </View>
 
       <View style={styles.inputContainer}>
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Correo</Text>
+          <Text style={styles.fieldLabel}>Correo / usuario</Text>
           <Controller
             control={control}
-            name="correo"
+            name="identificador"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 testID="login-correo"
                 style={styles.input}
-                placeholder="Email"
+                placeholder="Correo o nombre de usuario"
                 placeholderTextColor={Colors.text}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -162,7 +174,14 @@ export default function LoginScreen() {
         <Text style={styles.welcomeText}>¿Qué es New You?</Text>
       </TouchableOpacity>
       </KeyboardAwareScrollView>
-      <TarjetaBienvenida visible={mostrarBienvenida} onCerrar={() => setMostrarBienvenida(false)} />
+      <TarjetaBienvenida
+        visible={mostrarBienvenida}
+        onCerrar={() => {
+          bienvenidaMostradaEnEsteInicio = true;
+          setMostrarBienvenida(false);
+          void marcarBienvenidaVista();
+        }}
+      />
     </View>
   );
 }

@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -15,7 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBar } from '../../components/BottomTabBar';
 import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
-import { Colors, Radius, Shadow } from '../../constants/theme';
+import { Colors, EstiloBarraEstado, Radius, Shadow } from '../../constants/theme';
+import { calcularEnvio, obtenerTiendasDeRetiro, TiendaRetiro } from '../../services/comprasService';
 import { selectSubtotal, selectTotalItems, useCarritoStore } from '../../stores/useCarritoStore';
 import { useUsuarioStore } from '../../stores/useUsuarioStore';
 import { usePuedeVender } from '../../hooks/usePuedeVender';
@@ -35,6 +36,21 @@ export default function CarritoScreen() {
   const esVendedor = usePuedeVender();
   const verPrenda = (id: string) => router.push({ pathname: ROUTES.productDetail, params: { id } });
 
+  // Envío estimado a domicilio (el costo de cada sede de empresa; los particulares no cobran).
+  // La comisión de New You la paga el vendedor al publicar: al comprador no se le suma.
+  const [tiendas, setTiendas] = useState<TiendaRetiro[]>([]);
+  const idsCarrito = items.map((item) => item.productoId).join(',');
+  useEffect(() => {
+    if (!idsCarrito) {
+      return;
+    }
+    obtenerTiendasDeRetiro(idsCarrito.split(','))
+      .then(setTiendas)
+      .catch(() => setTiendas([]));
+  }, [idsCarrito]);
+  const envio = items.length > 0 ? calcularEnvio('domicilio', tiendas) : 0;
+  const total = subtotal + envio;
+
   const canvasWidth = Math.min(width, CANVAS_WIDTH);
   const scale = canvasWidth / CANVAS_WIDTH;
   const styles = useMemo(
@@ -44,14 +60,14 @@ export default function CarritoScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="dark" />
+      <StatusBar style={EstiloBarraEstado} />
 
       <View style={styles.header}>
         <View style={styles.headerInner}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <Image source={PRODUCT_DETAIL_ICONS.back} style={styles.backIcon} />
           </Pressable>
-          <Image source={BRANDING_LOGO} style={styles.logo} />
+          <Image source={BRANDING_LOGO} tintColor={Colors.textStrong} style={styles.logo} />
           <View style={styles.backButton} />
         </View>
       </View>
@@ -80,7 +96,7 @@ export default function CarritoScreen() {
               </Pressable>
               <View style={styles.bulletList}>
                 <Text style={styles.bulletText}>{'\u2022 '}Talle: {item.talle}</Text>
-                <Text style={styles.bulletText}>{'\u2022 '}Color: {item.color}</Text>
+                {item.color ? <Text style={styles.bulletText}>{'\u2022 '}Color: {item.color}</Text> : null}
                 <Text style={styles.bulletText}>{'\u2022 '}Categoría: {item.categoria}</Text>
               </View>
 
@@ -125,7 +141,13 @@ export default function CarritoScreen() {
 
       <View style={styles.checkoutBar}>
         <View style={styles.checkoutBarInner}>
-          <Text style={styles.totalText} testID="carrito-total">TOTAL: ${subtotal.toLocaleString('es-AR')}</Text>
+          <View>
+            <Text style={styles.detalleTotal}>Subtotal: ${subtotal.toLocaleString('es-AR')}</Text>
+            <Text style={styles.detalleTotal} testID="carrito-envio">
+              Envío a domicilio: {envio === 0 ? 'GRATIS' : `$${envio.toLocaleString('es-AR')} (estimado)`}
+            </Text>
+            <Text style={styles.totalText} testID="carrito-total">TOTAL: ${total.toLocaleString('es-AR')}</Text>
+          </View>
           <Pressable testID="carrito-completar" accessibilityRole="button" disabled={items.length === 0} onPress={() => router.push(ROUTES.checkout)} style={[styles.checkoutButton, items.length === 0 && styles.checkoutButtonDisabled]}>
             <Text style={styles.checkoutText}>COMPLETAR COMPRA</Text>
           </Pressable>
@@ -195,7 +217,7 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       alignSelf: 'center',
       paddingTop: s(20),
       paddingHorizontal: s(16),
-      paddingBottom: s(24) + s(78) + s(70) + bottomInset,
+      paddingBottom: s(24) + s(78) + s(92) + bottomInset,
       minHeight: s(540),
       flexGrow: 1,
     },
@@ -208,12 +230,12 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       rowGap: s(8),
     },
     emptyTitle: {
-      color: '#2D1F16',
+      color: Colors.textStrong,
       fontSize: s(22),
       fontWeight: '600',
     },
     emptyText: {
-      color: '#2D1F16',
+      color: Colors.textStrong,
       fontSize: s(14),
     },
     cartRow: {
@@ -239,7 +261,7 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       justifyContent: 'space-between',
     },
     productTitle: {
-      color: '#2D1F16',
+      color: Colors.textStrong,
       fontSize: s(17),
       lineHeight: s(20),
       fontWeight: '500',
@@ -249,7 +271,7 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       rowGap: s(1),
     },
     bulletText: {
-      color: '#2D1F16',
+      color: Colors.textStrong,
       fontSize: s(10),
       lineHeight: s(12),
       fontWeight: '400',
@@ -288,7 +310,7 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       justifyContent: 'center',
     },
     quantitySymbol: {
-      color: '#2D1F16',
+      color: Colors.textStrong,
       fontSize: s(17),
       lineHeight: s(17),
       fontWeight: '400',
@@ -304,7 +326,7 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       backgroundColor: Colors.background,
     },
     quantityValue: {
-      color: '#2D1F16',
+      color: Colors.textStrong,
       fontSize: s(17),
       lineHeight: s(17),
       fontWeight: '400',
@@ -329,7 +351,7 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       left: 0,
       right: 0,
       bottom: s(78) + bottomInset,
-      height: s(70),
+      height: s(92),
       backgroundColor: Colors.surface,
       borderTopLeftRadius: Radius.lg,
       borderTopRightRadius: Radius.lg,
@@ -344,6 +366,11 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: s(24),
+    },
+    detalleTotal: {
+      color: Colors.textMuted,
+      fontSize: s(12),
+      fontFamily: 'Montserrat_500Medium',
     },
     totalText: {
       color: Colors.secondary,

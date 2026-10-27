@@ -1,3 +1,5 @@
+import * as Linking from 'expo-linking';
+
 import { supabase } from './supabase';
 
 export type EstadoEmpresa = 'pendiente' | 'verificada' | 'suspendida';
@@ -367,12 +369,30 @@ export async function aceptarInvitacion(codigo: string): Promise<number> {
 }
 
 /** Texto para compartir una invitación por WhatsApp, correo, etc. */
+// Página https que abre la app (WhatsApp y otros chats sólo hacen tocables los enlaces http/https,
+// no newyou://). Es docs/invitacion/index.html publicada con GitHub Pages; se puede cambiar con
+// EXPO_PUBLIC_URL_INVITACION.
+export const URL_INVITACION =
+  process.env.EXPO_PUBLIC_URL_INVITACION || 'https://yuriangelperez.github.io/newyou-app/invitacion/';
+
+/** Enlace de la invitación: la página https recibe el código y el enlace propio de la app. */
+export function enlaceInvitacion(codigo: string) {
+  // En Expo Go es exp://.../--/invitacion; en la app instalada, newyou://invitacion.
+  const app = Linking.createURL('invitacion', { queryParams: { codigo } });
+  return `${URL_INVITACION}?codigo=${encodeURIComponent(codigo)}&app=${encodeURIComponent(app)}`;
+}
+
 export function mensajeInvitacion(empresa: string, invitacion: Pick<Invitacion, 'codigo' | 'rol'>) {
-  return (
-    `Te invitaron a sumarte a ${empresa} en NewYou como ${nombreRol(invitacion.rol)}.\n` +
-    `Abrí newyou://invitacion?codigo=${invitacion.codigo} o ingresá el código ${invitacion.codigo} ` +
-    'en Perfil > Tengo un código de invitación.'
-  );
+  return [
+    `Te invitaron a sumarte a ${empresa} en New You como ${nombreRol(invitacion.rol)}.`,
+    '',
+    'Tocá el enlace para abrir la invitación en la app:',
+    enlaceInvitacion(invitacion.codigo),
+    '',
+    'O ingresá este código en Perfil > Tengo un código de invitación:',
+    '',
+    invitacion.codigo,
+  ].join('\n');
 }
 
 // ===== Administración de la plataforma (migración 07) =====

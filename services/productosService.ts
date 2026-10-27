@@ -1,9 +1,36 @@
-import { Producto } from "../types";
+import { Producto, VendedorProducto } from "../types";
 import { CategoriaProducto } from "../constants/categoriasProductos";
 import { supabase } from "./supabase";
 import { cancelarRecordatorioPublicacion } from "./notificacionesService";
 
 const TABLA_PRODUCTOS = "productos";
+
+// Columnas que se leen siempre. `estado` y `borrador_vence` llegan con la migración 16.
+const COLUMNAS_PRODUCTO = `
+  productoid,
+  nombre,
+  descripcion,
+  precio,
+  descuento_porcentaje,
+  stock,
+  categoriaid,
+  imagen_url,
+  imagenes,
+  talles,
+  colores,
+  tipo_prenda,
+  temporada,
+  publico,
+  empresa_id,
+  sede_id,
+  creado_por,
+  estado,
+  borrador_vence,
+  categorias ( nombre )
+`;
+
+/** Días que dura un borrador (sin foto o guardado sin conexión) antes de borrarse. */
+export const DIAS_BORRADOR = 7;
 export const MAX_IMAGENES = 5;
 
 const CATEGORY_NAME_BY_ID: Record<number, string> = {
@@ -33,7 +60,6 @@ const CATEGORY_NAME_BY_ID: Record<number, string> = {
 const CATEGORY_ID_BY_NAME: Record<string, number> = {
   Camisas: 1,
   Jeans: 2,
-  Pantalones: 2,
   Camperas: 4,
   Buzos: 5,
   Vestidos: 6,
@@ -68,7 +94,9 @@ interface ProductoRow {
   tipo_prenda: CategoriaProducto["tipoPrenda"] | null;
   temporada: CategoriaProducto["temporada"] | null;
   publico: CategoriaProducto["publico"] | null;
-  categorias?: { nombre: string }[] | null;
+  categorias?: { nombre: string } | { nombre: string }[] | null;
+  estado?: "publicada" | "borrador" | null;
+  borrador_vence?: string | null;
   empresa_id?: number | null;
   sede_id?: number | null;
   creado_por?: string;
@@ -92,6 +120,7 @@ interface ProductoPersistData {
   direccion_retiro?: string;
   empresa_id?: number;
   sede_id?: number;
+  estado: "publicada" | "borrador";
 }
 
 export interface ProductoInput {
@@ -302,7 +331,7 @@ function mapRowToProducto(row: ProductoRow): Producto {
     imagenes,
     categoria:
       CATEGORY_NAME_BY_ID[row.categoriaid ?? 0] ||
-      row.categorias?.[0]?.nombre ||
+      (Array.isArray(row.categorias) ? row.categorias[0]?.nombre : row.categorias?.nombre) ||
       (row.tipo_prenda ? legacyCategoryName(row.tipo_prenda) : "Camisas"),
     categoriaId: row.categoriaid ?? undefined,
     categoriaProducto,
@@ -324,6 +353,8 @@ function mapRowToProducto(row: ProductoRow): Producto {
     empresaId: row.empresa_id ?? null,
     sedeId: row.sede_id ?? null,
     creadoPor: row.creado_por,
+    estado: row.estado ?? "publicada",
+    borradorVence: row.borrador_vence ?? null,
   };
 }
 
@@ -377,6 +408,8 @@ async function mapInputToPersistData(
     temporada: categoriaProducto.temporada,
     publico: categoriaProducto.publico,
     creado_por: authData.user.id,
+    // Sin foto no se publica: queda como borrador (se borra solo a los 7 días).
+    estado: imagen ? "publicada" : "borrador",
     ...(payload.empresa
       ? { empresa_id: payload.empresa.empresaId, sede_id: payload.empresa.sedeId }
       : payload.direccionRetiro?.trim()
@@ -393,28 +426,88 @@ export async function getProductos() {
 
   const { data, error } = await client
     .from(TABLA_PRODUCTOS)
-    .select(
-      `
-        productoid,
-        nombre,
-        descripcion,
-        precio,
-        descuento_porcentaje,
-        stock,
-        categoriaid,
-        imagen_url,
-        imagenes,
-        talles,
-        colores,
-        tipo_prenda,
-        temporada,
-        publico,
-        empresa_id,
-        sede_id,
-        creado_por
-        ,categorias ( nombre )
-      `,
-    )
+    .select(COLUMNAS_PRODUCTO)
+    .eq("estado", "publicada")
+    .order("productoid", {
+      ascending: false,
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return adjuntarVendedores((data ?? []).map((row) => mapRowToProducto(row as ProductoRow)));
+}
+
+/*
+ * Agrega a cada prenda quién la vende: la empresa (con su estado de verificación)
+ * o el particular. Sin la migración 15 las prendas quedan como estaban.
+ */
+export async function adjuntarVendedores(productos: Producto[]): Promise<Producto[]> {
+  const client = assertSupabaseConfigured();
+  const empresaIds = [...new Set(productos.map((item) => item.empresaId).filter((id): id is number => !!id))];
+  const usuarioIds = [
+    ...new Set(
+      productos.filter((item) => !item.empresaId && item.creadoPor).map((item) => item.creadoPor as string),
+    ),
+  ];
+
+  try {
+    const [empresas, particulares] = await Promise.all([
+      empresaIds.length ? client.rpc("empresas_publicas", { p_ids: empresaIds }) : { data: [], error: null },
+      usuarioIds.length ? client.rpc("vendedores_publicos", { p_ids: usuarioIds }) : { data: [], error: null },
+    ]);
+
+    if (empresas.error || particulares.error) {
+      return productos;
+    }
+
+    const porEmpresa = new Map<number, VendedorProducto>(
+      (empresas.data ?? []).map((row: { empresa_id: number; nombre_fantasia: string; slug: string; estado: string }) => [
+        row.empresa_id,
+        { tipo: "empresa", nombre: row.nombre_fantasia, slug: row.slug, verificada: row.estado === "verificada" },
+      ]),
+    );
+    const porUsuario = new Map<string, VendedorProducto>(
+      (particulares.data ?? []).map((row: { usuario_id: string; username: string }) => [
+        row.usuario_id,
+        { tipo: "particular", nombre: row.username, verificada: false },
+      ]),
+    );
+
+    return productos.map((item) => {
+      const vendedor = item.empresaId ? porEmpresa.get(item.empresaId) : porUsuario.get(item.creadoPor ?? "");
+      return vendedor ? { ...item, vendedor } : item;
+    });
+  } catch {
+    return productos;
+  }
+}
+
+/** Nombre público de un particular que vende (migración 15); null si no tiene publicaciones. */
+export async function getNombreVendedor(usuarioId: string): Promise<string | null> {
+  const client = assertSupabaseConfigured();
+  const { data, error } = await client.rpc("vendedores_publicos", { p_ids: [usuarioId] });
+
+  if (error) {
+    return null;
+  }
+
+  return (data as { username: string }[] | null)?.[0]?.username ?? null;
+}
+
+/*
+ * Publicaciones de un particular (su página pública), incluidas las agotadas.
+ */
+export async function getProductosDeVendedor(usuarioId: string) {
+  const client = assertSupabaseConfigured();
+
+  const { data, error } = await client
+    .from(TABLA_PRODUCTOS)
+    .select(COLUMNAS_PRODUCTO)
+    .eq("creado_por", usuarioId)
+    .is("empresa_id", null)
+    .eq("estado", "publicada")
     .order("productoid", {
       ascending: false,
     });
@@ -439,30 +532,11 @@ export async function getMisProductos() {
     throw new Error("Debes iniciar sesion para ver tus publicaciones.");
   }
 
+  await limpiarBorradoresVencidos();
+
   const { data, error } = await client
     .from(TABLA_PRODUCTOS)
-    .select(
-      `
-        productoid,
-        nombre,
-        descripcion,
-        precio,
-        descuento_porcentaje,
-        stock,
-        categoriaid,
-        imagen_url,
-        imagenes,
-        talles,
-        colores,
-        tipo_prenda,
-        temporada,
-        publico,
-        empresa_id,
-        sede_id,
-        creado_por,
-        categorias ( nombre )
-      `,
-    )
+    .select(COLUMNAS_PRODUCTO)
     .eq("creado_por", authData.user.id)
     .is("empresa_id", null)
     .order("productoid", {
@@ -477,38 +551,38 @@ export async function getMisProductos() {
 }
 
 /*
- * Publicaciones de una empresa (página de la tienda).
+ * Borra los borradores vencidos (más de 7 días). La base también lo hace todos los días
+ * con pg_cron; esto cubre el caso en que pg_cron no esté activado.
  */
-export async function getProductosDeEmpresa(empresaId: number) {
+async function limpiarBorradoresVencidos() {
+  try {
+    await supabase.rpc("limpiar_borradores_vencidos");
+  } catch {
+    // Sin la migración 16 no existe: no pasa nada.
+  }
+}
+
+/*
+ * Publicaciones de una empresa (página de la tienda, o "Mis publicaciones" con los borradores).
+ */
+export async function getProductosDeEmpresa(empresaId: number, incluirBorradores = false) {
   const client = assertSupabaseConfigured();
 
-  const { data, error } = await client
+  if (incluirBorradores) {
+    await limpiarBorradoresVencidos();
+  }
+
+  let consulta = client
     .from(TABLA_PRODUCTOS)
-    .select(
-      `
-        productoid,
-        nombre,
-        descripcion,
-        precio,
-        stock,
-        categoriaid,
-        imagen_url,
-        imagenes,
-        talles,
-        colores,
-        tipo_prenda,
-        temporada,
-        publico,
-        empresa_id,
-        sede_id,
-        creado_por,
-        categorias ( nombre )
-      `,
-    )
-    .eq("empresa_id", empresaId)
-    .order("productoid", {
-      ascending: false,
-    });
+    .select(COLUMNAS_PRODUCTO)
+    .eq("empresa_id", empresaId);
+  if (!incluirBorradores) {
+    consulta = consulta.eq("estado", "publicada");
+  }
+
+  const { data, error } = await consulta.order("productoid", {
+    ascending: false,
+  });
 
   if (error) {
     throw error;
@@ -531,28 +605,7 @@ export async function getProductoById(id: string) {
 
   const { data, error } = await client
     .from(TABLA_PRODUCTOS)
-    .select(
-      `
-        productoid,
-        nombre,
-        descripcion,
-        precio,
-        descuento_porcentaje,
-        stock,
-        categoriaid,
-        imagen_url,
-        imagenes,
-        talles,
-        colores,
-        tipo_prenda,
-        temporada,
-        publico,
-        empresa_id,
-        sede_id,
-        creado_por
-        ,categorias ( nombre )
-      `,
-    )
+    .select(COLUMNAS_PRODUCTO)
     .eq("productoid", productoid)
     .maybeSingle();
 
@@ -564,7 +617,8 @@ export async function getProductoById(id: string) {
     return null;
   }
 
-  return mapRowToProducto(data as ProductoRow);
+  const [producto] = await adjuntarVendedores([mapRowToProducto(data as ProductoRow)]);
+  return producto;
 }
 
 /*
@@ -578,28 +632,7 @@ export async function createProducto(payload: ProductoInput) {
   const { data, error } = await client
     .from(TABLA_PRODUCTOS)
     .insert(dataToInsert)
-    .select(
-      `
-        productoid,
-        nombre,
-        descripcion,
-        precio,
-        descuento_porcentaje,
-        stock,
-        categoriaid,
-        imagen_url,
-        imagenes,
-        talles,
-        colores,
-        tipo_prenda,
-        temporada,
-        publico,
-        empresa_id,
-        sede_id,
-        creado_por
-        ,categorias ( nombre )
-      `,
-    )
+    .select(COLUMNAS_PRODUCTO)
     .single();
 
   if (error) {
@@ -639,28 +672,7 @@ export async function updateProducto(id: string, payload: ProductoInput) {
     .from(TABLA_PRODUCTOS)
     .update(dataToUpdate)
     .eq("productoid", productoid)
-    .select(
-      `
-        productoid,
-        nombre,
-        descripcion,
-        precio,
-        descuento_porcentaje,
-        stock,
-        categoriaid,
-        imagen_url,
-        imagenes,
-        talles,
-        colores,
-        tipo_prenda,
-        temporada,
-        publico,
-        empresa_id,
-        sede_id,
-        creado_por
-        ,categorias ( nombre )
-      `,
-    )
+    .select(COLUMNAS_PRODUCTO)
     .single();
 
   if (error) {

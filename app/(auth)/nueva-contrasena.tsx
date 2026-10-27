@@ -9,6 +9,7 @@ import { EncabezadoPantalla } from "../../components/ui/EncabezadoPantalla";
 import { estilosFormulario as styles } from "../../constants/estilosFormulario";
 import { ROUTES } from "../../constants/routes";
 import { Colors } from "../../constants/theme";
+import { contrasenaSchema } from "../../schemas/authSchemas";
 import { abrirSesionDesdeEnlace, actualizarContrasena } from "../../services/auth";
 
 /** Se abre desde el enlace del correo de recuperación (newyou://nueva-contrasena#access_token=...). */
@@ -37,8 +38,10 @@ export default function NuevaContrasenaScreen() {
   }, [url]);
 
   const onGuardar = async () => {
-    if (contrasena.length < 6) {
-      Toast.show({ type: "error", text1: "La contraseña debe tener al menos 6 caracteres" });
+    // Mismas reglas que en el registro (largo, mayúscula, minúscula y número).
+    const validacion = contrasenaSchema.safeParse(contrasena);
+    if (!validacion.success) {
+      Toast.show({ type: "error", text1: validacion.error.issues[0]?.message ?? "Contraseña inválida" });
       return;
     }
     if (contrasena !== repetir) {

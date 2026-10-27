@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import { Colors, Radius } from "../constants/theme";
+import { NombreVendedor } from "./ui/NombreVendedor";
 import { useCarritoStore } from "../stores/useCarritoStore";
 import { calcularPrecioFinal, Producto } from "../types";
 
@@ -105,6 +106,14 @@ function TarjetaProductoBase({
         <Text numberOfLines={2} style={styles.title}>
           {producto.nombre}
         </Text>
+
+        {producto.vendedor ? (
+          <NombreVendedor
+            nombre={producto.vendedor.nombre}
+            verificada={producto.vendedor.verificada}
+            tamano={10 * scale}
+          />
+        ) : null}
 
         <View style={styles.footer}>
           <View>
@@ -228,7 +237,7 @@ function createStyles(scale: number) {
     title: {
       marginTop: s(8),
       minHeight: s(34),
-      color: "#2D1F16",
+      color: Colors.textStrong,
       fontSize: s(12),
       lineHeight: s(16),
       fontWeight: "500",

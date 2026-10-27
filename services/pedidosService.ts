@@ -1,4 +1,5 @@
 import { EntregaCompra } from './comprasService';
+import { traducirError } from './erroresSupabase';
 import { supabase } from './supabase';
 
 export type EstadoPedido =
@@ -209,6 +210,42 @@ export async function obtenerMetricas(empresaId: number | null, dias: number): P
     throw new Error(error.message);
   }
 
+  return mapearMetricas(data);
+}
+
+const MIGRACION_RANGO_FALTANTE = /metricas_ventas_rango|PGRST202|could not find the function/i;
+
+/**
+ * Métricas entre dos fechas ("AAAA-MM-DD", inclusive), para Hoy, Esta semana, Este mes o un rango
+ * personalizado (migración 17). Si la migración todavía no se corrió, los rangos que terminan hoy
+ * usan la función anterior por cantidad de días.
+ */
+export async function obtenerMetricasRango(
+  empresaId: number | null,
+  rango: { desde: string; hasta: string },
+  hoy: string,
+): Promise<MetricasVentas> {
+  const { data, error } = await supabase.rpc('metricas_ventas_rango', {
+    p_empresa: empresaId,
+    p_desde: rango.desde,
+    p_hasta: rango.hasta,
+  });
+
+  if (error) {
+    if (MIGRACION_RANGO_FALTANTE.test(`${error.code ?? ''} ${error.message}`)) {
+      if (rango.hasta !== hoy) {
+        throw new Error('Para ver un rango que no termina hoy hay que correr la migración 17-metricas-rango.sql.');
+      }
+      const dias = Math.round((Date.parse(`${hoy}T00:00:00Z`) - Date.parse(`${rango.desde}T00:00:00Z`)) / 86_400_000) + 1;
+      return obtenerMetricas(empresaId, dias);
+    }
+    throw new Error(traducirError(error));
+  }
+
+  return mapearMetricas(data);
+}
+
+function mapearMetricas(data: unknown): MetricasVentas {
   const m = data as Record<string, unknown> & {
     por_dia: { dia: string; ingresos: number | string; pedidos: number | string }[] | null;
     top_productos: { nombre: string; unidades: number | string; ingresos: number | string }[] | null;

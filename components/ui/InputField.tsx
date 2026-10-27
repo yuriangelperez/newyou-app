@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Controller } from 'react-hook-form';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 
@@ -9,6 +10,8 @@ interface InputFieldProps {
   label: string;
   placeholder?: string;
   textInputProps?: TextInputProps;
+  /** Algo al lado del título (p. ej. el ícono de información del precio). */
+  labelExtra?: ReactNode;
 }
 
 export function InputField({
@@ -17,6 +20,7 @@ export function InputField({
   label,
   placeholder,
   textInputProps,
+  labelExtra,
 }: InputFieldProps) {
   return (
     <Controller
@@ -24,7 +28,14 @@ export function InputField({
       name={name}
       render={({ field: { onBlur, onChange, value }, fieldState: { error } }) => (
         <View style={styles.wrapper}>
-          <Text style={styles.label}>{label}</Text>
+          {labelExtra ? (
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>{label}</Text>
+              {labelExtra}
+            </View>
+          ) : (
+            <Text style={styles.label}>{label}</Text>
+          )}
           <TextInput
             style={[styles.input, error && styles.inputError]}
             placeholder={placeholder}
@@ -45,6 +56,11 @@ const styles = StyleSheet.create({
   wrapper: {
     rowGap: 6,
     marginBottom: 14,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 6,
   },
   label: {
     color: Colors.primary,

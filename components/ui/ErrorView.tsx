@@ -5,12 +5,14 @@ import { Colors, Radius } from '../../constants/theme';
 interface ErrorViewProps {
   message: string;
   onRetry: () => void;
+  /** Título; por defecto "Hubo un problema" (p. ej. "Sin conexión a Internet"). */
+  title?: string;
 }
 
-export function ErrorView({ message, onRetry }: ErrorViewProps) {
+export function ErrorView({ message, onRetry, title = 'Hubo un problema' }: ErrorViewProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Hubo un problema</Text>
+      <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
       <Pressable onPress={onRetry} style={styles.button}>
         <Text style={styles.buttonText}>Reintentar</Text>
@@ -25,9 +27,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     padding: 18,
     borderRadius: Radius.lg,
-    backgroundColor: '#FFF3F3',
+    backgroundColor: Colors.dangerSoft,
     borderWidth: 1,
-    borderColor: '#F5B5B5',
+    borderColor: Colors.dangerBorder,
     alignItems: 'center',
     rowGap: 8,
   },
@@ -52,7 +54,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   buttonText: {
-    color: '#2D1F16',
+    color: Colors.textStrong,
     fontSize: 13,
     fontFamily: 'Montserrat_600SemiBold',
   },

@@ -8,10 +8,10 @@ tags: [auth, smoke]
     id: "login-boton"
 - assertVisible:
     id: "login-error"
-    text: "Ingresá tu correo"
+    text: "Ingresá tu correo o usuario"
 - tapOn:
     id: "login-correo"
-- inputText: "ana"
+- inputText: "ana@"
 - tapOn:
     id: "login-contrasena"
 - inputText: "x"

@@ -9,6 +9,7 @@ import { ROUTES } from "../constants/routes";
 import { estilosFormulario as styles } from "../constants/estilosFormulario";
 import { Colors } from "../constants/theme";
 import { aceptarInvitacion } from "../services/empresasService";
+import { traducirError } from "../services/erroresSupabase";
 import { useEmpresaStore } from "../stores/useEmpresaStore";
 import { useUsuarioStore } from "../stores/useUsuarioStore";
 
@@ -17,7 +18,7 @@ export default function InvitacionScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ codigo?: string }>();
   const email = useUsuarioStore((state) => state.usuario?.email);
-  const [codigo, setCodigo] = useState(typeof params.codigo === "string" ? params.codigo : "");
+  const [codigo, setCodigo] = useState(typeof params.codigo === "string" ? params.codigo.trim().toUpperCase() : "");
   const [aceptando, setAceptando] = useState(false);
 
   const onAceptar = async () => {
@@ -31,14 +32,15 @@ export default function InvitacionScreen() {
       const empresaId = await aceptarInvitacion(codigo);
       const store = useEmpresaStore.getState();
       await store.cargar();
+      // El empleado queda actuando como la empresa (modo empresa predeterminado).
       await store.setEmpresaActiva(empresaId);
-      Toast.show({ type: "success", text1: "Ya sos parte del equipo" });
+      Toast.show({ type: "success", text1: "Ya sos parte del equipo", text2: "Estás usando la app como la empresa." });
       router.replace(ROUTES.companyPanel);
     } catch (err) {
       Toast.show({
         type: "error",
         text1: "No se pudo aceptar",
-        text2: err instanceof Error ? err.message : "Intenta nuevamente.",
+        text2: traducirError(err),
       });
     } finally {
       setAceptando(false);
@@ -56,7 +58,7 @@ export default function InvitacionScreen() {
           <Text style={styles.label}>Código de invitación</Text>
           <TextInput
             value={codigo}
-            onChangeText={setCodigo}
+            onChangeText={(texto) => setCodigo(texto.replace(/\s/g, "").toUpperCase())}
             autoCapitalize="characters"
             style={styles.input}
             placeholder="AB12CD34"

@@ -17,14 +17,12 @@ import { BotonFavorito } from "../../components/BotonFavorito";
 import { BottomTabBar } from "../../components/BottomTabBar";
 import { ErrorView } from "../../components/ui/ErrorView";
 import { ResumenReputacion } from "../../components/ui/Estrellas";
+import { NombreVendedor } from "../../components/ui/NombreVendedor";
 import { SkeletonList } from "../../components/ui/SkeletonList";
 import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from "../../constants/assets";
-import {
-  PRODUCT_COLOR_OPTIONS,
-  resolveProductColorHex,
-} from "../../constants/productColors";
+import { resolveProductColorHex } from "../../constants/productColors";
 import { ROUTES } from "../../constants/routes";
-import { Colors } from "../../constants/theme";
+import { Colors, EstiloBarraEstado } from "../../constants/theme";
 import { useProductoById } from "../../hooks/useProductoById";
 import { deleteProducto } from "../../services/productosService";
 import { confirmar } from "../../services/confirmar";
@@ -40,8 +38,6 @@ import { useFavoritosStore } from "../../stores/useFavoritosStore";
 import { calcularPrecioFinal } from "../../types";
 
 const CANVAS_WIDTH = 412;
-
-const DEFAULT_SIZES = ["XS", "S", "M", "L", "XL"];
 
 export default function ProductDetailScreen() {
   const router = useRouter();
@@ -64,10 +60,9 @@ export default function ProductDetailScreen() {
     [canvasWidth, insets.bottom, insets.top, scale, esEscritorio],
   );
 
-  const talles = producto?.talle?.length ? producto.talle : DEFAULT_SIZES;
-  const colores = producto?.colores?.length
-    ? producto.colores
-    : [...PRODUCT_COLOR_OPTIONS];
+  // Sólo lo que cargó el vendedor: no se inventan talles ni colores.
+  const talles = useMemo(() => producto?.talle ?? [], [producto]);
+  const colores = useMemo(() => producto?.colores ?? [], [producto]);
   const galleryImages = useMemo(() => {
     const imagenes = producto?.imagenes?.filter(Boolean) ?? [];
     if (imagenes.length > 0) {
@@ -80,7 +75,9 @@ export default function ProductDetailScreen() {
       producto
         ? [
             producto.descripcion,
-            `Talles disponibles: ${talles.join(", ")}.`,
+            talles.length > 0
+              ? `Talles disponibles: ${talles.join(", ")}.`
+              : "Talle no indicado por el vendedor.",
             producto.disponible
               ? "Disponible para compra inmediata."
               : "Producto agotado por el momento.",
@@ -90,8 +87,8 @@ export default function ProductDetailScreen() {
   );
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [selectedSize, setSelectedSize] = useState(talles[0]);
-  const [selectedColor, setSelectedColor] = useState(colores[0]);
+  const [selectedSize, setSelectedSize] = useState(talles[0] ?? "");
+  const [selectedColor, setSelectedColor] = useState(colores[0] ?? "");
   const [quantity, setQuantity] = useState(1);
   const isFavorite = useFavoritosStore((state) =>
     producto ? state.favoritos.some((item) => item.id === producto.id) : false,
@@ -121,8 +118,8 @@ export default function ProductDetailScreen() {
   if (producto && producto.id !== productoMostradoId) {
     setProductoMostradoId(producto.id);
     setSelectedImageIndex(0);
-    setSelectedSize(talles[0]);
-    setSelectedColor(colores[0]);
+    setSelectedSize(talles[0] ?? "");
+    setSelectedColor(colores[0] ?? "");
     setQuantity(1);
   }
 
@@ -134,6 +131,19 @@ export default function ProductDetailScreen() {
     },
     [],
   );
+
+  // Empresa: su tienda. Particular: su página con todas sus publicaciones.
+  const verVendedor = () => {
+    if (!producto?.vendedor) {
+      return;
+    }
+
+    if (producto.vendedor.tipo === "empresa" && producto.vendedor.slug) {
+      router.push({ pathname: ROUTES.store, params: { slug: producto.vendedor.slug } });
+    } else if (producto.creadoPor) {
+      router.push({ pathname: ROUTES.seller, params: { id: producto.creadoPor } });
+    }
+  };
 
   const toggleFavorite = () => {
     if (producto) {
@@ -233,7 +243,7 @@ export default function ProductDetailScreen() {
   if (cargando) {
     return (
       <View style={styles.screen}>
-        <StatusBar style="dark" />
+        <StatusBar style={EstiloBarraEstado} />
         <SkeletonList />
       </View>
     );
@@ -242,7 +252,7 @@ export default function ProductDetailScreen() {
   if (error) {
     return (
       <View style={styles.screen}>
-        <StatusBar style="dark" />
+        <StatusBar style={EstiloBarraEstado} />
         <ErrorView message={error} onRetry={() => void refrescar()} />
       </View>
     );
@@ -251,7 +261,7 @@ export default function ProductDetailScreen() {
   if (!producto) {
     return (
       <View style={styles.screen}>
-        <StatusBar style="dark" />
+        <StatusBar style={EstiloBarraEstado} />
         <ErrorView
           message="No encontramos este producto."
           onRetry={() => router.replace(ROUTES.home)}
@@ -262,7 +272,7 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="dark" />
+      <StatusBar style={EstiloBarraEstado} />
 
       <View style={styles.canvas}>
         <View style={styles.header}>
@@ -280,6 +290,7 @@ export default function ProductDetailScreen() {
           <Image
             accessibilityLabel="New You"
             source={BRANDING_LOGO}
+            tintColor={Colors.textStrong}
             style={styles.logo}
           />
 
@@ -352,7 +363,23 @@ export default function ProductDetailScreen() {
               ${calcularPrecioFinal(producto).toLocaleString("es-AR")}
             </Text>
             {reputacion ? <ResumenReputacion promedio={reputacion.promedio} cantidad={reputacion.cantidad} /> : null}
+            {producto.vendedor ? (
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel={`Ver publicaciones de ${producto.vendedor.nombre}`}
+                onPress={verVendedor}
+                style={styles.sellerRow}
+              >
+                <NombreVendedor
+                  prefijo="Vendido por "
+                  nombre={producto.vendedor.nombre}
+                  verificada={producto.vendedor.verificada}
+                  tamano={13 * scale}
+                />
+              </Pressable>
+            ) : null}
 
+            {talles.length > 0 ? (
             <View style={styles.sizeSelector}>
               <View style={styles.sizeLabelsRow}>
                 {talles.map((size) => (
@@ -381,6 +408,9 @@ export default function ProductDetailScreen() {
               </View>
             </View>
 
+            ) : null}
+
+            {colores.length > 0 ? (
             <View style={styles.colorSelector}>
               <Text style={styles.colorLabel}>Color:</Text>
               <View style={styles.colorChipsRow}>
@@ -415,6 +445,7 @@ export default function ProductDetailScreen() {
                 Seleccionado: {selectedColor}
               </Text>
             </View>
+            ) : null}
 
             <View style={styles.quantityRow}>
               <Pressable
@@ -599,7 +630,7 @@ function createStyles(
       borderRadius: s(10),
       borderWidth: s(5),
       borderColor: Colors.secondary,
-      backgroundColor: "#E8D7CB",
+      backgroundColor: Colors.accentSoft,
       overflow: "hidden",
     },
     carouselImage: {
@@ -630,7 +661,7 @@ function createStyles(
           marginRight: s(38),
         },
     productName: {
-      color: "#2D1F16",
+      color: Colors.textStrong,
       fontSize: s(30),
       lineHeight: s(36),
       fontWeight: "600",
@@ -647,6 +678,10 @@ function createStyles(
       fontSize: s(16),
       lineHeight: s(20),
       textDecorationLine: "line-through",
+    },
+    sellerRow: {
+      marginTop: s(6),
+      alignSelf: "flex-start",
     },
     price: {
       marginTop: s(8),
@@ -667,7 +702,7 @@ function createStyles(
     },
     sizeLabel: {
       width: s(34),
-      color: "#000000",
+      color: Colors.ink,
       textAlign: "center",
       fontSize: s(15),
       lineHeight: s(19),
@@ -683,7 +718,7 @@ function createStyles(
       rowGap: s(6),
     },
     colorLabel: {
-      color: "#2D1F16",
+      color: Colors.textStrong,
       fontSize: s(14),
       lineHeight: s(16),
       fontWeight: "600",
@@ -722,7 +757,7 @@ function createStyles(
       width: s(34),
       height: s(34),
       borderRadius: s(10),
-      backgroundColor: "#E8D7CB",
+      backgroundColor: Colors.accentSoft,
       borderWidth: 1,
       borderColor: Colors.tertiary,
     },
@@ -745,7 +780,7 @@ function createStyles(
       backgroundColor: Colors.secondary,
     },
     quantityButtonText: {
-      color: "#2D1F16",
+      color: Colors.textStrong,
       fontSize: s(20),
       lineHeight: s(23),
       fontWeight: "400",
@@ -761,7 +796,7 @@ function createStyles(
       backgroundColor: Colors.background,
     },
     quantityValueText: {
-      color: "#2D1F16",
+      color: Colors.textStrong,
       fontSize: s(20),
       lineHeight: s(23),
       fontWeight: "400",
@@ -778,13 +813,13 @@ function createStyles(
     },
     bulletMarker: {
       marginTop: s(2),
-      color: "#2D1F16",
+      color: Colors.textStrong,
       fontSize: s(15),
       lineHeight: s(22),
     },
     descriptionText: {
       flex: 1,
-      color: "#2D1F16",
+      color: Colors.textStrong,
       fontSize: s(15),
       lineHeight: s(26),
       fontWeight: "500",
@@ -806,7 +841,7 @@ function createStyles(
       backgroundColor: "#F4B3B3",
     },
     adminButtonText: {
-      color: "#2D1F16",
+      color: Colors.textStrong,
       fontSize: s(13),
       fontFamily: "Montserrat_700Bold",
     },

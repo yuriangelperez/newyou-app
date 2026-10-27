@@ -166,6 +166,20 @@ export default function EquipoScreen() {
     }
   };
 
+  // Sedes de un vendedor o de envíos, sin cambiarle el rol. Sin ninguna marcada = todas.
+  const onAlternarSedeMiembro = async (miembro: MiembroEquipo, sedeId: number) => {
+    if (!empresaId) return;
+    const actuales = miembro.todasLasSedes ? [] : miembro.sedesPermitidas;
+    const nuevas = actuales.includes(sedeId) ? actuales.filter((id) => id !== sedeId) : [...actuales, sedeId];
+
+    try {
+      await cambiarRolMiembro(empresaId, miembro.usuarioId, miembro.rol, nuevas.length > 0 ? nuevas : "todas");
+      await recargar();
+    } catch (err) {
+      avisarError("No se pudieron cambiar las sedes", err);
+    }
+  };
+
   const onQuitar = async (miembro: MiembroEquipo) => {
     if (!empresaId) return;
     if (!(await confirmar("Quitar del equipo", `¿Quitar a ${miembro.username}?`, "Quitar"))) return;
@@ -224,12 +238,23 @@ export default function EquipoScreen() {
                   onPress={(nuevoRol) => void onElegirRol(miembro, nuevoRol)}
                 />
               ) : null}
+              {puedeTocar && cambiandoRol === miembro.usuarioId && rolConAlcance(miembro.rol) && sedes.length > 1 ? (
+                <>
+                  <Text style={styles.label}>Sedes</Text>
+                  <Chips
+                    opciones={sedes.map((sede) => ({ valor: sede.id, texto: sede.nombre }))}
+                    activas={miembro.todasLasSedes ? [] : miembro.sedesPermitidas}
+                    onPress={(sedeId) => void onAlternarSedeMiembro(miembro, sedeId)}
+                  />
+                  <Text style={styles.muted}>Sin selección = todas las sedes</Text>
+                </>
+              ) : null}
               {puedeTocar ? (
                 <View style={styles.actions}>
                   <Pressable
                     onPress={() => setCambiandoRol(cambiandoRol === miembro.usuarioId ? null : miembro.usuarioId)}
                   >
-                    <Text style={styles.link}>{cambiandoRol === miembro.usuarioId ? "Cerrar" : "Cambiar rol"}</Text>
+                    <Text style={styles.link}>{cambiandoRol === miembro.usuarioId ? "Cerrar" : "Editar rol y sedes"}</Text>
                   </Pressable>
                   <Pressable onPress={() => void onQuitar(miembro)}>
                     <Text style={[styles.link, styles.danger]}>Quitar</Text>

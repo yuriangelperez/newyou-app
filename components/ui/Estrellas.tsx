@@ -30,10 +30,15 @@ export function Estrellas({ valor, onChange, tamano = 18 }: EstrellasProps) {
   );
 }
 
-/** "★ 4.5 (12 opiniones)" o "Sin opiniones todavía". */
+/** "★ 4.5 (12 opiniones)"; sin opiniones arranca con 5 estrellas: "★ 5.0 (nuevo)". */
 export function ResumenReputacion({ promedio, cantidad }: { promedio: number | null; cantidad: number }) {
   if (!cantidad || promedio === null) {
-    return <Text style={styles.texto}>Sin opiniones todavía</Text>;
+    return (
+      <View style={styles.row}>
+        <Estrellas valor={5} tamano={16} />
+        <Text style={styles.texto}> 5.0 (nuevo)</Text>
+      </View>
+    );
   }
 
   return (

@@ -62,8 +62,8 @@ export default function TiendaScreen() {
     if (!producto.disponible) return;
     agregarProducto({
       producto,
-      talle: producto.talle?.[0] ?? "M",
-      color: producto.colores?.[0] ?? "Marron",
+      talle: producto.talle?.[0] ?? "Único",
+      color: producto.colores?.[0] ?? "",
       cantidad: 1,
     });
   };
