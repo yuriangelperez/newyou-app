@@ -1,11 +1,10 @@
 import { AuthRetryableFetchError, type User } from '@supabase/supabase-js';
 
+import { selectPuedeVender, UsuarioSesion, useUsuarioStore } from '../stores/useUsuarioStore';
+
 jest.mock('../services/supabase', () => ({ supabase: { auth: {} } }));
 jest.mock('../services/empresasService', () => ({ esAdminPlataforma: async () => false }));
 
-import { selectPuedeVender, UsuarioSesion, useUsuarioStore } from '../stores/useUsuarioStore';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockSupabase: { auth: any } = jest.requireMock('../services/supabase').supabase;
 
 const usuario = (role: UsuarioSesion['role']): UsuarioSesion => ({
