@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Switch,
@@ -17,10 +18,14 @@ import { SelectorDireccion } from "../../components/ui/SelectorDireccion";
 import { InputField } from "../../components/ui/InputField";
 import { CategoriaProductoSelector } from "../../components/ui/CategoriaProductoSelector";
 import { ColoresSelector } from "../../components/ui/ColoresSelector";
+import { BotonInfoComision, InfoComision } from "../../components/ui/InfoComision";
+import { TallesSelector } from "../../components/ui/TallesSelector";
 import { CATEGORIA_PRODUCTO_POR_DEFECTO } from "../../constants/categoriasProductos";
 import { ROUTES } from "../../constants/routes";
 import { Colors, Radius, Spacing } from "../../constants/theme";
 import {
+  DESCRIPCION_MAX,
+  NOMBRE_MAX,
   ProductoFormOutput,
   ProductoFormValues,
   productoSchema,
@@ -29,6 +34,7 @@ import { createProducto, ProductoInput } from "../../services/productosService";
 import { useDirecciones } from "../../hooks/useDirecciones";
 import { useNotifications } from "../../hooks/useNotifications";
 import { guardarSiEsNueva } from "../../services/direccionesService";
+import { traducirError } from "../../services/erroresSupabase";
 import { encolarBorrador, hayConexion } from "../../services/offlineService";
 import { SelectorImagenes } from "../../components/ui/SelectorImagenes";
 import { StockPorSede } from "../../components/ui/StockPorSede";
@@ -36,9 +42,12 @@ import { usePuedeVender } from "../../hooks/usePuedeVender";
 import { useSedesEmpresa } from "../../hooks/useSedesEmpresa";
 import { selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
 
+// Teclado con punto y coma para "35.000" o "1.500,50".
+const TECLADO_PRECIO = Platform.OS === "ios" ? "numbers-and-punctuation" : "numeric";
+
 const DEFAULT_VALUES: ProductoFormValues = {
   nombre: "",
-  precio: "0",
+  precio: "",
   descuentoActivo: false,
   descuentoPorcentaje: "0",
   stock: "1",
@@ -62,6 +71,7 @@ export default function NuevoProductoScreen() {
   const { editables: sedesEditables } = useSedesEmpresa(empresaActiva);
   const [stockSedes, setStockSedes] = useState<Record<number, string>>({});
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [infoComision, setInfoComision] = useState(false);
 
   const {
     control,
@@ -84,6 +94,8 @@ export default function NuevoProductoScreen() {
 
   const disponible = watch("disponible");
   const descuentoActivo = watch("descuentoActivo");
+  const precioEscrito = watch("precio");
+  const descuentoEscrito = watch("descuentoPorcentaje");
   const imagenes = watch("imagenes") ?? [];
   const setImagenes = (lista: string[]) => {
     setValue("imagenes", lista, { shouldValidate: true, shouldDirty: true });
@@ -169,7 +181,7 @@ export default function NuevoProductoScreen() {
         Toast.show({
           type: "offline",
           text1: "Sin conexión. Guardado en borradores locales.",
-          text2: "La publicación se subirá al recuperar la red.",
+          text2: "La publicación se subirá al recuperar la red (se guarda 7 días).",
         });
         router.replace(ROUTES.home);
         return;
@@ -185,6 +197,17 @@ export default function NuevoProductoScreen() {
       // Recordatorio local al día siguiente (se cancela si la prenda se borra).
       void recordarPublicacion({ id: nuevoProducto.id, nombre: nuevoProducto.nombre });
 
+      // Sin foto la prenda no se publica: queda en Mis publicaciones > Borradores.
+      if (nuevoProducto.estado === "borrador") {
+        Toast.show({
+          type: "offline",
+          text1: "Guardado como borrador",
+          text2: "Agregá al menos una foto para publicarla. El borrador se guarda 7 días.",
+        });
+        router.replace({ pathname: ROUTES.myProducts, params: { vista: "borradores" } });
+        return;
+      }
+
       Toast.show({
         type: "success",
         text1: "Producto creado",
@@ -196,11 +219,7 @@ export default function NuevoProductoScreen() {
         params: { id: nuevoProducto.id },
       });
     } catch (error) {
-      const message = error instanceof Error
-        ? error.message
-        : typeof error === "object" && error !== null && "message" in error
-          ? String(error.message)
-          : String(error || "No se pudo crear el producto.");
+      const message = traducirError(error);
       Toast.show({ type: "error", text1: "Error al crear", text2: message });
     }
   });
@@ -224,14 +243,23 @@ export default function NuevoProductoScreen() {
           name="nombre"
           label="Nombre"
           placeholder="Campera denim oversize"
+          textInputProps={{ maxLength: NOMBRE_MAX }}
         />
 
         <InputField
           control={control}
           name="precio"
           label="Precio"
-          placeholder="35000"
-          textInputProps={{ keyboardType: "numeric" }}
+          placeholder="35.000 o 1.500,50"
+          textInputProps={{ keyboardType: TECLADO_PRECIO }}
+          labelExtra={
+            <BotonInfoComision abierto={infoComision} onPress={() => setInfoComision((valor) => !valor)} />
+          }
+        />
+        <InfoComision
+          precio={precioEscrito}
+          descuentoPorcentaje={descuentoActivo ? descuentoEscrito : 0}
+          mostrarInfo={infoComision}
         />
 
         <View style={styles.switchRow}>
@@ -241,7 +269,7 @@ export default function NuevoProductoScreen() {
             onValueChange={(value) =>
               setValue("descuentoActivo", value, { shouldValidate: true, shouldDirty: true })
             }
-            trackColor={{ true: Colors.secondary, false: "#CFCFCF" }}
+            trackColor={{ true: Colors.secondary, false: Colors.switchOff }}
           />
         </View>
 
@@ -282,13 +310,7 @@ export default function NuevoProductoScreen() {
 
         <CategoriaProductoSelector control={control} />
 
-        <InputField
-          control={control}
-          name="talle"
-          label="Talles"
-          placeholder="Separar en comas: S, M, L"
-          textInputProps={{ autoCapitalize: "characters" }}
-        />
+        <TallesSelector control={control} />
 
         <ColoresSelector control={control} />
 
@@ -306,9 +328,9 @@ export default function NuevoProductoScreen() {
         <InputField
           control={control}
           name="descripcion"
-          label="Descripcion"
+          label={`Descripción (hasta ${DESCRIPCION_MAX} caracteres)`}
           placeholder="Describe la prenda"
-          textInputProps={{ multiline: true, numberOfLines: 4 }}
+          textInputProps={{ multiline: true, numberOfLines: 2, maxLength: DESCRIPCION_MAX }}
         />
 
         <View style={styles.switchRow}>
@@ -318,7 +340,7 @@ export default function NuevoProductoScreen() {
             onValueChange={(value) =>
               setValue("disponible", value, { shouldValidate: true })
             }
-            trackColor={{ true: Colors.secondary, false: "#CFCFCF" }}
+            trackColor={{ true: Colors.secondary, false: Colors.switchOff }}
           />
         </View>
 
@@ -337,7 +359,7 @@ export default function NuevoProductoScreen() {
           ]}
         >
           <Text style={styles.submitText}>
-            {isSubmitting ? "Guardando..." : "Crear Publicacion"}
+            {isSubmitting ? "Guardando..." : imagenes.length > 0 ? "Crear Publicacion" : "Guardar borrador"}
           </Text>
         </Pressable>
       </KeyboardAwareScrollView>
@@ -441,7 +463,7 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   submitText: {
-    color: "#2D1F16",
+    color: Colors.textStrong,
     fontSize: 16,
     fontFamily: "Montserrat_700Bold",
   },

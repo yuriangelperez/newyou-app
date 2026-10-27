@@ -30,6 +30,7 @@ import {
 } from "../../services/comprasService";
 import { useDirecciones } from "../../hooks/useDirecciones";
 import { guardarSiEsNueva } from "../../services/direccionesService";
+import { traducirError } from "../../services/erroresSupabase";
 import { encolarBorrador, hayConexion } from "../../services/offlineService";
 import {
   selectTotalItems,
@@ -188,15 +189,20 @@ export default function CheckoutScreen() {
       if (!esCompraDirecta) {
         vaciarCarrito();
       }
-      Toast.show({
-        type: "success",
-        text1: "Compra confirmada",
-        text2: `Orden #${compra.numero_orden}`,
+      // Pantalla de confirmación con la orden y los datos de entrega (HU14).
+      router.replace({
+        pathname: ROUTES.purchaseConfirmed,
+        params: {
+          orden: String(compra.numero_orden),
+          entrega,
+          direccion: direccionEntrega,
+          metodoPago: medioPago,
+          envio: String(compra.envio ?? envio),
+          total: String(compra.total ?? total),
+        },
       });
-      router.replace(ROUTES.home);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "No se pudo confirmar la compra.";
+      const message = traducirError(error);
       Toast.show({ type: "error", text1: "Error en la compra", text2: message });
     } finally {
       setIsSubmitting(false);
@@ -409,7 +415,13 @@ function createStyles(scale: number, bottomInset: number) {
       alignItems: "center",
       justifyContent: "space-between",
     },
-    selected: Shadow.selected,
+    // Elegido: fondo más oscuro y borde marcado (la sombra sola no se ve en Android).
+    selected: {
+      ...Shadow.selected,
+      backgroundColor: Colors.tertiary,
+      borderColor: Colors.primary,
+      borderWidth: 2,
+    },
     entregaTextos: { flex: 1 },
     entregaDireccion: font(12, "Montserrat_500Medium"),
     entregaDetalle: { ...font(10, "Montserrat_500Medium"), color: Colors.secondary },

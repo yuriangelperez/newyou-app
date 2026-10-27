@@ -15,11 +15,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar } from "../../components/BottomTabBar";
 import { ROUTES } from "../../constants/routes";
-import { Colors, Radius, Shadow } from "../../constants/theme";
+import { Colors, EstiloBarraEstado, Radius, Shadow } from "../../constants/theme";
 import { supabase } from "../../services/supabase";
 import { desregistrarDispositivoPush } from "../../services/pushService";
 import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
-import { puede, selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
+import { puede, selectEmpresaActiva, selectEsPropietario, useEmpresaStore } from "../../stores/useEmpresaStore";
+import { InsigniaVerificada } from "../../components/ui/NombreVendedor";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { usePuedeVender } from "../../hooks/usePuedeVender";
 
@@ -42,6 +43,8 @@ export default function PerfilScreen() {
   const membresias = useEmpresaStore((state) => state.membresias);
   const empresaActiva = useEmpresaStore(selectEmpresaActiva);
   const setEmpresaActiva = useEmpresaStore((state) => state.setEmpresaActiva);
+  // El propietario vende sólo como empresa; un empleado elige entre "Yo" y la empresa.
+  const esPropietario = useEmpresaStore(selectEsPropietario);
 
   const cerrarSesion = async () => {
     // Antes de salir: este celular deja de recibir los push de esta cuenta.
@@ -89,7 +92,15 @@ export default function PerfilScreen() {
   };
 
   const inicial = (usuario?.nombre ?? "?").trim().charAt(0).toUpperCase() || "?";
-  const tipoCuenta = usuario?.role === "particular" ? "Vendedor particular" : "Comprador";
+  const tipoCuenta = esPropietario
+    ? "Cuenta de empresa"
+    : usuario?.role === "particular"
+      ? "Vendedor particular"
+      : "Comprador";
+  const opcionesContexto = [
+    ...(esPropietario ? [] : [{ id: null as number | null, nombre: "Yo" }]),
+    ...membresias.map((m) => ({ id: m.empresaId as number | null, nombre: m.nombre })),
+  ];
 
   // Fila de menú: ícono, texto y flecha. `destacada` para la acción principal de una sección.
   const fila = (
@@ -128,7 +139,7 @@ export default function PerfilScreen() {
     : puede(empresaActiva, "pedidos.ver")
       ? // Por ejemplo, el rol Envíos: no publica, pero gestiona los pedidos de la empresa.
         [fila("receipt-outline", `Ventas de ${empresaActiva?.nombre}`, () => router.push(ROUTES.mySales))]
-      : usuario?.role === "comprador"
+      : usuario?.role === "comprador" && !esPropietario
         ? [
             fila("storefront-outline", "Quiero vender prendas", () => void convertirseEnVendedor(), {
               destacada: true,
@@ -139,7 +150,7 @@ export default function PerfilScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="dark" />
+      <StatusBar style={EstiloBarraEstado} />
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -160,7 +171,17 @@ export default function PerfilScreen() {
             </Text>
             <View style={styles.badgeRow}>
               <Text style={styles.badge}>{tipoCuenta}</Text>
-              {empresaActiva ? <Text style={[styles.badge, styles.badgeAccent]}>{empresaActiva.nombre}</Text> : null}
+              {empresaActiva ? (
+                <Text style={[styles.badge, styles.badgeAccent]}>
+                  {empresaActiva.nombre}
+                  {empresaActiva.estado === "verificada" ? (
+                    <>
+                      {" "}
+                      <InsigniaVerificada tamano={12} />
+                    </>
+                  ) : null}
+                </Text>
+              ) : null}
               {usuario?.esAdmin ? <Text style={styles.badge}>Administrador</Text> : null}
             </View>
           </View>
@@ -168,6 +189,7 @@ export default function PerfilScreen() {
 
         <Text style={styles.sectionTitle}>Mi cuenta</Text>
         <View style={styles.card}>
+          {fila("create-outline", "Editar perfil", () => router.push(ROUTES.editProfile))}
           {fila("bag-handle-outline", "Mis compras", () => router.push(ROUTES.myPurchases))}
           {fila("heart-outline", "Favoritos", () => router.push(ROUTES.favorites))}
           {fila("location-outline", "Direcciones", () => router.push(ROUTES.addresses))}
@@ -185,11 +207,11 @@ export default function PerfilScreen() {
           <>
             <Text style={styles.sectionTitle}>Modo empresa</Text>
             <View style={styles.card}>
-              {membresias.length > 0 ? (
+              {opcionesContexto.length > 1 ? (
                 <View style={styles.contextBox}>
                   <Text style={styles.label}>Actuar como</Text>
                   <View style={styles.chips}>
-                    {[{ id: null, nombre: "Yo" }, ...membresias.map((m) => ({ id: m.empresaId, nombre: m.nombre }))].map(
+                    {opcionesContexto.map(
                       (opcion) => {
                         const activa = (empresaActiva?.empresaId ?? null) === opcion.id;
                         return (
@@ -205,9 +227,9 @@ export default function PerfilScreen() {
                     )}
                   </View>
                 </View>
-              ) : (
+              ) : membresias.length === 0 ? (
                 <Text style={styles.helper}>Vendé como tienda, con sedes y equipo.</Text>
-              )}
+              ) : null}
               {empresaActiva
                 ? fila("business-outline", `Panel de ${empresaActiva.nombre}`, () => router.push(ROUTES.companyPanel), {
                     destacada: true,

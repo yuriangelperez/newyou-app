@@ -18,7 +18,11 @@
         "monochromeImage": "./assets/app-icons/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.newyouapp"
+      "package": "com.anonymous.newyouapp",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/app-icons/favicon.png"
@@ -60,14 +64,12 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f1bf8b99-89e4-4dff-90aa-f1679c492a07"
+        "projectId": "eba98550-cf04-4b95-9b25-c52a2089bdf9"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "updates": {
-      "url": "https://u.expo.dev/f1bf8b99-89e4-4dff-90aa-f1679c492a07"
-    }
+    "owner": "yuri15"
   }
 }

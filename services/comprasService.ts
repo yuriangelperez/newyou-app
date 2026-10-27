@@ -18,6 +18,7 @@ export interface CompraConfirmada {
   compraid: number;
   numero_orden: number;
   total: number;
+  envio?: number;
 }
 
 export function generarOperationKey() {
@@ -75,7 +76,21 @@ export async function confirmarCompra({
     throw new Error(error.message);
   }
 
-  return data as CompraConfirmada;
+  const compra = data as CompraConfirmada;
+  // Correo con el detalle de la compra (Edge Function + Resend). Si falla, la compra ya está hecha.
+  enviarCorreoCompra(compra.compraid);
+  return compra;
+}
+
+/** Pide a la Edge Function `enviar-correo-compra` que mande el resumen al correo del comprador. */
+export function enviarCorreoCompra(compraid: number) {
+  try {
+    void supabase.functions
+      .invoke('enviar-correo-compra', { body: { compraid } })
+      .catch(() => undefined);
+  } catch {
+    // Sin la función desplegada no se manda el correo; no afecta la compra.
+  }
 }
 
 export interface TiendaRetiro {

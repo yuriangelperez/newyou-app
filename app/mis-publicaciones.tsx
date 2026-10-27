@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -10,7 +10,7 @@ import {
 import { FlashList } from "@shopify/flash-list";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 
 import { FilaDeslizable } from "../components/FilaDeslizable";
 import { Colors, Radius, Spacing } from "../constants/theme";
@@ -18,7 +18,13 @@ import { ROUTES } from "../constants/routes";
 import { selectEmpresaActiva, useEmpresaStore } from "../stores/useEmpresaStore";
 import { usePuedeVender } from "../hooks/usePuedeVender";
 import { useMisProductos } from "../hooks/useMisProductos";
-import { deleteProducto } from "../services/productosService";
+import { deleteProducto, DIAS_BORRADOR } from "../services/productosService";
+import { traducirError } from "../services/erroresSupabase";
+import {
+  Borrador,
+  descartarBorrador,
+  leerBorradoresDePublicaciones,
+} from "../services/offlineService";
 import { confirmar } from "../services/confirmar";
 import { calcularPrecioFinal, Producto } from "../types";
 
@@ -26,6 +32,19 @@ const backIcon = require("../assets/images/product-detail/back.png");
 
 // FlashList no admite `gap` en el contenedor: el espacio va como separador.
 const Separador = () => <View style={styles.separador} />;
+
+type BorradorLocal = Exclude<Borrador, { tipo: "compra" }>;
+type Fila =
+  | { clave: string; tipo: "producto"; producto: Producto }
+  | { clave: string; tipo: "local"; borrador: BorradorLocal };
+
+/** "Vence en 3 días" para un borrador guardado en la base. */
+function textoVencimiento(vence?: string | null) {
+  if (!vence) return `Se guarda ${DIAS_BORRADOR} días`;
+  const dias = Math.ceil((new Date(vence).getTime() - Date.now()) / 86_400_000);
+  if (dias <= 0) return "Vence hoy";
+  return dias === 1 ? "Vence mañana" : `Vence en ${dias} días`;
+}
 
 export default function MisPublicacionesScreen() {
   const router = useRouter();
@@ -40,12 +59,51 @@ export default function MisPublicacionesScreen() {
     error,
     refrescar,
   } = useMisProductos(empresaActiva?.empresaId ?? null);
+  const { vista: vistaInicial } = useLocalSearchParams<{ vista?: string }>();
+  const [vista, setVista] = useState<"publicadas" | "borradores">(
+    vistaInicial === "borradores" ? "borradores" : "publicadas",
+  );
+  // Altas y ediciones guardadas sin conexión (todavía no llegaron a la base).
+  const [borradoresLocales, setBorradoresLocales] = useState<BorradorLocal[]>([]);
+
+  const cargarBorradoresLocales = useCallback(async () => {
+    const lista = await leerBorradoresDePublicaciones();
+    const empresaId = empresaActiva?.empresaId ?? null;
+    setBorradoresLocales(lista.filter((item) => (item.payload.empresa?.empresaId ?? null) === empresaId));
+  }, [empresaActiva?.empresaId]);
 
   useFocusEffect(
     useCallback(() => {
       void refrescar();
-    }, [refrescar]),
+      void cargarBorradoresLocales();
+    }, [refrescar, cargarBorradoresLocales]),
   );
+
+  const publicadas = useMemo(() => productos.filter((item) => item.estado !== "borrador"), [productos]);
+  const filas: Fila[] = useMemo(
+    () =>
+      vista === "publicadas"
+        ? publicadas.map((producto) => ({ clave: producto.id, tipo: "producto", producto }))
+        : [
+            ...borradoresLocales.map((borrador) => ({ clave: borrador.id, tipo: "local" as const, borrador })),
+            ...productos
+              .filter((item) => item.estado === "borrador")
+              .map((producto) => ({ clave: producto.id, tipo: "producto" as const, producto })),
+          ],
+    [borradoresLocales, productos, publicadas, vista],
+  );
+  const cantidadBorradores = productos.length - publicadas.length + borradoresLocales.length;
+
+  const handleDescartarLocal = async (borrador: BorradorLocal) => {
+    const ok = await confirmar(
+      "Descartar borrador",
+      `¿Querés descartar "${borrador.payload.nombre}"? Todavía no se subió.`,
+      "Descartar",
+    );
+    if (!ok) return;
+    await descartarBorrador(borrador.id);
+    await cargarBorradoresLocales();
+  };
 
   const handleEliminar = async (producto: Producto) => {
     const ok = await confirmar(
@@ -63,7 +121,7 @@ export default function MisPublicacionesScreen() {
       Toast.show({
         type: "error",
         text1: "No se pudo eliminar la publicación",
-        text2: err instanceof Error ? err.message : undefined,
+        text2: traducirError(err),
       });
     }
   };
@@ -160,6 +218,33 @@ export default function MisPublicacionesScreen() {
     );
   }
 
+  const renderFila = ({ item }: { item: Fila }) =>
+    item.tipo === "local" ? renderBorradorLocal(item.borrador) : renderItem({ item: item.producto });
+
+  const renderBorradorLocal = (borrador: BorradorLocal) => (
+    <View style={styles.card} testID={`borrador-${borrador.id}`}>
+      <View style={styles.productImagePlaceholder}>
+        <Text style={styles.placeholderText}>Sin subir</Text>
+      </View>
+      <View style={styles.info}>
+        <Text style={styles.productName} numberOfLines={2}>
+          {borrador.payload.nombre}
+        </Text>
+        <Text style={styles.price}>${borrador.payload.precio.toLocaleString("es-AR")}</Text>
+        <Text style={styles.stock}>
+          {borrador.tipo === "edicion" ? "Edición pendiente" : "Alta pendiente"}: se sube al volver la conexión.
+        </Text>
+        {borrador.error ? <Text style={[styles.status, styles.statusUnavailable]}>{borrador.error}</Text> : null}
+        <Text style={styles.status}>{textoVencimiento(new Date(borrador.creadoEn + DIAS_BORRADOR * 86_400_000).toISOString())}</Text>
+      </View>
+      <View style={styles.actions}>
+        <Pressable style={styles.deleteButton} onPress={() => void handleDescartarLocal(borrador)}>
+          <Text style={styles.deleteButtonText}>Descartar</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+
   const renderItem = ({
     item,
   }: {
@@ -211,18 +296,24 @@ export default function MisPublicacionesScreen() {
           Stock: {item.stock}
         </Text>
 
-        <Text
-          style={[
-            styles.status,
-            item.disponible
-              ? styles.statusAvailable
-              : styles.statusUnavailable,
-          ]}
-        >
-          {item.disponible
-            ? "Disponible"
-            : "Agotado"}
-        </Text>
+        {item.estado === "borrador" ? (
+          <Text style={[styles.status, styles.statusUnavailable]}>
+            Borrador sin foto · {textoVencimiento(item.borradorVence)}
+          </Text>
+        ) : (
+          <Text
+            style={[
+              styles.status,
+              item.disponible
+                ? styles.statusAvailable
+                : styles.statusUnavailable,
+            ]}
+          >
+            {item.disponible
+              ? "Disponible"
+              : "Agotado"}
+          </Text>
+        )}
       </View>
 
       <View style={styles.actions}>
@@ -231,7 +322,7 @@ export default function MisPublicacionesScreen() {
           onPress={() => handleEditar(item)}
         >
           <Text style={styles.editButtonText}>
-            Editar
+            {item.estado === "borrador" ? "Completar" : "Editar"}
           </Text>
         </Pressable>
 
@@ -273,8 +364,8 @@ export default function MisPublicacionesScreen() {
             </Text>
 
             <Text style={styles.counter}>
-              {productos.length}{" "}
-              {productos.length === 1
+              {publicadas.length}{" "}
+              {publicadas.length === 1
                 ? "publicación"
                 : "publicaciones"}
             </Text>
@@ -292,7 +383,30 @@ export default function MisPublicacionesScreen() {
           </Pressable>
         </View>
 
-        {productos.length === 0 ? (
+        <View style={styles.tabs}>
+          {(["publicadas", "borradores"] as const).map((opcion) => (
+            <Pressable
+              key={opcion}
+              testID={`tab-${opcion}`}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: vista === opcion }}
+              onPress={() => setVista(opcion)}
+              style={[styles.tab, vista === opcion && styles.tabActiva]}>
+              <Text style={[styles.tabTexto, vista === opcion && styles.tabTextoActiva]}>
+                {opcion === "publicadas" ? `Publicadas (${publicadas.length})` : `Borradores (${cantidadBorradores})`}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {vista === "borradores" && filas.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>No tenés borradores</Text>
+            <Text style={styles.message}>
+              Acá aparecen las prendas sin foto y las que guardaste sin conexión. Se guardan {DIAS_BORRADOR} días.
+            </Text>
+          </View>
+        ) : filas.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>
               Todavía no tenés publicaciones
@@ -316,9 +430,9 @@ export default function MisPublicacionesScreen() {
           </View>
         ) : (
           <FlashList
-            data={productos}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
+            data={filas}
+            keyExtractor={(item) => item.clave}
+            renderItem={renderFila}
             contentContainerStyle={styles.list}
             ItemSeparatorComponent={Separador}
             showsVerticalScrollIndicator={false}
@@ -371,14 +485,14 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: "#2D1F16",
+    color: Colors.textStrong,
     fontSize: 23,
     fontWeight: "700",
   },
 
   counter: {
     marginTop: 3,
-    color: "#5C514B",
+    color: Colors.textEarth,
     fontSize: 13,
   },
 
@@ -388,8 +502,35 @@ const styles = StyleSheet.create({
   },
   separador: { height: Spacing.sm },
 
+  tabs: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  tab: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.secondary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabActiva: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  tabTexto: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontFamily: "Montserrat_600SemiBold",
+  },
+  tabTextoActiva: {
+    color: Colors.onPrimary,
+  },
+
   card: {
-    backgroundColor: "#E4E0E1",
+    backgroundColor: Colors.chip,
     borderRadius: Radius.md,
     padding: 10,
     flexDirection: "row",
@@ -414,7 +555,7 @@ const styles = StyleSheet.create({
   },
 
   placeholderText: {
-    color: "#2D1F16",
+    color: Colors.textStrong,
     fontSize: 10,
     fontWeight: "700",
     textAlign: "center",
@@ -426,7 +567,7 @@ const styles = StyleSheet.create({
   },
 
   productName: {
-    color: "#2D1F16",
+    color: Colors.textStrong,
     fontSize: 15,
     fontWeight: "700",
   },
@@ -447,14 +588,14 @@ const styles = StyleSheet.create({
 
   originalPrice: {
     marginTop: 4,
-    color: "#8A7B73",
+    color: Colors.textEarthMuted,
     fontSize: 12,
     textDecorationLine: "line-through",
   },
 
   stock: {
     marginTop: 3,
-    color: "#5C514B",
+    color: Colors.textEarth,
     fontSize: 13,
   },
 
@@ -487,7 +628,7 @@ const styles = StyleSheet.create({
   },
 
   editButtonText: {
-    color: "#2D1F16",
+    color: Colors.textStrong,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -518,7 +659,7 @@ const styles = StyleSheet.create({
   },
 
   newButtonText: {
-    color: "#2D1F16",
+    color: Colors.textStrong,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -533,7 +674,7 @@ const styles = StyleSheet.create({
 
   message: {
     marginTop: 8,
-    color: "#5C514B",
+    color: Colors.textEarth,
     fontSize: 14,
     textAlign: "center",
   },
@@ -547,7 +688,7 @@ const styles = StyleSheet.create({
   },
 
   emptyTitle: {
-    color: "#2D1F16",
+    color: Colors.textStrong,
     fontSize: 18,
     fontWeight: "700",
     textAlign: "center",
@@ -564,7 +705,7 @@ const styles = StyleSheet.create({
   },
 
   primaryButtonText: {
-    color: "#2D1F16",
+    color: Colors.textStrong,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -582,7 +723,7 @@ const styles = StyleSheet.create({
   },
 
   backButtonText: {
-    color: "#2D1F16",
+    color: Colors.textStrong,
     fontSize: 14,
     fontWeight: "700",
   },

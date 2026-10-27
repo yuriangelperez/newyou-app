@@ -1,7 +1,8 @@
 import { Control, useController } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { CATEGORIAS_PRODUCTO, PUBLICOS, TEMPORADAS, tipoPrendaPorCategoria } from '../../constants/categoriasProductos';
+import { PUBLICOS, TEMPORADAS, tipoPrendaDeCategoria } from '../../constants/categoriasProductos';
+import { useCategorias } from '../../hooks/useCategorias';
 import { Colors, Radius } from '../../constants/theme';
 import { ProductoFormValues } from '../../schemas/productoSchema';
 
@@ -14,17 +15,20 @@ export function CategoriaProductoSelector({ control }: CategoriaProductoSelector
   const categoria = useController({ control, name: 'categoria' });
   const temporada = useController({ control, name: 'temporada' });
   const publico = useController({ control, name: 'publico' });
+  // Las categorías de Supabase: una nueva con su grupo aparece sola.
+  const categorias = useCategorias();
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Categoría de la prenda</Text>
       <OptionGroup
         label="Tipo de prenda"
-        options={CATEGORIAS_PRODUCTO}
+        options={categorias.map((item) => item.nombre)}
         value={categoria.field.value}
         onChange={(value) => {
           categoria.field.onChange(value);
-          tipoPrenda.field.onChange(tipoPrendaPorCategoria(value as (typeof CATEGORIAS_PRODUCTO)[number]));
+          const grupo = categorias.find((item) => item.nombre === value)?.grupo;
+          tipoPrenda.field.onChange(tipoPrendaDeCategoria(value, grupo));
         }}
       />
       <OptionGroup label="Temporada" options={TEMPORADAS} value={temporada.field.value} onChange={temporada.field.onChange} />

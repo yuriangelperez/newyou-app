@@ -31,11 +31,11 @@ describe('abrirSesionDesdeEnlace', () => {
     expect(mockExchange).toHaveBeenCalledWith('XYZ');
   });
 
-  it('muestra el error que manda Supabase (enlace vencido)', async () => {
+  it('traduce el error que manda Supabase (enlace vencido)', async () => {
     const { error } = await abrirSesionDesdeEnlace(
       'newyou://nueva-contrasena#error=access_denied&error_description=Email+link+is+invalid+or+has+expired',
     );
-    expect(error?.message).toBe('Email link is invalid or has expired');
+    expect(error?.message).toBe('El enlace no es válido o ya venció. Pedí uno nuevo.');
     expect(mockSetSession).not.toHaveBeenCalled();
   });
 

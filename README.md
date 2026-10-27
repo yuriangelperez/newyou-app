@@ -340,6 +340,7 @@ Expo Go para probar (salvo las notificaciones), y las notificaciones sólo funci
    12. `12-calificaciones.sql`: el comprador califica cada pedido entregado (1 a 5 estrellas y comentario, una vez) y el vendedor puede responder; `reputacion` (tienda o particular) y `reputacion_producto` son públicas.
    13. `13-descuentos.sql`: descuento por prenda; `confirmar_compra` cobra el precio con descuento.
    14. `14-push-tokens.sql`: notificaciones push de pedidos. Antes, habilitar la extensión `pg_net` (Database → Extensions). Crea `push_tokens` con RLS, `registrar_push_token` y un trigger en `pedido_eventos` que avisa al particular que vende cuando entra un pedido y al comprador cuando cambia el estado.
+   15. `15-vendedores-equipo.sql`: `vendedores_publicos` y `empresas_publicas` (quién vende cada prenda y si la empresa está verificada), una política que impide al propietario de una empresa publicar como particular y `quitar_miembro` sólo para propietario o administrador (un empleado ya no se sale solo).
 
 Para recuperar la contraseña, en Supabase > Authentication > URL Configuration agregar a *Redirect URLs* `newyou://**` (app) y `http://localhost:8081/**` (web en desarrollo). El enlace del correo abre la pantalla *Nueva contraseña*.
 

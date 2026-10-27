@@ -8,7 +8,7 @@ import TarjetaProducto from '../../components/TarjetaProducto';
 import { BottomTabBar } from '../../components/BottomTabBar';
 import { PRODUCT_DETAIL_ICONS } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
-import { Colors } from '../../constants/theme';
+import { Colors, EstiloBarraEstado } from '../../constants/theme';
 import { useCarritoStore, selectTotalItems } from '../../stores/useCarritoStore';
 import { useFavoritosStore } from '../../stores/useFavoritosStore';
 import { usePuedeVender } from '../../hooks/usePuedeVender';
@@ -54,15 +54,15 @@ export default function FavoritosScreen() {
 
     agregarProducto({
       producto,
-      talle: producto.talle?.[0] ?? 'M',
-      color: producto.colores?.[0] ?? 'Marron',
+      talle: producto.talle?.[0] ?? 'Único',
+      color: producto.colores?.[0] ?? '',
       cantidad: 1,
     });
   };
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="dark" />
+      <StatusBar style={EstiloBarraEstado} />
       <View style={styles.header}>
         <View style={styles.headerInner}>
           <Pressable accessibilityLabel="Volver" onPress={() => router.back()} style={styles.backButton}>

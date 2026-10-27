@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invitación · New You</title>
+  <meta property="og:title" content="Te invitaron a un equipo en New You">
+  <meta property="og:description" content="Tocá para abrir la invitación en la app.">
+  <!-- Página de paso para las invitaciones de empresa: WhatsApp sólo hace tocables los enlaces
+       https, así que el mensaje trae este enlace y esta página abre la app (newyou:// o Expo Go). -->
+  <style>
+    :root { --primario: #493628; --secundario: #AB876D; --fondo: #F4F4F4; --texto: #152238; --suave: #64748B; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
+           background: var(--fondo); color: var(--texto); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { width: 100%; max-width: 420px; background: #fff; border-radius: 12px; padding: 28px 22px;
+           box-shadow: 0 2px 8px rgba(0,0,0,.06); text-align: center; }
+    h1 { color: var(--primario); font-size: 22px; margin: 0 0 8px; }
+    p { margin: 8px 0; line-height: 1.45; }
+    .boton { display: block; width: 100%; margin-top: 18px; padding: 14px; border: 0; border-radius: 8px;
+             background: var(--secundario); color: #fff; font-size: 16px; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .codigo { margin: 18px 0 6px; padding: 14px; border: 2px dashed var(--secundario); border-radius: 8px;
+              font: 700 28px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 4px; color: var(--primario);
+              user-select: all; -webkit-user-select: all; }
+    .secundario { background: transparent; color: var(--primario); border: 1px solid var(--secundario); }
+    small { color: var(--suave); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Invitación a New You</h1>
+    <p>Te invitaron a sumarte al equipo de una empresa.</p>
+    <a id="abrir" class="boton" href="newyou://invitacion">Abrir en la app</a>
+    <p><small>Si no se abre, copiá el código y pegalo en Perfil &gt; Tengo un código de invitación.</small></p>
+    <div id="codigo" class="codigo" aria-label="Código de invitación">—</div>
+    <button id="copiar" class="boton secundario" type="button">Copiar código</button>
+  </main>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var codigo = (params.get('codigo') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16);
+      // Sólo se aceptan enlaces de la app (newyou://) o de Expo Go (exp://): nada de redirigir a otra web.
+      var app = params.get('app') || '';
+      if (!/^(newyou|exps?):\/\//i.test(app)) {
+        app = 'newyou://invitacion?codigo=' + encodeURIComponent(codigo);
+      }
+
+      document.getElementById('codigo').textContent = codigo || '—';
+      var abrir = document.getElementById('abrir');
+      abrir.href = app;
+
+      document.getElementById('copiar').addEventListener('click', function () {
+        var boton = this;
+        var listo = function () { boton.textContent = '¡Código copiado!'; };
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(codigo).then(listo, function () {});
+        } else {
+          var rango = document.createRange();
+          rango.selectNodeContents(document.getElementById('codigo'));
+          var sel = getSelection(); sel.removeAllRanges(); sel.addRange(rango);
+          document.execCommand('copy'); listo();
+        }
+      });
+
+      // Intenta abrir la app sola al entrar; si no está instalada, queda el código a mano.
+      if (codigo) setTimeout(function () { location.href = app; }, 300);
+    })();
+  </script>
+</body>
+</html>

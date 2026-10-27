@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Switch,
@@ -17,26 +18,36 @@ import { ErrorView } from "../../components/ui/ErrorView";
 import { InputField } from "../../components/ui/InputField";
 import { CategoriaProductoSelector } from "../../components/ui/CategoriaProductoSelector";
 import { ColoresSelector } from "../../components/ui/ColoresSelector";
+import { BotonInfoComision, InfoComision } from "../../components/ui/InfoComision";
+import { TallesSelector } from "../../components/ui/TallesSelector";
+import { formatearPrecioInput } from "../../utils/precio";
 import { CATEGORIA_PRODUCTO_POR_DEFECTO } from "../../constants/categoriasProductos";
 import { SkeletonList } from "../../components/ui/SkeletonList";
 import { ROUTES } from "../../constants/routes";
 import { Colors, Radius } from "../../constants/theme";
 import { useProductoById } from "../../hooks/useProductoById";
 import {
+  DESCRIPCION_MAX,
+  NOMBRE_MAX,
   ProductoFormOutput,
   ProductoFormValues,
   productoSchema,
 } from "../../schemas/productoSchema";
 import { getStockSedes, ProductoInput, updateProducto } from "../../services/productosService";
+import { traducirError } from "../../services/erroresSupabase";
+import { encolarBorrador, hayConexion } from "../../services/offlineService";
 import { SelectorImagenes } from "../../components/ui/SelectorImagenes";
 import { StockPorSede } from "../../components/ui/StockPorSede";
 import { usePuedeGestionarProducto } from "../../hooks/usePuedeVender";
 import { useSedesEmpresa } from "../../hooks/useSedesEmpresa";
 import { puede, useEmpresaStore } from "../../stores/useEmpresaStore";
 
+// Teclado con punto y coma para "35.000" o "1.500,50".
+const TECLADO_PRECIO = Platform.OS === "ios" ? "numbers-and-punctuation" : "numeric";
+
 const DEFAULT_VALUES: ProductoFormValues = {
   nombre: "",
-  precio: "0",
+  precio: "",
   descuentoActivo: false,
   descuentoPorcentaje: "0",
   stock: "1",
@@ -56,6 +67,7 @@ export default function EditarProductoScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { producto, cargando, error, refrescar } = useProductoById(id);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [infoComision, setInfoComision] = useState(false);
   const puedeGestionar = usePuedeGestionarProducto(producto);
 
   // Prendas de empresa: stock por sede y permiso de precio según el rol en esa empresa.
@@ -84,6 +96,8 @@ export default function EditarProductoScreen() {
 
   const disponible = watch("disponible");
   const descuentoActivo = watch("descuentoActivo");
+  const precioEscrito = watch("precio");
+  const descuentoEscrito = watch("descuentoPorcentaje");
   const imagenes = watch("imagenes") ?? [];
   const setImagenes = (lista: string[]) => {
     setValue("imagenes", lista, { shouldValidate: true, shouldDirty: true });
@@ -97,7 +111,7 @@ export default function EditarProductoScreen() {
 
     reset({
       nombre: producto.nombre,
-      precio: producto.precio.toString(),
+      precio: formatearPrecioInput(producto.precio),
       descuentoActivo: producto.descuentoPorcentaje > 0,
       descuentoPorcentaje: producto.descuentoPorcentaje.toString(),
       stock: producto.stock.toString(),
@@ -192,7 +206,29 @@ export default function EditarProductoScreen() {
         };
       }
 
-      await updateProducto(id, payload);
+      // Sin conexión la edición queda como borrador local y se sube al volver la red.
+      if (!(await hayConexion())) {
+        await encolarBorrador({ tipo: "edicion", productoId: id, payload });
+        Toast.show({
+          type: "offline",
+          text1: "Sin conexión. Cambios guardados en borradores.",
+          text2: "Se van a subir al recuperar la red (se guardan 7 días).",
+        });
+        router.replace(ROUTES.myProducts);
+        return;
+      }
+
+      const actualizado = await updateProducto(id, payload);
+
+      if (actualizado.estado === "borrador") {
+        Toast.show({
+          type: "offline",
+          text1: "Guardado como borrador",
+          text2: "Agregá al menos una foto para publicarla.",
+        });
+        router.replace({ pathname: ROUTES.myProducts, params: { vista: "borradores" } });
+        return;
+      }
 
       Toast.show({
         type: "success",
@@ -202,10 +238,7 @@ export default function EditarProductoScreen() {
 
       router.replace({ pathname: ROUTES.productDetail, params: { id } });
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "No se pudo actualizar el producto.";
+      const message = traducirError(err);
       Toast.show({
         type: "error",
         text1: "Error al actualizar",
@@ -251,14 +284,23 @@ export default function EditarProductoScreen() {
           name="nombre"
           label="Nombre"
           placeholder="Campera denim oversize"
+          textInputProps={{ maxLength: NOMBRE_MAX }}
         />
 
         <InputField
           control={control}
           name="precio"
           label={puedeCambiarPrecio ? "Precio" : "Precio (tu rol no puede cambiarlo)"}
-          placeholder="35000"
-          textInputProps={{ keyboardType: "numeric", editable: puedeCambiarPrecio }}
+          placeholder="35.000 o 1.500,50"
+          textInputProps={{ keyboardType: TECLADO_PRECIO, editable: puedeCambiarPrecio }}
+          labelExtra={
+            <BotonInfoComision abierto={infoComision} onPress={() => setInfoComision((valor) => !valor)} />
+          }
+        />
+        <InfoComision
+          precio={precioEscrito}
+          descuentoPorcentaje={descuentoActivo ? descuentoEscrito : 0}
+          mostrarInfo={infoComision}
         />
 
         <View style={styles.switchRow}>
@@ -269,7 +311,7 @@ export default function EditarProductoScreen() {
             onValueChange={(value) =>
               setValue("descuentoActivo", value, { shouldValidate: true, shouldDirty: true })
             }
-            trackColor={{ true: Colors.secondary, false: "#CFCFCF" }}
+            trackColor={{ true: Colors.secondary, false: Colors.switchOff }}
           />
         </View>
 
@@ -315,22 +357,16 @@ export default function EditarProductoScreen() {
 
         <CategoriaProductoSelector control={control} />
 
-        <InputField
-          control={control}
-          name="talle"
-          label="Talles"
-          placeholder="S, M, L"
-          textInputProps={{ autoCapitalize: "characters" }}
-        />
+        <TallesSelector control={control} />
 
         <ColoresSelector control={control} />
 
         <InputField
           control={control}
           name="descripcion"
-          label="Descripcion"
+          label={`Descripción (hasta ${DESCRIPCION_MAX} caracteres)`}
           placeholder="Describe la prenda"
-          textInputProps={{ multiline: true, numberOfLines: 4 }}
+          textInputProps={{ multiline: true, numberOfLines: 2, maxLength: DESCRIPCION_MAX }}
         />
 
         <View style={styles.switchRow}>
@@ -343,7 +379,7 @@ export default function EditarProductoScreen() {
                 shouldDirty: true,
               })
             }
-            trackColor={{ true: Colors.secondary, false: "#CFCFCF" }}
+            trackColor={{ true: Colors.secondary, false: Colors.switchOff }}
           />
         </View>
 
@@ -436,7 +472,7 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   submitText: {
-    color: "#2D1F16",
+    color: Colors.textStrong,
     fontSize: 16,
     fontFamily: "Montserrat_700Bold",
   },

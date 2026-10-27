@@ -11,6 +11,8 @@ jest.mock('../services/productosService', () => ({
 }));
 jest.mock('../services/productosApiService', () => ({ getProductos: jest.fn() }));
 jest.mock('expo-router', () => ({ useFocusEffect: jest.fn() }));
+const mockHayConexion = jest.fn<Promise<boolean>, []>(() => Promise.resolve(true));
+jest.mock('../services/conexion', () => ({ hayConexion: () => mockHayConexion() }));
 
 const prenda = (id: string, nombre: string): Producto => ({
   id,
@@ -44,5 +46,17 @@ describe('useProductos', () => {
     await waitFor(() => expect(result.current.cargando).toBe(false));
     expect(result.current.error).toBe('Sin conexión');
     expect(result.current.productos).toEqual([]);
+  });
+
+  it('sin conexión avisa y no muestra el catálogo viejo', async () => {
+    mockHayConexion.mockResolvedValueOnce(false);
+    mockGetProductos.mockResolvedValue([prenda('1', 'Campera')]);
+
+    const { result } = await renderHook(() => useProductos());
+
+    await waitFor(() => expect(result.current.cargando).toBe(false));
+    expect(result.current.sinConexion).toBe(true);
+    expect(result.current.productos).toEqual([]);
+    expect(result.current.error).toMatch(/conexión/);
   });
 });

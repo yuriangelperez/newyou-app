@@ -1,6 +1,8 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { traducirError } from '../services/erroresSupabase';
+import { hayConexion } from '../services/conexion';
 import { getProductos as getProductosApi } from '../services/productosApiService';
 import {
   getProductos as getProductosSupabase,
@@ -18,14 +20,19 @@ interface UseProductosResult {
   cargando: boolean;
   refreshing: boolean;
   error: string | null;
+  /** El error es por falta de conexión (no un error del servidor). */
+  sinConexion: boolean;
   refrescar: () => Promise<void>;
 }
+
+export const MENSAJE_SIN_CONEXION = 'Revisá tu conexión a Internet y volvé a intentar.';
 
 export function useProductos(): UseProductosResult {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [sinConexion, setSinConexion] = useState(false);
 
   const cargar = useCallback(async (mode: 'loading' | 'refresh' | 'silent' = 'loading') => {
     if (mode === 'loading') {
@@ -37,12 +44,20 @@ export function useProductos(): UseProductosResult {
     }
 
     try {
+      // Sin red no se muestra el catálogo viejo: daría la falsa sensación de que funciona.
+      if (!(await hayConexion())) {
+        setProductos([]);
+        setSinConexion(true);
+        setError(MENSAJE_SIN_CONEXION);
+        return;
+      }
+
       setError(null);
+      setSinConexion(false);
       const data = await getProductos();
       setProductos(data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'No se pudo cargar el catalogo.';
-      setError(message);
+      setError(err instanceof Error ? traducirError(err) : 'No se pudo cargar el catálogo.');
     } finally {
       if (mode === 'loading') {
         setCargando(false);
@@ -98,6 +113,7 @@ export function useProductos(): UseProductosResult {
     cargando,
     refreshing,
     error,
+    sinConexion,
     refrescar: () => cargar('refresh'),
   };
 }

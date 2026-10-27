@@ -4,9 +4,9 @@ name: Tests
 
 on:
   pull_request:
-    branches: [main, datos-yuri]
+    branches: [main, datos-yuri, datos-ale]
   push:
-    branches: [main, datos-yuri]
+    branches: [main, datos-yuri, datos-ale]
 
 jobs:
   test:

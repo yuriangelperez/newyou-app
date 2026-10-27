@@ -18,7 +18,7 @@ import { BRANDING_LOGO } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
 import { Colors, Radius, Shadow } from '../../constants/theme';
 import { useEsEscritorio } from '../../hooks/useEsEscritorio';
-import { RegisterForm, registerSchema } from '../../schemas/authSchemas';
+import { RegisterForm, registerSchema, USUARIO_MAX } from '../../schemas/authSchemas';
 import { signUpWithPassword } from '../../services/auth';
 
 export default function RegisterScreen() {
@@ -43,10 +43,16 @@ export default function RegisterScreen() {
       contrasena: '',
       repetirContrasena: '',
       quiereVender: false,
+      comoEmpresa: false,
     },
   });
   const quiereVender = watch('quiereVender');
-  const setQuiereVender = (valor: boolean) => setValue('quiereVender', valor);
+  const comoEmpresa = watch('comoEmpresa');
+  // Comprar, vender como particular o vender como empresa (la empresa se crea al entrar).
+  const elegirTipo = (tipo: 'comprador' | 'particular' | 'empresa') => {
+    setValue('quiereVender', tipo === 'particular');
+    setValue('comoEmpresa', tipo === 'empresa');
+  };
   const error =
     errors.correo?.message ??
     errors.usuario?.message ??
@@ -62,6 +68,7 @@ export default function RegisterScreen() {
       datos.contrasena,
       datos.usuario,
       datos.quiereVender ? 'particular' : 'comprador',
+      datos.comoEmpresa,
     );
 
     if (authError) {
@@ -79,7 +86,7 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
       <View style={styles.logoContainer}>
-        <Image source={BRANDING_LOGO} style={styles.logo} />
+        <Image source={BRANDING_LOGO} tintColor={Colors.textStrong} style={styles.logo} />
       </View>
 
       <Text style={styles.title}>REGISTRO DE USUARIO</Text>
@@ -119,6 +126,7 @@ export default function RegisterScreen() {
                 testID="registro-usuario"
                 style={styles.input}
                 placeholder="Elegí tu nombre de usuario"
+                maxLength={USUARIO_MAX}
                 placeholderTextColor={Colors.textMuted}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -142,7 +150,7 @@ export default function RegisterScreen() {
                 <TextInput
                   testID="registro-contrasena"
                   style={styles.passwordInput}
-                  placeholder="6+ caracteres, una mayúscula y un número"
+                  placeholder="6+ caracteres, mayúscula, minúscula y número"
                   placeholderTextColor={Colors.textMuted}
                   secureTextEntry={!mostrarContrasena}
                   value={value}
@@ -207,19 +215,29 @@ export default function RegisterScreen() {
           <View style={styles.roleOptions}>
             <Pressable
               accessibilityRole="radio"
-              accessibilityState={{ selected: !quiereVender }}
-              onPress={() => setQuiereVender(false)}
-              style={[styles.roleOption, !quiereVender && styles.roleOptionSelected]}>
+              accessibilityState={{ selected: !quiereVender && !comoEmpresa }}
+              onPress={() => elegirTipo('comprador')}
+              style={[styles.roleOption, !quiereVender && !comoEmpresa && styles.roleOptionSelected]}>
               <Text style={styles.roleOptionText}>No, quiero comprar</Text>
             </Pressable>
             <Pressable
               accessibilityRole="radio"
               accessibilityState={{ selected: quiereVender }}
-              onPress={() => setQuiereVender(true)}
+              onPress={() => elegirTipo('particular')}
               style={[styles.roleOption, quiereVender && styles.roleOptionSelected]}>
-              <Text style={styles.roleOptionText}>Sí, quiero vender</Text>
+              <Text style={styles.roleOptionText}>Sí, como particular</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="radio"
+              accessibilityState={{ selected: comoEmpresa }}
+              onPress={() => elegirTipo('empresa')}
+              style={[styles.roleOption, comoEmpresa && styles.roleOptionSelected]}>
+              <Text style={styles.roleOptionText}>Sí, como empresa</Text>
             </Pressable>
           </View>
+          {comoEmpresa ? (
+            <Text style={styles.roleHint}>Al iniciar sesión vas a cargar los datos de tu empresa.</Text>
+          ) : null}
         </View>
       </View>
 
@@ -321,6 +339,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     fontFamily: 'Montserrat_600SemiBold',
+  },
+  roleHint: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    paddingLeft: 4,
   },
   fieldLabel: {
     color: Colors.primary,

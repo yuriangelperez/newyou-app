@@ -56,7 +56,7 @@ export function TarjetaBienvenida({ visible, onCerrar }: Props) {
               <Ionicons name="close" size={24} color={Colors.textMuted} />
             </Pressable>
 
-            <Image source={BRANDING_LOGO} style={styles.logo} />
+            <Image source={BRANDING_LOGO} tintColor={Colors.textStrong} style={styles.logo} />
 
             <Text style={styles.titulo}>Bienvenido a New You</Text>
             <Text style={styles.subtitulo}>

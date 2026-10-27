@@ -1,18 +1,28 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EncabezadoPantalla } from "../components/ui/EncabezadoPantalla";
 import { estilosFormulario as styles } from "../constants/estilosFormulario";
 import { Colors, FontSize, Radius, Spacing } from "../constants/theme";
-import { MetricasVentas, obtenerMetricas } from "../services/pedidosService";
+import { MetricasVentas, obtenerMetricasRango } from "../services/pedidosService";
 import { puede, selectEmpresaActiva, useEmpresaStore } from "../stores/useEmpresaStore";
+import {
+  etiquetaRango,
+  fechaArgentina,
+  fechaISO,
+  PeriodoMetricas,
+  RangoFechas,
+  rangoPredefinido,
+  validarRango,
+} from "../utils/rangoFechas";
 
-const PERIODOS = [
-  { dias: 7, texto: "7 días" },
-  { dias: 30, texto: "30 días" },
-  { dias: 90, texto: "90 días" },
+const PERIODOS: { id: PeriodoMetricas; texto: string }[] = [
+  { id: "hoy", texto: "Hoy" },
+  { id: "semana", texto: "Esta semana" },
+  { id: "mes", texto: "Este mes" },
+  { id: "personalizado", texto: "Personalizado" },
 ];
 
 const formatPrecio = (valor: number) => `$${Math.round(valor).toLocaleString("es-AR")}`;
@@ -59,26 +69,45 @@ export default function MetricasScreen() {
   const insets = useSafeAreaInsets();
   const empresaActiva = useEmpresaStore(selectEmpresaActiva);
   const empresaId = empresaActiva?.empresaId ?? null;
-  const [dias, setDias] = useState(30);
+  const [periodo, setPeriodo] = useState<PeriodoMetricas>("mes");
+  // Rango personalizado: se escribe en DD/MM/AAAA y se aplica con el botón (no en cada tecla).
+  const [rangoPersonalizado, setRangoPersonalizado] = useState<RangoFechas>(() => rangoPredefinido("mes"));
+  const [desdeTexto, setDesdeTexto] = useState(() => fechaArgentina(rangoPredefinido("mes").desde));
+  const [hastaTexto, setHastaTexto] = useState(() => fechaArgentina(rangoPredefinido("mes").hasta));
+  const [errorRango, setErrorRango] = useState<string | null>(null);
   const [metricas, setMetricas] = useState<MetricasVentas | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const sinPermiso = empresaActiva !== null && !puede(empresaActiva, "metricas.ver");
+  const rango = useMemo(
+    () => (periodo === "personalizado" ? rangoPersonalizado : rangoPredefinido(periodo)),
+    [periodo, rangoPersonalizado],
+  );
+
+  const aplicarRango = () => {
+    const resultado = validarRango(desdeTexto, hastaTexto);
+    if (!resultado.ok) {
+      setErrorRango(resultado.mensaje);
+      return;
+    }
+    setErrorRango(null);
+    setRangoPersonalizado({ desde: resultado.desde, hasta: resultado.hasta });
+  };
 
   useFocusEffect(
     useCallback(() => {
       if (sinPermiso) return;
       let vigente = true;
       setCargando(true);
-      obtenerMetricas(empresaId, dias)
+      obtenerMetricasRango(empresaId, { desde: rango.desde, hasta: rango.hasta }, fechaISO(new Date()))
         .then((datos) => vigente && (setMetricas(datos), setError(null)))
         .catch((err) => vigente && setError(err instanceof Error ? err.message : "No se pudieron cargar las métricas."))
         .finally(() => vigente && setCargando(false));
       return () => {
         vigente = false;
       };
-    }, [empresaId, dias, sinPermiso]),
+    }, [empresaId, rango.desde, rango.hasta, sinPermiso]),
   );
 
   const ticket = metricas && metricas.pedidos > 0 ? metricas.ingresos / metricas.pedidos : 0;
@@ -90,19 +119,61 @@ export default function MetricasScreen() {
         {sinPermiso ? <Text style={styles.empty}>Tu rol en la empresa no puede ver las métricas.</Text> : null}
 
         <View style={styles.chips}>
-          {PERIODOS.map((periodo) => {
-            const activo = dias === periodo.dias;
+          {PERIODOS.map((opcion) => {
+            const activo = periodo === opcion.id;
             return (
               <Pressable
-                key={periodo.dias}
-                onPress={() => setDias(periodo.dias)}
+                key={opcion.id}
+                testID={`metricas-periodo-${opcion.id}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activo }}
+                onPress={() => setPeriodo(opcion.id)}
                 style={[styles.chip, activo && styles.chipActivo]}
               >
-                <Text style={[styles.chipTexto, activo && styles.chipTextoActivo]}>{periodo.texto}</Text>
+                <Text style={[styles.chipTexto, activo && styles.chipTextoActivo]}>{opcion.texto}</Text>
               </Pressable>
             );
           })}
         </View>
+
+        {periodo === "personalizado" ? (
+          <View style={styles.card}>
+            <View style={local.fechas}>
+              <View style={local.fecha}>
+                <Text style={styles.label}>Desde</Text>
+                <TextInput
+                  testID="metricas-desde"
+                  value={desdeTexto}
+                  onChangeText={setDesdeTexto}
+                  placeholder="DD/MM/AAAA"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={10}
+                  style={styles.input}
+                />
+              </View>
+              <View style={local.fecha}>
+                <Text style={styles.label}>Hasta</Text>
+                <TextInput
+                  testID="metricas-hasta"
+                  value={hastaTexto}
+                  onChangeText={setHastaTexto}
+                  placeholder="DD/MM/AAAA"
+                  placeholderTextColor={Colors.textMuted}
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={10}
+                  style={styles.input}
+                />
+              </View>
+            </View>
+            {errorRango ? <Text style={styles.error}>{errorRango}</Text> : null}
+            <Pressable testID="metricas-aplicar" accessibilityRole="button" onPress={aplicarRango} style={styles.saveButton}>
+              <Text style={styles.saveText}>Ver rango</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        <Text style={styles.muted} testID="metricas-rango">{`Período: ${etiquetaRango(rango)}`}</Text>
 
         {cargando && !sinPermiso ? <ActivityIndicator color={Colors.primary} /> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -175,6 +246,8 @@ export default function MetricasScreen() {
 }
 
 const local = StyleSheet.create({
+  fechas: { flexDirection: "row", gap: Spacing.sm },
+  fecha: { flex: 1, gap: Spacing.xs },
   kpis: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   kpi: {
     flexGrow: 1,

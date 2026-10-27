@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { EncabezadoPantalla } from "../../components/ui/EncabezadoPantalla";
+import { NombreVendedor } from "../../components/ui/NombreVendedor";
 import { ROUTES } from "../../constants/routes";
 import { estilosFormulario as styles } from "../../constants/estilosFormulario";
 import { Colors, Spacing } from "../../constants/theme";
@@ -17,7 +18,7 @@ import {
   quitarMiembro,
 } from "../../services/empresasService";
 import { confirmar } from "../../services/confirmar";
-import { puede, selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
+import { puede, selectEmpresaActiva, selectEsPropietario, useEmpresaStore } from "../../stores/useEmpresaStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
 
 const TEXTO_ESTADO: Record<EstadoEmpresa, string> = {
@@ -33,6 +34,7 @@ export default function PanelEmpresaScreen() {
   const membresias = useEmpresaStore((state) => state.membresias);
   const membresia = useEmpresaStore(selectEmpresaActiva);
   const setEmpresaActiva = useEmpresaStore((state) => state.setEmpresaActiva);
+  const esPropietario = useEmpresaStore(selectEsPropietario);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [descripcion, setDescripcion] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +128,12 @@ export default function PanelEmpresaScreen() {
 
         <View style={styles.card}>
           <View style={styles.cardRow}>
-            <Text style={styles.cardTitle}>{empresa?.razonSocial ?? membresia.nombre}</Text>
+            <NombreVendedor
+              nombre={empresa?.razonSocial ?? membresia.nombre}
+              verificada={membresia.estado === "verificada"}
+              tamano={16}
+              estilo={styles.cardTitle}
+            />
             <Text style={styles.badge}>{TEXTO_ESTADO[membresia.estado]}</Text>
           </View>
           {empresa ? <Text style={styles.muted}>CUIT {empresa.cuit}</Text> : <ActivityIndicator color={Colors.primary} />}
@@ -178,13 +185,18 @@ export default function PanelEmpresaScreen() {
           <Text style={styles.muted}>Así ven tu página los compradores</Text>
         </Pressable>
 
+        {/* El propietario vende sólo como empresa; un empleado no se sale solo (lo quita el propietario o un administrador). */}
         <View style={styles.actions}>
-          <Pressable onPress={() => void setEmpresaActiva(null)}>
-            <Text style={styles.link}>Actuar como yo</Text>
-          </Pressable>
-          <Pressable onPress={() => void onSalir()}>
-            <Text style={[styles.link, styles.danger]}>Salir de la empresa</Text>
-          </Pressable>
+          {!esPropietario ? (
+            <Pressable onPress={() => void setEmpresaActiva(null)}>
+              <Text style={styles.link}>Actuar como yo</Text>
+            </Pressable>
+          ) : null}
+          {puede(membresia, "equipo.gestionar") ? (
+            <Pressable onPress={() => void onSalir()}>
+              <Text style={[styles.link, styles.danger]}>Salir de la empresa</Text>
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
     </View>

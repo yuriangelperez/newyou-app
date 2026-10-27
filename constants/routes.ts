@@ -21,12 +21,15 @@ export const ROUTES = {
   companyTeam: '/empresa/equipo',
   invitation: '/invitacion',
   store: '/tienda/[slug]',
+  seller: '/vendedor/[id]',
   admin: '/admin',
   metrics: '/metricas',
 
   categories: '/categorias',
   cart: '/carrito',
   checkout: '/checkout',
+  purchaseConfirmed: '/compra-confirmada',
+  editProfile: '/editar-perfil',
   profile: '/perfil',
   favorites: '/favoritos',
 } as const;
