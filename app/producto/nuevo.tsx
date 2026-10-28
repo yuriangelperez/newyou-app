@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import {
   Platform,
   Pressable,
@@ -55,6 +55,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
   imagenes: [],
   categoria: "Camisas",
   ...CATEGORIA_PRODUCTO_POR_DEFECTO,
+  condicion: "nuevo",
   disponible: true,
   talle: "",
   colores: "",
@@ -77,7 +78,6 @@ export default function NuevoProductoScreen() {
     control,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<ProductoFormValues, undefined, ProductoFormOutput>({
     resolver: zodResolver(productoSchema),
@@ -86,17 +86,18 @@ export default function NuevoProductoScreen() {
   });
 
   const { direcciones } = useDirecciones();
-  const direccionElegida = watch("direccion") ?? "";
+  const direccionElegida = useWatch({ control, name: "direccion" }) ?? "";
   const setDireccion = useCallback(
     (valor: string) => setValue("direccion", valor, { shouldDirty: true }),
     [setValue],
   );
 
-  const disponible = watch("disponible");
-  const descuentoActivo = watch("descuentoActivo");
-  const precioEscrito = watch("precio");
-  const descuentoEscrito = watch("descuentoPorcentaje");
-  const imagenes = watch("imagenes") ?? [];
+  const condicion = useWatch({ control, name: "condicion" }) ?? "nuevo";
+  const disponible = useWatch({ control, name: "disponible" });
+  const descuentoActivo = useWatch({ control, name: "descuentoActivo" });
+  const precioEscrito = useWatch({ control, name: "precio" });
+  const descuentoEscrito = useWatch({ control, name: "descuentoPorcentaje" });
+  const imagenes = useWatch({ control, name: "imagenes" }) ?? [];
   const setImagenes = (lista: string[]) => {
     setValue("imagenes", lista, { shouldValidate: true, shouldDirty: true });
     setValue("imagen", lista[0] ?? "", { shouldValidate: true });
@@ -136,6 +137,7 @@ export default function NuevoProductoScreen() {
         categoria: values.categoria,
         tipoPrenda: values.tipoPrenda,
         temporada: values.temporada,
+        condicion: values.condicion,
         publico: values.publico,
         disponible: values.disponible,
         talle: talles,
@@ -310,6 +312,31 @@ export default function NuevoProductoScreen() {
 
         <CategoriaProductoSelector control={control} />
 
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Condición</Text>
+          <View style={styles.condicionRow}>
+            {(['nuevo', 'usado'] as const).map((opcion) => (
+              <Pressable
+                key={opcion}
+                onPress={() => setValue("condicion", opcion, { shouldValidate: true, shouldDirty: true })}
+                style={[
+                  styles.condicionOption,
+                  condicion === opcion && styles.condicionOptionActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.condicionText,
+                    condicion === opcion && styles.condicionTextActive,
+                  ]}
+                >
+                  {opcion === "nuevo" ? "Nuevo" : "Usado"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         <TallesSelector control={control} />
 
         <ColoresSelector control={control} />
@@ -329,8 +356,8 @@ export default function NuevoProductoScreen() {
           control={control}
           name="descripcion"
           label={`Descripción (hasta ${DESCRIPCION_MAX} caracteres)`}
-          placeholder="Describe la prenda"
-          textInputProps={{ multiline: true, numberOfLines: 2, maxLength: DESCRIPCION_MAX }}
+          placeholder="Describe la prenda. Podés usar listas con guiones o números."
+          textInputProps={{ multiline: true, numberOfLines: 5, maxLength: DESCRIPCION_MAX }}
         />
 
         <View style={styles.switchRow}>
@@ -443,6 +470,42 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontSize: 12,
     fontFamily: "Montserrat_500Medium",
+  },
+  fieldGroup: {
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  label: {
+    color: Colors.primary,
+    fontSize: 14,
+    marginBottom: 8,
+    fontFamily: "Montserrat_600SemiBold",
+  },
+  condicionRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  condicionOption: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  condicionOptionActive: {
+    backgroundColor: Colors.secondary,
+    borderColor: Colors.secondary,
+  },
+  condicionText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontFamily: "Montserrat_600SemiBold",
+  },
+  condicionTextActive: {
+    color: Colors.textStrong,
   },
   addressTitle: {
     marginTop: Spacing.sm,

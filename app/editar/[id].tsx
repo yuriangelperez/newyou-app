@@ -24,7 +24,7 @@ import { formatearPrecioInput } from "../../utils/precio";
 import { CATEGORIA_PRODUCTO_POR_DEFECTO } from "../../constants/categoriasProductos";
 import { SkeletonList } from "../../components/ui/SkeletonList";
 import { ROUTES } from "../../constants/routes";
-import { Colors, Radius } from "../../constants/theme";
+import { Colors, Radius, Spacing } from "../../constants/theme";
 import { useProductoById } from "../../hooks/useProductoById";
 import {
   DESCRIPCION_MAX,
@@ -55,6 +55,7 @@ const DEFAULT_VALUES: ProductoFormValues = {
   imagenes: [],
   categoria: "Camisas",
   ...CATEGORIA_PRODUCTO_POR_DEFECTO,
+  condicion: "nuevo",
   disponible: true,
   talle: "",
   colores: "",
@@ -124,6 +125,7 @@ export default function EditarProductoScreen() {
       temporada:
         producto.categoriaProducto?.temporada ??
         CATEGORIA_PRODUCTO_POR_DEFECTO.temporada,
+      condicion: producto.condicion ?? "nuevo",
       publico:
         producto.categoriaProducto?.publico ??
         CATEGORIA_PRODUCTO_POR_DEFECTO.publico,
@@ -182,6 +184,7 @@ export default function EditarProductoScreen() {
         categoria: values.categoria,
         tipoPrenda: values.tipoPrenda,
         temporada: values.temporada,
+        condicion: values.condicion,
         publico: values.publico,
         disponible: values.disponible,
         talle: values.talle
@@ -357,6 +360,31 @@ export default function EditarProductoScreen() {
 
         <CategoriaProductoSelector control={control} />
 
+        <View style={styles.fieldGroup}>
+          <Text style={styles.label}>Condición</Text>
+          <View style={styles.condicionRow}>
+            {(['nuevo', 'usado'] as const).map((opcion) => (
+              <Pressable
+                key={opcion}
+                onPress={() => setValue("condicion", opcion, { shouldValidate: true, shouldDirty: true })}
+                style={[
+                  styles.condicionOption,
+                  watch("condicion") === opcion && styles.condicionOptionActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.condicionText,
+                    watch("condicion") === opcion && styles.condicionTextActive,
+                  ]}
+                >
+                  {opcion === "nuevo" ? "Nuevo" : "Usado"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         <TallesSelector control={control} />
 
         <ColoresSelector control={control} />
@@ -459,6 +487,42 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontSize: 14,
     fontFamily: "Montserrat_600SemiBold",
+  },
+  fieldGroup: {
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  label: {
+    color: Colors.primary,
+    fontSize: 14,
+    marginBottom: 8,
+    fontFamily: "Montserrat_600SemiBold",
+  },
+  condicionRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  condicionOption: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  condicionOptionActive: {
+    backgroundColor: Colors.secondary,
+    borderColor: Colors.secondary,
+  },
+  condicionText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontFamily: "Montserrat_600SemiBold",
+  },
+  condicionTextActive: {
+    color: Colors.textStrong,
   },
   submitButton: {
     marginTop: 18,

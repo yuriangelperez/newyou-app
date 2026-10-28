@@ -20,6 +20,7 @@ import { ErrorView } from "../../components/ui/ErrorView";
 import { SkeletonList } from "../../components/ui/SkeletonList";
 import TarjetaProducto from "../../components/TarjetaProducto";
 import { BRANDING_LOGO, HOME_HERO_IMAGES } from "../../constants/assets";
+import { normalizarPublicos, PUBLICOS } from "../../constants/categoriasProductos";
 import { ROUTES } from "../../constants/routes";
 import { Colors, EstiloBarraEstado } from "../../constants/theme";
 import { useProductos } from "../../hooks/useProductos";
@@ -43,6 +44,7 @@ const HOME_TAGS = [
   "Primavera",
   "Todo el año",
 ];
+const PUBLIC_FILTERS = ["Todo", ...PUBLICOS];
 
 const PRODUCT_CATEGORY_ALIASES: Record<string, string[]> = {
   Camisa: ["Camisas", "Torso"],
@@ -122,6 +124,7 @@ export default function HomeScreen() {
   );
 
   const [activeTag, setActiveTag] = useState(0);
+  const [activePublicFilter, setActivePublicFilter] = useState("Todo");
   const [heroIndex, setHeroIndex] = useState(0);
   const [searchText, setSearchText] = useState("");
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
@@ -132,7 +135,12 @@ export default function HomeScreen() {
 
   useEffect(() => {
     return () => {
-      Object.values(addedTimersRef.current).forEach(clearTimeout);
+      Object.values(addedTimersRef.current).forEach((timeoutId) => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      });
+      addedTimersRef.current = {};
     };
   }, []);
 
@@ -172,6 +180,14 @@ export default function HomeScreen() {
         }
       }
 
+      const publicosProducto = normalizarPublicos(item.categoriaProducto?.publico);
+      const matchesPublic =
+        activePublicFilter === "Todo" || publicosProducto.includes(activePublicFilter as (typeof PUBLICOS)[number]);
+
+      if (!matchesPublic) {
+        return false;
+      }
+
       if (selectedTag === "Todo") {
         return true;
       }
@@ -186,6 +202,7 @@ export default function HomeScreen() {
     // Las agotadas van al final (grises, con "AGOTADO") para no tapar lo que se puede comprar (CA2).
     return [...filtrados.filter((item) => item.disponible), ...filtrados.filter((item) => !item.disponible)];
   }, [
+    activePublicFilter,
     productos,
     searchText,
     selectedCategory,
@@ -425,6 +442,30 @@ export default function HomeScreen() {
                   })}
                 </ScrollView>
               </View>
+
+              <View style={styles.publicBarContainer}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.promoBarContent}
+                >
+                  {PUBLIC_FILTERS.map((filter) => {
+                    const selected = filter === activePublicFilter;
+                    return (
+                      <Pressable
+                        key={filter}
+                        onPress={() => setActivePublicFilter(filter)}
+                        style={[
+                          styles.promoTag,
+                          selected && styles.promoTagActive,
+                        ]}
+                      >
+                        <Text style={styles.promoTagText}>{filter}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
             </>
           }
         />
@@ -570,6 +611,13 @@ function createStyles({
     promoBarContainer: {
       marginTop: s(8),
       height: s(50),
+      justifyContent: "center",
+      backgroundColor: Colors.background,
+      width: "100%",
+    },
+    publicBarContainer: {
+      marginTop: s(4),
+      height: s(46),
       justifyContent: "center",
       backgroundColor: Colors.background,
       width: "100%",

@@ -1,5 +1,5 @@
 import { Producto, VendedorProducto } from "../types";
-import { CategoriaProducto } from "../constants/categoriasProductos";
+import { CategoriaProducto, normalizarPublicos } from "../constants/categoriasProductos";
 import { supabase } from "./supabase";
 import { cancelarRecordatorioPublicacion } from "./notificacionesService";
 
@@ -20,6 +20,7 @@ const COLUMNAS_PRODUCTO = `
   colores,
   tipo_prenda,
   temporada,
+  condicion,
   publico,
   empresa_id,
   sede_id,
@@ -93,7 +94,8 @@ interface ProductoRow {
   colores: string[] | null;
   tipo_prenda: CategoriaProducto["tipoPrenda"] | null;
   temporada: CategoriaProducto["temporada"] | null;
-  publico: CategoriaProducto["publico"] | null;
+  condicion: 'nuevo' | 'usado' | null;
+  publico: string[] | string | null;
   categorias?: { nombre: string } | { nombre: string }[] | null;
   estado?: "publicada" | "borrador" | null;
   borrador_vence?: string | null;
@@ -115,7 +117,8 @@ interface ProductoPersistData {
   colores: string[];
   tipo_prenda: string;
   temporada: CategoriaProducto["temporada"];
-  publico: CategoriaProducto["publico"];
+  condicion: 'nuevo' | 'usado';
+  publico: string[];
   creado_por: string;
   direccion_retiro?: string;
   empresa_id?: number;
@@ -134,6 +137,7 @@ export interface ProductoInput {
   categoria: string;
   tipoPrenda: CategoriaProducto["tipoPrenda"];
   temporada: CategoriaProducto["temporada"];
+  condicion: 'nuevo' | 'usado';
   publico: CategoriaProducto["publico"];
   disponible: boolean;
   talle: string[];
@@ -318,7 +322,7 @@ function mapRowToProducto(row: ProductoRow): Producto {
       ? {
           tipoPrenda: normalizeTipoPrenda(row.tipo_prenda),
           temporada: row.temporada,
-          publico: row.publico,
+          publico: normalizarPublicos(row.publico),
         }
       : undefined;
 
@@ -335,6 +339,7 @@ function mapRowToProducto(row: ProductoRow): Producto {
       (row.tipo_prenda ? legacyCategoryName(row.tipo_prenda) : "Camisas"),
     categoriaId: row.categoriaid ?? undefined,
     categoriaProducto,
+    condicion: row.condicion ?? 'nuevo',
 
     /*
      * El producto está disponible solamente
@@ -368,7 +373,7 @@ async function mapInputToPersistData(
   const categoriaProducto: CategoriaProducto = {
     tipoPrenda: payload.tipoPrenda,
     temporada: payload.temporada,
-    publico: payload.publico,
+    publico: normalizarPublicos(payload.publico),
   };
 
   const categoriaid = await obtenerCategoriaId(payload.categoria);
@@ -406,6 +411,7 @@ async function mapInputToPersistData(
       categoriaProducto.tipoPrenda,
     ),
     temporada: categoriaProducto.temporada,
+    condicion: payload.condicion ?? 'nuevo',
     publico: categoriaProducto.publico,
     creado_por: authData.user.id,
     // Sin foto no se publica: queda como borrador (se borra solo a los 7 días).
