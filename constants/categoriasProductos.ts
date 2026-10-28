@@ -12,7 +12,7 @@ export const TIPOS_PRENDA = [
 
 export const TEMPORADAS = ['Todo el año', 'Primavera', 'Verano', 'Otoño', 'Invierno'] as const;
 
-export const PUBLICOS = ['Adulto', 'Infantil'] as const;
+export const PUBLICOS = ['Adulto', 'Femenino', 'Masculino', 'Infantil', 'Unisex'] as const;
 
 export const CATEGORIAS_PRODUCTO = [
   'Camisas',
@@ -40,6 +40,23 @@ export type TipoPrenda = (typeof TIPOS_PRENDA)[number];
 export type Temporada = (typeof TEMPORADAS)[number];
 export type Publico = (typeof PUBLICOS)[number];
 export type CategoriaProductoNombre = (typeof CATEGORIAS_PRODUCTO)[number];
+
+export function normalizarPublicos(publico: string | readonly string[] | null | undefined): Publico[] {
+  if (Array.isArray(publico)) {
+    const valores = [...new Set(publico.map((valor) => valor.trim()).filter(Boolean))];
+    const validos = valores.filter((valor): valor is Publico =>
+      (PUBLICOS as readonly string[]).includes(valor),
+    );
+    return validos.length > 0 ? validos : ['Adulto'];
+  }
+
+  if (typeof publico === 'string') {
+    const valor = publico.trim();
+    return (PUBLICOS as readonly string[]).includes(valor) ? [valor as Publico] : ['Adulto'];
+  }
+
+  return ['Adulto'];
+}
 
 export function tipoPrendaPorCategoria(categoria: CategoriaProductoNombre): TipoPrenda {
   if (['Camisas', 'Camperas', 'Buzos'].includes(categoria)) {
@@ -76,17 +93,18 @@ export function tipoPrendaPorCategoria(categoria: CategoriaProductoNombre): Tipo
 export interface CategoriaProducto {
   tipoPrenda: TipoPrenda;
   temporada: Temporada;
-  publico: Publico;
+  publico: Publico[];
 }
 
 export const CATEGORIA_PRODUCTO_POR_DEFECTO: CategoriaProducto = {
   tipoPrenda: 'Torso',
   temporada: 'Todo el año',
-  publico: 'Adulto',
+  publico: ['Adulto'],
 };
 
 export function categoriaProductoLabel(categoria: CategoriaProducto) {
-  return `${categoria.tipoPrenda} · ${categoria.temporada} · ${categoria.publico}`;
+  const publico = categoria.publico.length > 0 ? categoria.publico.join(', ') : 'Adulto';
+  return `${categoria.tipoPrenda} · ${categoria.temporada} · ${publico}`;
 }
 
 // Grupos de la pestaña Categorías. En Supabase cada categoría tiene su `grupo` (migración 16):

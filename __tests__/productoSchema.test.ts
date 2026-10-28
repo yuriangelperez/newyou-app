@@ -8,7 +8,8 @@ const valido = {
   tipoPrenda: 'Torso',
   categoria: 'Camperas',
   temporada: 'Invierno',
-  publico: 'Adulto',
+  condicion: 'nuevo',
+  publico: ['Adulto'],
   disponible: true,
   talle: 'S, M',
   colores: 'Azul',
@@ -45,6 +46,18 @@ describe('productoSchema', () => {
     expect(campos(resultado)).toEqual(
       expect.arrayContaining(['nombre', 'talle', 'colores', 'descripcion']),
     );
+  });
+
+  it('acepta público con una o varias opciones y rechaza valores inválidos', () => {
+    expect(productoSchema.safeParse({ ...valido, publico: ['Masculino'] }).success).toBe(true);
+    expect(productoSchema.safeParse({ ...valido, publico: ['Femenino', 'Unisex'] }).success).toBe(true);
+    expect(campos(productoSchema.safeParse({ ...valido, publico: ['Otro'] }))).toContain('publico');
+  });
+
+  it('acepta condicion nuevo o usado y rechaza valores inválidos', () => {
+    expect(productoSchema.safeParse({ ...valido, condicion: 'nuevo' }).success).toBe(true);
+    expect(productoSchema.safeParse({ ...valido, condicion: 'usado' }).success).toBe(true);
+    expect(campos(productoSchema.safeParse({ ...valido, condicion: 'seminuevo' }))).toContain('condicion');
   });
 
   it('rechaza una URL de imagen inválida pero acepta imagen vacía', () => {
@@ -112,9 +125,10 @@ describe('productoSchema: Etapa 1 (precio, talles, largos)', () => {
     expect(productoSchema.safeParse({ ...valido, tipoPrenda: 'Calzado', categoria: 'Botas', talle: '40, 41' }).success).toBe(true);
   });
 
-  it('limita el nombre y la descripción a 30 caracteres', () => {
-    const largo = 'x'.repeat(31);
-    expect(campos(productoSchema.safeParse({ ...valido, nombre: largo }))).toContain('nombre');
-    expect(campos(productoSchema.safeParse({ ...valido, descripcion: largo }))).toContain('descripcion');
+  it('limita el nombre a 30 caracteres y la descripción a 500', () => {
+    const nombreLargo = 'x'.repeat(31);
+    const descripcionLarga = 'x'.repeat(501);
+    expect(campos(productoSchema.safeParse({ ...valido, nombre: nombreLargo }))).toContain('nombre');
+    expect(campos(productoSchema.safeParse({ ...valido, descripcion: descripcionLarga }))).toContain('descripcion');
   });
 });
