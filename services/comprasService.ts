@@ -2,7 +2,7 @@ import { CarritoItem } from '../stores/useCarritoStore';
 import { supabase } from './supabase';
 
 export type EntregaCompra = 'domicilio' | 'local';
-export type MedioPago = 'Efectivo' | 'Tarjeta' | 'Mercado Pago' | 'Transferencia';
+export type MedioPago = 'Efectivo' | 'Tarjeta de crédito' | 'Tarjeta de débito' | 'Mercado Pago';
 
 
 export interface ConfirmarCompraParams {
@@ -19,6 +19,8 @@ export interface CompraConfirmada {
   numero_orden: number;
   total: number;
   envio?: number;
+  /** Recargo por tarjeta de crédito (lo calcula confirmar_compra). */
+  comision?: number;
 }
 
 export function generarOperationKey() {

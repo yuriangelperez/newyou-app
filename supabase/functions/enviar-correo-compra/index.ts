@@ -1,14 +1,17 @@
-// Edge Function: manda al comprador un correo con el detalle de su compra (HU14), con Resend.
+// Edge Function: manda al comprador un correo con el detalle de su compra (HU14).
 //
-// Desplegar (una vez):
+// Sale por Gmail (SMTP) si están GMAIL_USUARIO y GMAIL_CLAVE; si no, por Resend.
 //   supabase functions deploy enviar-correo-compra
-//   supabase secrets set RESEND_API_KEY=re_xxx CORREO_REMITENTE="New You <compras@tu-dominio.com>"
-// Sin dominio verificado en Resend, el remitente de prueba (onboarding@resend.dev) sólo
-// entrega correos a la dirección con la que se creó la cuenta de Resend.
+//   supabase secrets set GMAIL_USUARIO=tu-cuenta@gmail.com GMAIL_CLAVE="abcd efgh ijkl mnop"
+// GMAIL_CLAVE es una "contraseña de aplicación" de Google (no la contraseña de la cuenta):
+// https://myaccount.google.com/apppasswords (pide tener la verificación en dos pasos activa).
+// Gmail llega a cualquier destinatario. Resend sin dominio verificado (onboarding@resend.dev)
+// sólo entrega a la dirección con la que se creó la cuenta de Resend.
 //
 // La app la llama después de confirmar_compra con { compraid }. Respeta el ajuste
 // "Notificaciones por correo" del perfil y no manda dos veces la misma compra.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import nodemailer from 'npm:nodemailer@6';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -34,8 +37,12 @@ function respuesta(cuerpo: unknown, status = 200) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
+  const gmailUsuario = Deno.env.get('GMAIL_USUARIO');
+  const gmailClave = Deno.env.get('GMAIL_CLAVE');
   const apiKey = Deno.env.get('RESEND_API_KEY');
-  if (!apiKey) return respuesta({ enviado: false, motivo: 'Falta RESEND_API_KEY' }, 200);
+  if (!(gmailUsuario && gmailClave) && !apiKey) {
+    return respuesta({ enviado: false, motivo: 'Faltan GMAIL_USUARIO y GMAIL_CLAVE (o RESEND_API_KEY)' }, 200);
+  }
 
   const url = Deno.env.get('SUPABASE_URL')!;
   const anon = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -52,14 +59,20 @@ Deno.serve(async (req) => {
   if (!compraid) return respuesta({ enviado: false, motivo: 'Falta compraid' }, 400);
 
   const admin = createClient(url, servicio);
-  const { data: compra } = await admin
+  const { data: compra, error: errorCompra } = await admin
     .from('compras')
-    .select('compraid, numero_orden, usuario_id, entrega, metodo_pago, direccion_entrega, subtotal_original, descuentos, envio, total, items, correo_enviado_at')
+    .select('compraid, numero_orden, usuario_id, entrega, metodo_pago, direccion_entrega, subtotal_original, descuentos, envio, comision, interes_cuotas, cuotas, total, items, correo_enviado_at, estado_pago')
     .eq('compraid', compraid)
     .eq('usuario_id', auth.user.id)
     .maybeSingle();
+  // Un error acá suele ser una columna que falta: correr 19-pagos-mercadopago.sql.
+  if (errorCompra) return respuesta({ enviado: false, motivo: `Error al leer la compra: ${errorCompra.message}` }, 500);
   if (!compra) return respuesta({ enviado: false, motivo: 'Compra no encontrada' }, 404);
   if (compra.correo_enviado_at) return respuesta({ enviado: false, motivo: 'Ya enviado' });
+  // Con Mercado Pago el correo sale recién cuando el pago está aprobado.
+  if (compra.estado_pago && !['aprobado', 'no_aplica'].includes(compra.estado_pago)) {
+    return respuesta({ enviado: false, motivo: 'Pago no acreditado' });
+  }
 
   const { data: perfil } = await admin
     .from('profiles')
@@ -90,27 +103,46 @@ Deno.serve(async (req) => {
     <p style="border-top:1px solid #E5E5E5;padding-top:8px">
       Descuentos: -${pesos(compra.descuentos)}<br>
       Envío: ${Number(compra.envio) === 0 ? 'GRATIS' : pesos(compra.envio)}<br>
+      ${Number(compra.comision) > 0 ? `Comisión tarjeta de crédito: ${pesos(compra.comision)}<br>` : ''}
+      ${Number(compra.interes_cuotas) > 0 ? `Interés por ${compra.cuotas} cuotas (total): ${pesos(compra.interes_cuotas)}<br>Pagás ${compra.cuotas} cuotas de ${pesos(Math.round(Number(compra.total) / Number(compra.cuotas)))}<br>` : ''}
       <b>Total: ${pesos(compra.total)}</b>
     </p>
     <p><b>${esDomicilio ? 'Envío a domicilio' : 'Retiro en el local'}</b><br>
       ${esDomicilio ? 'Entregar en' : 'Retirar en'}: ${escapar(compra.direccion_entrega ?? 'a confirmar con el vendedor')}<br>
-      Medio de pago: ${escapar(compra.metodo_pago ?? '')} (pago simulado)</p>
+      Medio de pago: ${escapar(compra.metodo_pago ?? '')} (${compra.estado_pago !== 'aprobado' ? 'se paga al recibir' : compra.metodo_pago === 'Mercado Pago' ? 'pagado con Mercado Pago' : 'pagado con tarjeta'})</p>
     <p style="color:#64748B;font-size:12px">Podés seguir el pedido en la app, en Perfil &gt; Mis compras.</p>
   </div>`;
 
-  const envio = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: Deno.env.get('CORREO_REMITENTE') ?? 'New You <onboarding@resend.dev>',
-      to: [destino],
-      subject: `New You · Compra confirmada · Orden #${compra.numero_orden}`,
-      html,
-    }),
-  });
+  const asunto = `New You · Compra confirmada · Orden #${compra.numero_orden}`;
 
-  if (!envio.ok) {
-    return respuesta({ enviado: false, motivo: `Resend respondió ${envio.status}: ${await envio.text()}` }, 502);
+  if (gmailUsuario && gmailClave) {
+    // Puerto 465 (SSL): Supabase bloquea las conexiones salientes a 25 y 587.
+    const transporte = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: { user: gmailUsuario, pass: gmailClave.replace(/\s/g, '') },
+    });
+    try {
+      await transporte.sendMail({ from: `New You <${gmailUsuario}>`, to: destino, subject: asunto, html });
+    } catch (error) {
+      return respuesta({ enviado: false, motivo: `Gmail respondió: ${error instanceof Error ? error.message : error}` }, 502);
+    }
+  } else {
+    const envio = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: Deno.env.get('CORREO_REMITENTE') ?? 'New You <onboarding@resend.dev>',
+        to: [destino],
+        subject: asunto,
+        html,
+      }),
+    });
+
+    if (!envio.ok) {
+      return respuesta({ enviado: false, motivo: `Resend respondió ${envio.status}: ${await envio.text()}` }, 502);
+    }
   }
 
   await admin.from('compras').update({ correo_enviado_at: new Date().toISOString() }).eq('compraid', compra.compraid);

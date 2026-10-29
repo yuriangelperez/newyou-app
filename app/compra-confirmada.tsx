@@ -12,24 +12,45 @@ const formatPrecio = (valor: number) => `$${valor.toLocaleString("es-AR")}`;
 export default function CompraConfirmadaScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { orden, entrega, direccion, metodoPago, envio, total } = useLocalSearchParams<{
+  const { orden, entrega, direccion, metodoPago, estadoPago, envio, comision, cuotas, interes, total } =
+    useLocalSearchParams<{
     orden?: string;
     entrega?: string;
     direccion?: string;
     metodoPago?: string;
+    estadoPago?: string;
     envio?: string;
+    comision?: string;
+    cuotas?: string;
+    interes?: string;
     total?: string;
   }>();
   const esDomicilio = entrega === "domicilio";
   const costoEnvio = Number(envio) || 0;
+  const costoComision = Number(comision) || 0;
+  const costoInteres = Number(interes) || 0;
+  const cantidadCuotas = Number(cuotas) || 1;
+  const pagoEnRevision = estadoPago === "pendiente";
+  const detallePago =
+    estadoPago === "aprobado"
+      ? metodoPago === "Mercado Pago"
+        ? "pagado con Mercado Pago"
+        : "pagado con tarjeta"
+      : pagoEnRevision
+        ? "pago en revisión"
+        : "se paga al recibir";
 
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }]}>
       <View style={styles.card} testID="compra-confirmada">
-        <Ionicons name="checkmark-circle" size={64} color={Colors.success} />
-        <Text style={styles.titulo}>Compra confirmada</Text>
+        <Ionicons
+          name={pagoEnRevision ? "time" : "checkmark-circle"}
+          size={64}
+          color={pagoEnRevision ? Colors.warning : Colors.success}
+        />
+        <Text style={styles.titulo}>{pagoEnRevision ? "Compra registrada" : "Compra confirmada"}</Text>
         <Text style={styles.orden} testID="compra-orden">Orden #{orden}</Text>
 
         <View style={styles.bloque}>
@@ -43,7 +64,7 @@ export default function CompraConfirmadaScreen() {
         {metodoPago ? (
           <View style={styles.bloque}>
             <Text style={styles.etiqueta}>Medio de pago</Text>
-            <Text style={styles.valor}>{metodoPago} (pago simulado)</Text>
+            <Text style={styles.valor} testID="compra-estado-pago">{`${metodoPago} (${detallePago})`}</Text>
           </View>
         ) : null}
 
@@ -51,13 +72,32 @@ export default function CompraConfirmadaScreen() {
           <Text style={styles.valor}>Envío</Text>
           <Text style={styles.valor}>{costoEnvio === 0 ? "GRATIS" : formatPrecio(costoEnvio)}</Text>
         </View>
+        {costoComision > 0 ? (
+          <View style={styles.fila}>
+            <Text style={styles.valor}>Comisión tarjeta de crédito</Text>
+            <Text style={styles.valor}>{formatPrecio(costoComision)}</Text>
+          </View>
+        ) : null}
+        {costoInteres > 0 ? (
+          <View style={styles.fila}>
+            <Text style={styles.valor}>{`Interés por ${cantidadCuotas} cuotas (total)`}</Text>
+            <Text style={styles.valor}>{formatPrecio(costoInteres)}</Text>
+          </View>
+        ) : null}
         <View style={styles.fila}>
           <Text style={styles.total}>Total</Text>
           <Text style={styles.total}>{formatPrecio(Number(total) || 0)}</Text>
         </View>
+        {cantidadCuotas > 1 ? (
+          <Text style={styles.valor}>
+            {`En ${cantidadCuotas} cuotas de ${formatPrecio(Math.round((Number(total) || 0) / cantidadCuotas))}`}
+          </Text>
+        ) : null}
 
         <Text style={styles.nota}>
-          Te mandamos el detalle a tu correo. También lo ves en Perfil {">"} Mis compras.
+          {pagoEnRevision
+            ? "Te avisamos cuando se acredite el pago. Lo seguís en Perfil > Mis compras."
+            : "Te mandamos el detalle a tu correo. También lo ves en Perfil > Mis compras."}
         </Text>
 
         <Pressable

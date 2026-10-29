@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { BottomTabBar } from "../../components/BottomTabBar";
+import { FormularioTarjeta } from "../../components/FormularioTarjeta";
+import { PagoMercadoPago } from "../../components/PagoMercadoPago";
 import { SelectorDireccion } from "../../components/ui/SelectorDireccion";
 import { PRODUCT_DETAIL_ICONS } from "../../constants/assets";
 
@@ -21,7 +23,9 @@ import { ROUTES } from "../../constants/routes";
 import { Colors, Radius, Shadow } from "../../constants/theme";
 import {
   calcularEnvio,
+  CompraConfirmada,
   confirmarCompra,
+  enviarCorreoCompra,
   EntregaCompra,
   generarOperationKey,
   MedioPago,
@@ -33,10 +37,25 @@ import { guardarSiEsNueva } from "../../services/direccionesService";
 import { traducirError } from "../../services/erroresSupabase";
 import { encolarBorrador, hayConexion } from "../../services/offlineService";
 import {
+  calcularComision,
+  cancelarPagoMp,
+  cancelarPagoTarjeta,
+  COMISION_CREDITO,
+  crearPagoMp,
+  esPagoOnline,
+  EstadoPago,
+  PagoIniciado,
+  pagarConTarjeta,
+  RetornoPago,
+  tipoTarjeta,
+  verificarPagoMp,
+} from "../../services/pagosService";
+import {
   selectTotalItems,
   useCarritoStore,
 } from "../../stores/useCarritoStore";
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
+import { DatosTarjeta } from "../../utils/tarjeta";
 import { usePuedeVender } from "../../hooks/usePuedeVender";
 
 const CANVAS_WIDTH = 412;
@@ -48,9 +67,9 @@ const ENTREGAS: { value: EntregaCompra; detalle: string }[] = [
 
 const MEDIOS_PAGO: { value: MedioPago; label: string }[] = [
   { value: "Efectivo", label: "EFECTIVO" },
-  { value: "Tarjeta", label: "TARJETA DÉBITO / CRÉDITO" },
+  { value: "Tarjeta de crédito", label: `TARJETA DE CRÉDITO (+${COMISION_CREDITO * 100}% DE COMISIÓN)` },
+  { value: "Tarjeta de débito", label: "TARJETA DE DÉBITO" },
   { value: "Mercado Pago", label: "MERCADO PAGO" },
-  { value: "Transferencia", label: "TRANSFERENCIA BANCARIA" },
 ];
 
 const formatPrecio = (valor: number) => `$${valor.toLocaleString("es-AR")}`;
@@ -79,7 +98,6 @@ export default function CheckoutScreen() {
   useFocusEffect(
     useCallback(() => limpiarCompraDirecta, [limpiarCompraDirecta]),
   );
-  const usuario = useUsuarioStore((state) => state.usuario);
   const esVendedor = usePuedeVender();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -92,6 +110,14 @@ export default function CheckoutScreen() {
   // La clave se mantiene entre reintentos: si el primer intento llegó al
   // servidor pero falló la respuesta, el reintento no duplica la orden.
   const operationKey = useRef(generarOperationKey());
+  // Pago con tarjeta / Mercado Pago en curso: la compra ya está registrada (stock reservado).
+  // Con tarjeta se abre el formulario propio; con Mercado Pago, el Checkout Pro.
+  const [pago, setPago] = useState<{
+    compra: CompraConfirmada;
+    direccionEntrega: string;
+    checkoutPro?: PagoIniciado;
+  } | null>(null);
+  const [verificandoPago, setVerificandoPago] = useState(false);
 
   const { direcciones } = useDirecciones();
   const [direccion, setDireccion] = useState("");
@@ -131,7 +157,8 @@ export default function CheckoutScreen() {
         .map((tienda) => tienda.vendedor),
     ),
   );
-  const total = subtotal + envio;
+  const comision = calcularComision(medioPago, subtotal + envio);
+  const total = subtotal + envio + comision;
 
   const onConfirmar = async () => {
     if (items.length === 0 || isSubmitting) {
@@ -165,7 +192,17 @@ export default function CheckoutScreen() {
         direccionEntrega,
       };
 
-      if (!(await hayConexion())) {
+      const conConexion = await hayConexion();
+      if (!conConexion && esPagoOnline(medioPago)) {
+        Toast.show({
+          type: "error",
+          text1: "Sin conexión",
+          text2: `Para pagar con ${medioPago} necesitás Internet. También podés elegir efectivo.`,
+        });
+        return;
+      }
+
+      if (!conConexion) {
         await encolarBorrador({ tipo: "compra", payload: parametros });
         if (!esCompraDirecta) {
           vaciarCarrito();
@@ -181,31 +218,181 @@ export default function CheckoutScreen() {
 
       const compra = await confirmarCompra(parametros);
 
-      // Si usó una dirección nueva de entrega, queda guardada (no bloquea la compra).
-      if (entrega === "domicilio") {
-        guardarSiEsNueva(direccionEntrega, direcciones).catch(() => {});
+      if (esPagoOnline(medioPago)) {
+        // La compra queda "pendiente de pago" hasta que el pago se apruebe.
+        try {
+          // Tarjetas: formulario propio. Mercado Pago: Checkout Pro.
+          if (tipoTarjeta(medioPago)) {
+            setPago({ compra, direccionEntrega });
+          } else {
+            const checkoutPro = await crearPagoMp(compra.compraid);
+            setPago({ compra, direccionEntrega, checkoutPro });
+          }
+        } catch (error) {
+          await cancelarPagoMp(compra.compraid).catch(() => undefined);
+          operationKey.current = generarOperationKey();
+          throw error;
+        }
+        return;
       }
 
-      if (!esCompraDirecta) {
-        vaciarCarrito();
-      }
-      // Pantalla de confirmación con la orden y los datos de entrega (HU14).
-      router.replace({
-        pathname: ROUTES.purchaseConfirmed,
-        params: {
-          orden: String(compra.numero_orden),
-          entrega,
-          direccion: direccionEntrega,
-          metodoPago: medioPago,
-          envio: String(compra.envio ?? envio),
-          total: String(compra.total ?? total),
-        },
-      });
+      finalizarCompra(compra, direccionEntrega, "no_aplica");
     } catch (error) {
       const message = traducirError(error);
       Toast.show({ type: "error", text1: "Error en la compra", text2: message });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const finalizarCompra = (
+    compra: CompraConfirmada,
+    direccionEntrega: string,
+    estadoPago: EstadoPago,
+    cuotas?: { cuotas: number; interes: number },
+  ) => {
+    // Si usó una dirección nueva de entrega, queda guardada (no bloquea la compra).
+    if (entrega === "domicilio") {
+      guardarSiEsNueva(direccionEntrega, direcciones).catch(() => {});
+    }
+
+    if (!esCompraDirecta) {
+      vaciarCarrito();
+    }
+    // Pantalla de confirmación con la orden y los datos de entrega (HU14).
+    router.replace({
+      pathname: ROUTES.purchaseConfirmed,
+      params: {
+        orden: String(compra.numero_orden),
+        entrega,
+        direccion: direccionEntrega,
+        metodoPago: medioPago,
+        estadoPago,
+        envio: String(compra.envio ?? envio),
+        comision: String(compra.comision ?? comision),
+        cuotas: String(cuotas?.cuotas ?? 1),
+        interes: String(cuotas?.interes ?? 0),
+        total: String(compra.total ?? total),
+      },
+    });
+  };
+
+  /**
+   * Termina el pago con Mercado Pago. `abandonar` = el comprador lo cerró o el pago
+   * fue rechazado: se anula la compra salvo que Mercado Pago diga que ya se pagó.
+   */
+  const resolverPago = async (abandonar: boolean, retorno: RetornoPago | null = null) => {
+    if (!pago || verificandoPago) {
+      return;
+    }
+
+    try {
+      setVerificandoPago(true);
+      let estado = await verificarPagoMp(pago.compra.compraid);
+      // Si Mercado Pago volvió con "aprobado" o "pendiente", el pago existe aunque todavía no figure.
+      const enRevision = estado === "pendiente" && (retorno === "aprobado" || retorno === "pendiente");
+
+      if (estado === "aprobado" || enRevision) {
+        if (estado === "aprobado") {
+          enviarCorreoCompra(pago.compra.compraid);
+        }
+        setPago(null);
+        finalizarCompra(pago.compra, pago.direccionEntrega, estado);
+        return;
+      }
+
+      // En la web "Ya pagué" sin pago registrado: se deja abierto para reintentar.
+      if (!abandonar) {
+        Toast.show({
+          type: "info",
+          text1: "Todavía no vemos el pago",
+          text2: "Terminá el pago en la pestaña de Mercado Pago y volvé a intentar.",
+        });
+        return;
+      }
+
+      estado = await cancelarPagoMp(pago.compra.compraid);
+      if (estado === "aprobado" || estado === "pendiente") {
+        // Se acreditó (o quedó en revisión) justo antes de cancelar.
+        setPago(null);
+        finalizarCompra(pago.compra, pago.direccionEntrega, estado);
+        return;
+      }
+
+      setPago(null);
+      operationKey.current = generarOperationKey();
+      Toast.show({
+        type: "error",
+        text1: retorno === "rechazado" ? "El pago fue rechazado" : "Pago cancelado",
+        text2: "No se cobró nada. Podés intentar de nuevo o elegir otro medio de pago.",
+      });
+    } catch (error) {
+      Toast.show({ type: "error", text1: "No pudimos confirmar el pago", text2: traducirError(error) });
+    } finally {
+      setVerificandoPago(false);
+    }
+  };
+
+  /** Cobra con la tarjeta del formulario. Devuelve el motivo si no se pudo (null = pagado). */
+  const pagarTarjeta = async (datos: DatosTarjeta) => {
+    if (!pago) {
+      return null;
+    }
+
+    try {
+      setVerificandoPago(true);
+      const resultado = await pagarConTarjeta(pago.compra.compraid, datos);
+      const { estado, detalle } = resultado;
+
+      if (estado === "aprobado" || estado === "pendiente") {
+        if (estado === "aprobado") {
+          enviarCorreoCompra(pago.compra.compraid);
+        }
+        setPago(null);
+        // El total cobrado incluye el interés de las cuotas.
+        finalizarCompra(
+          { ...pago.compra, total: resultado.total ?? pago.compra.total },
+          pago.direccionEntrega,
+          estado,
+          { cuotas: resultado.cuotas ?? datos.cuotas, interes: resultado.interes ?? 0 },
+        );
+        return null;
+      }
+
+      // El formulario muestra el motivo (un Toast quedaría tapado por el Modal).
+      return detalle ?? "La tarjeta rechazó el pago. Probá con otra o elegí otro medio de pago.";
+    } catch (error) {
+      return traducirError(error);
+    } finally {
+      setVerificandoPago(false);
+    }
+  };
+
+  /** El comprador cerró el formulario de tarjeta sin pagar: se anula la compra. */
+  const cancelarTarjeta = async () => {
+    if (!pago || verificandoPago) {
+      return;
+    }
+
+    try {
+      setVerificandoPago(true);
+      const estado = await cancelarPagoTarjeta(pago.compra.compraid);
+      if (estado === "aprobado" || estado === "pendiente") {
+        setPago(null);
+        finalizarCompra(pago.compra, pago.direccionEntrega, estado);
+        return;
+      }
+      setPago(null);
+      operationKey.current = generarOperationKey();
+      Toast.show({
+        type: "error",
+        text1: "Pago cancelado",
+        text2: "No se cobró nada. Podés intentar de nuevo o elegir otro medio de pago.",
+      });
+    } catch (error) {
+      Toast.show({ type: "error", text1: "No pudimos cancelar el pago", text2: traducirError(error) });
+    } finally {
+      setVerificandoPago(false);
     }
   };
 
@@ -313,6 +500,12 @@ export default function CheckoutScreen() {
             <Text style={styles.summaryText}>Envío</Text>
             <Text style={styles.summaryText}>{envioTexto}</Text>
           </View>
+          {comision > 0 ? (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryText}>{`Comisión crédito (${COMISION_CREDITO * 100}%)`}</Text>
+              <Text style={styles.summaryText} testID="checkout-comision">{formatPrecio(comision)}</Text>
+            </View>
+          ) : null}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryText}>Impuestos</Text>
             <Text style={styles.summaryText}>$0</Text>
@@ -341,6 +534,24 @@ export default function CheckoutScreen() {
           </View>
         </View>
       </KeyboardAwareScrollView>
+
+      {pago && !pago.checkoutPro ? (
+        <FormularioTarjeta
+          visible
+          monto={Number(pago.compra.total)}
+          tipo={medioPago === "Tarjeta de crédito" ? "credito" : "debito"}
+          procesando={verificandoPago}
+          onPagar={pagarTarjeta}
+          onCancelar={() => void cancelarTarjeta()}
+        />
+      ) : null}
+
+      <PagoMercadoPago
+        pago={pago?.checkoutPro ?? null}
+        verificando={verificandoPago}
+        onRetorno={(retorno) => void resolverPago(retorno === "rechazado", retorno)}
+        onCancelar={() => void resolverPago(true)}
+      />
 
       <BottomTabBar
         activeTab="cart"
