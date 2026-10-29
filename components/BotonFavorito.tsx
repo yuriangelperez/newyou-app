@@ -17,7 +17,7 @@ interface BotonFavoritoProps {
 }
 
 /**
- * Corazón de favoritos con un "latido" de Reanimated (Clase 9): la escala vive en
+ * Estrella de favoritos con un "latido" de Reanimated (Clase 9): la escala vive en
  * un shared value del hilo de UI, así la animación no se traba si el JS está ocupado.
  */
 export function BotonFavorito({ activo, onToggle, style, iconStyle }: BotonFavoritoProps) {
