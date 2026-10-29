@@ -1,6 +1,6 @@
 # Guía de instalación — New You
 
-Pasos para poner en marcha la app desde cero: el código, la base en Supabase, el correo de compra, las variables de entorno, la página de invitaciones y el instalable para Android.
+Pasos para poner en marcha la app desde cero: el código, la base en Supabase, los pagos, el correo de compra, las variables de entorno, la página de invitaciones y el instalable para Android.
 
 ## 1. Requisitos
 
@@ -8,7 +8,8 @@ Pasos para poner en marcha la app desde cero: el código, la base en Supabase, e
 - Git.
 - Una cuenta de Supabase con un proyecto creado.
 - Una cuenta de Expo (para EAS Build) y la app Expo Go en el celular.
-- Opcional: una cuenta de Resend para el correo de confirmación de compra.
+- Para el correo de confirmación de compra: una cuenta de Gmail con verificación en dos pasos (para crear una contraseña de aplicación), o una cuenta de Resend.
+- Para pagar con Mercado Pago: una cuenta de Mercado Pago Developers con una aplicación de prueba (Checkout Pro). Las tarjetas de crédito y débito no la necesitan.
 
 ## 2. Código
 
@@ -68,8 +69,9 @@ Las migraciones están en `supabase/migraciones` y se corren a mano, una vez cad
 | 16-etapa1-mejoras.sql | Login con usuario, ajustes, categorías por grupo, borradores, correo de compra |
 | 17-metricas-rango.sql | Métricas por rango de fechas (`metricas_ventas_rango`) |
 | 18-condicion-productos.sql | Condición de la prenda (`nuevo` o `usado`) y público múltiple (`publico` pasa a `text[]`: Adulto, Femenino, Masculino, Infantil, Unisex) |
+| 19-pagos-mercadopago.sql | Pagos con tarjeta de crédito y débito (API de tarjetas simulada) y Mercado Pago: estado del pago, comisión del 6% con crédito, cuotas e interés, marca y últimos 4 dígitos; quita la transferencia |
 
-La app nueva lee columnas de la 16 (`productos.estado`): correrla antes de abrir esa versión. Sin la 17, los rangos de Métricas que no terminan hoy muestran un aviso. La 18 hace falta para publicar o editar prendas desde la versión que pide condición y varios públicos.
+La app nueva lee columnas de la 16 (`productos.estado`): correrla antes de abrir esa versión. Sin la 17, los rangos de Métricas que no terminan hoy muestran un aviso. La 18 hace falta para publicar o editar prendas desde la versión que pide condición y varios públicos. La 19 hace falta para pagar con tarjeta o Mercado Pago (sin ella el checkout responde "Medio de pago inválido").
 
 ### 4.3 Storage
 
@@ -92,21 +94,65 @@ SELECT id FROM auth.users WHERE email = '<correo del administrador>';
 
 `npm run seed:productos` carga prendas de ejemplo (`scripts/seed-productos.mjs`).
 
-## 5. Correo de confirmación de compra (Edge Function)
+## 5. Funciones del servidor (Edge Functions)
 
-La función `supabase/functions/enviar-correo-compra` manda el detalle de la compra con Resend.
+Hay cuatro funciones en `supabase/functions`. Se despliegan una vez desde la carpeta del proyecto:
 
 ```bash
 npx supabase login
 npx supabase link --project-ref <ref del proyecto>
-npx supabase secrets set RESEND_API_KEY=<clave de Resend>
-npx supabase secrets set CORREO_REMITENTE="New You <compras@tu-dominio.com>"   # opcional
 npx supabase functions deploy enviar-correo-compra
+npx supabase functions deploy pago-tarjeta
+npx supabase functions deploy pago-mercadopago
+npx supabase functions deploy mp-webhook --no-verify-jwt
 ```
 
+| Función | Para qué | Secretos |
+| --- | --- | --- |
+| `enviar-correo-compra` | Correo con el detalle de la compra (incluye comisión y cuotas si se pagó con crédito) | `GMAIL_USUARIO` y `GMAIL_CLAVE`, o `RESEND_API_KEY` (y opcional `CORREO_REMITENTE`) |
+| `pago-tarjeta` | API de tarjetas propia y simulada: valida la tarjeta otra vez en el servidor, calcula el interés de las cuotas y aprueba o rechaza según el titular | Ninguno |
+| `pago-mercadopago` | Crea, verifica y cancela el pago de Checkout Pro | `MP_ACCESS_TOKEN` |
+| `mp-webhook` | Recibe los avisos de Mercado Pago aunque el comprador cierre la app | `MP_WEBHOOK_SECRET` (opcional) |
+
+### 5.1 Correo de compra
+
+Sale por Gmail si están `GMAIL_USUARIO` y `GMAIL_CLAVE`; si no, por Resend. Con tarjeta o Mercado Pago se manda recién cuando se aprueba el pago, y una sola vez por compra.
+
+```bash
+npx supabase secrets set GMAIL_USUARIO=<cuenta>@gmail.com GMAIL_CLAVE="<contraseña de aplicación>"
+# o, en lugar de Gmail:
+npx supabase secrets set RESEND_API_KEY=<clave de Resend>
+```
+
+- `GMAIL_CLAVE` es una contraseña de aplicación de Google (Cuenta de Google > Seguridad > Verificación en dos pasos > Contraseñas de aplicaciones), no la contraseña de la cuenta. Con Gmail el correo llega a cualquier destinatario.
 - Sin dominio verificado en Resend, el remitente de prueba (`onboarding@resend.dev`) sólo entrega a la dirección con la que se creó la cuenta de Resend.
-- Si una clave se compartió por error, regenerarla en Resend y volver a correr `secrets set`.
+- Si una clave se compartió por error, regenerarla y volver a correr `secrets set`.
 - Sin la función la compra igual se confirma; sólo no llega el correo.
+
+### 5.2 Mercado Pago (modo prueba)
+
+1. En https://www.mercadopago.com.ar/developers/panel/app crear una aplicación (Pagos online, Checkout Pro).
+2. En **Credenciales de prueba** copiar el Access Token. Es secreto: va sólo en Supabase, nunca en la app ni en el `.env`.
+3. `npx supabase secrets set MP_ACCESS_TOKEN=<access token de prueba>`
+4. Opcional: en **Webhooks > Configurar notificaciones** poner `https://<ref del proyecto>.supabase.co/functions/v1/mp-webhook`, evento **Pagos**, y guardar la clave secreta con `npx supabase secrets set MP_WEBHOOK_SECRET=<clave>`.
+
+Para probar se paga con un usuario de prueba comprador o como invitado con una tarjeta de prueba de Mercado Pago; con la cuenta real de Mercado Pago el pago falla.
+
+### 5.3 Tarjetas de prueba (API propia)
+
+No usan Mercado Pago. Vencimiento futuro (por ejemplo `11/30`), código `123` (4 dígitos en American Express) y DNI `12345678`:
+
+| Tarjeta | Número | Tipo |
+| --- | --- | --- |
+| Visa | 4509 9535 6623 3704 | Crédito |
+| Mastercard | 5031 7557 3453 0604 | Crédito |
+| American Express | 3711 803032 57522 | Crédito |
+| Visa | 4002 7686 9439 5619 | Débito |
+| Mastercard | 5287 3383 1025 3304 | Débito |
+
+El titular decide el resultado: `APRO` (o cualquier nombre) aprueba, `FUND` sin fondos, `SECU` código incorrecto, `CONT` en revisión y `OTHE` rechazado.
+
+La comisión del 6% se cambia en `comision_tarjeta_credito()` (migración 19) y en `COMISION_CREDITO` de `services/pagosService.ts`; el interés de las cuotas, en `INTERES_CUOTAS` de `utils/tarjeta.ts` y su copia `supabase/functions/_shared/tarjeta.ts` (un test falla si difieren), y después se vuelve a desplegar `pago-tarjeta`. El detalle completo está en `docs/pagos-mercadopago.md`.
 
 ## 6. Página de invitaciones (GitHub Pages)
 
@@ -172,5 +218,9 @@ Cada integrante trabaja en su rama `datos-<nombre>` y abre un pull request hacia
 | Error `column productos.estado does not exist` | Falta correr la migración 16 |
 | Error al publicar con `condicion` o `publico` | Falta correr la migración 18 |
 | No se puede publicar como empresa | La empresa está pendiente o suspendida: un administrador tiene que verificarla |
+| "Medio de pago inválido" al pagar con tarjeta o Mercado Pago | Falta correr la migración 19 |
+| El formulario de tarjeta dice que la función no está desplegada | Falta `supabase functions deploy pago-tarjeta` |
+| Mercado Pago no abre o falla al crear el pago | Falta `MP_ACCESS_TOKEN` o se usó la cuenta real en lugar de una de prueba |
+| No llega el correo de compra | Faltan `GMAIL_USUARIO`/`GMAIL_CLAVE` (o `RESEND_API_KEY`), o el pago todavía no se aprobó |
 | No llegan las notificaciones push | Se está usando Expo Go, o falta activar `pg_net` antes de la migración 14 |
 | El enlace de invitación da 404 | GitHub Pages no está activado o `docs/` todavía no llegó a `main` |

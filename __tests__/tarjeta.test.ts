@@ -86,11 +86,27 @@ describe('API de tarjetas: validación', () => {
   });
 
   it('la Edge Function usa la misma validación', () => {
-    // supabase/functions/_shared/tarjeta.ts tiene que ser copia exacta de utils/tarjeta.ts.
-    const copia: Record<string, unknown> = { ...copiaFuncion };
-    Object.entries(app).forEach(([nombre, valor]) => {
-      expect(String(copia[nombre])).toBe(String(valor));
-    });
+    // supabase/functions/_shared/tarjeta.ts tiene que ser copia de utils/tarjeta.ts. Se compara el
+    // comportamiento (no el texto del código: con --coverage Jest instrumenta cada archivo distinto).
+    expect(copiaFuncion.INTERES_CUOTAS).toEqual(app.INTERES_CUOTAS);
     expect(copiaFuncion.TARJETAS_PRUEBA).toEqual(app.TARJETAS_PRUEBA);
+
+    const casos = [
+      ...app.TARJETAS_PRUEBA.map((tarjeta) => ({ ...VALIDA, numero: tarjeta.numero })),
+      { ...VALIDA, numero: '4509953566233705' },
+      { ...VALIDA, numero: '371180303257522', cvv: '1234', cuotas: 12 },
+      { numero: '9999', titular: 'A', vencimiento: '01/20', cvv: '1', dni: '1', cuotas: 5 },
+    ];
+    casos.forEach((datos) => {
+      expect(copiaFuncion.detectarMarca(datos.numero)).toBe(app.detectarMarca(datos.numero));
+      expect(copiaFuncion.detectarTipo(datos.numero)).toBe(app.detectarTipo(datos.numero));
+      expect(copiaFuncion.formatearNumero(datos.numero)).toBe(app.formatearNumero(datos.numero));
+      (['credito', 'debito', undefined] as const).forEach((tipo) => {
+        expect(copiaFuncion.validarTarjeta(datos, HOY, tipo)).toEqual(app.validarTarjeta(datos, HOY, tipo));
+      });
+    });
+    [1, 3, 6, 12].forEach((cuotas) => {
+      expect(copiaFuncion.calcularCuotas(9434, cuotas)).toEqual(app.calcularCuotas(9434, cuotas));
+    });
   });
 });
