@@ -1,0 +1,30 @@
+digraph G {
+graph [fontname="DejaVu Sans", fontsize=13, rankdir=TB, nodesep=0.35, ranksep=0.32, bgcolor="white", pad=0.3, labelloc=t, labeljust=c];
+node [fontname="DejaVu Sans", fontsize=11, style="filled", color="#5B6770", penwidth=1.2, margin="0.15,0.07"];
+edge [fontname="DejaVu Sans", fontsize=10, color="#5B6770", arrowsize=0.7, fontcolor="#333333"];
+label=<<b>E. Ver mis compras</b>>;
+ini [label="Inicio: el usuario abre\n\"Mis compras\"", shape=ellipse, fillcolor="#2E5E4E", fontcolor="white", color="#2E5E4E"];
+rpc [label="Pedir mis_compras_pedidos\n(el servidor filtra por comprador, RLS)", shape=box, style="rounded,filled", fillcolor="#EAF2EE"];
+ok [label="¿Respondió\nbien?", shape=diamond, fillcolor="#FFF4D6", color="#B58900", margin="0.03,0.02"];
+err [label="Mostrar \"No se pudieron\ncargar tus compras\"", shape=box, style="rounded,filled", fillcolor="#FDE8E6", color="#C0392B"];
+vacia [label="¿Hay pedidos?", shape=diamond, fillcolor="#FFF4D6", color="#B58900", margin="0.03,0.02"];
+nada [label="Mostrar \"Todavía no\nhiciste compras\"", shape=parallelogram, fillcolor="#E6EEF8", color="#3B6EA5", margin="0.02,0.04"];
+lista [label="Mostrar la lista, de la más nueva\na la más vieja: estado, ítems,\nenvío e historial", shape=parallelogram, fillcolor="#E6EEF8", color="#3B6EA5", margin="0.02,0.04"];
+calif [label="¿Hay pedidos entregados\nsin calificar?", shape=diamond, fillcolor="#FFF4D6", color="#B58900", margin="0.03,0.02"];
+boton [label="Ofrecer \"Calificar\"", shape=box, style="rounded,filled", fillcolor="#EAF2EE"];
+fin [label="Fin", shape=ellipse, fillcolor="#2E5E4E", fontcolor="white", color="#2E5E4E"];
+ini -> rpc;
+rpc -> ok;
+ok -> err [label=" No "];
+ok -> vacia [label=" Sí "];
+vacia -> nada [label=" No "];
+vacia -> lista [label=" Sí "];
+lista -> calif;
+calif -> boton [label=" Sí "];
+calif -> fin [label=" No "];
+g1 [label="Fin", shape=ellipse, fillcolor="#2E5E4E", fontcolor="white", color="#2E5E4E"];
+g2 [label="Fin", shape=ellipse, fillcolor="#2E5E4E", fontcolor="white", color="#2E5E4E"];
+boton -> fin;
+nada -> g1;
+err -> g2;
+}

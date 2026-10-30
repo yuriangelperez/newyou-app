@@ -10,6 +10,7 @@ export interface Producto {
   categoria: string;
   categoriaId?: number;
   categoriaProducto?: CategoriaProducto;
+  condicion?: 'nuevo' | 'usado';
   disponible: boolean;
   stock: number;
   talle?: string[];

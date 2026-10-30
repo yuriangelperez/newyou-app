@@ -1,0 +1,36 @@
+digraph G {
+graph [fontname="DejaVu Sans", fontsize=13, rankdir=TB, nodesep=0.35, ranksep=0.32, bgcolor="white", pad=0.3, labelloc=t, labeljust=c];
+node [fontname="DejaVu Sans", fontsize=11, style="filled", color="#5B6770", penwidth=1.2, margin="0.15,0.07"];
+edge [fontname="DejaVu Sans", fontsize=10, color="#5B6770", arrowsize=0.7, fontcolor="#333333"];
+label=<<b>C. Inicio de sesión</b>>;
+ini [label="Inicio", shape=ellipse, fillcolor="#2E5E4E", fontcolor="white", color="#2E5E4E"];
+datos [label="Correo o usuario y contraseña", shape=parallelogram, fillcolor="#E6EEF8", color="#3B6EA5", margin="0.02,0.04"];
+zod [label="¿Pasan la validación\n(Zod)?", shape=diamond, fillcolor="#FFF4D6", color="#B58900", margin="0.03,0.02"];
+campos [label="Mostrar el error debajo del campo\n(no se borran los otros)", shape=box, style="rounded,filled", fillcolor="#FDE8E6", color="#C0392B"];
+usr [label="¿Ingresó un\nnombre de usuario?", shape=diamond, fillcolor="#FFF4D6", color="#B58900", margin="0.03,0.02"];
+buscar [label="Buscar el correo de ese usuario\nen la base", shape=box, style="rounded,filled", fillcolor="#EAF2EE"];
+auth [label="Supabase Auth:\nsignInWithPassword", shape=box, style="rounded,filled", fillcolor="#EAF2EE"];
+ok [label="¿Credenciales\ncorrectas?", shape=diamond, fillcolor="#FFF4D6", color="#B58900", margin="0.03,0.02"];
+msg [label="Mensaje en español sin decir\nqué dato falló", shape=box, style="rounded,filled", fillcolor="#FDE8E6", color="#C0392B"];
+guardar [label="Guardar la sesión cifrada\n(expo-secure-store)", shape=cylinder, fillcolor="#EEE8F6", color="#6C4F9C"];
+home [label="Ir al Home (la guardia de\n_layout.tsx protege las rutas)", shape=box, style="rounded,filled", fillcolor="#EAF2EE"];
+fin [label="Fin", shape=ellipse, fillcolor="#2E5E4E", fontcolor="white", color="#2E5E4E"];
+ini -> datos;
+datos -> zod;
+zod -> campos [label=" No "];
+c1 [label="1", shape=circle, fillcolor="#FFFFFF", color="#2E5E4E", fontcolor="#2E5E4E", width=0.35, fixedsize=true];
+c1b [label="1", shape=circle, fillcolor="#FFFFFF", color="#2E5E4E", fontcolor="#2E5E4E", width=0.35, fixedsize=true];
+campos -> c1;
+c1b -> datos;
+zod -> usr [label=" Sí "];
+usr -> buscar [label=" Sí "];
+usr -> auth [label=" No "];
+buscar -> auth;
+auth -> ok;
+ok -> msg [label=" No "];
+c2 [label="1", shape=circle, fillcolor="#FFFFFF", color="#2E5E4E", fontcolor="#2E5E4E", width=0.35, fixedsize=true];
+msg -> c2;
+ok -> guardar [label=" Sí "];
+guardar -> home;
+home -> fin;
+}

@@ -6,7 +6,7 @@ import { Colors, Radius } from '../../constants/theme';
 import { ProductoFormValues } from '../../schemas/productoSchema';
 
 const COLORES = ['Negro', 'Blanco', 'Beige', 'Marrón', 'Azul', 'Rojo', 'Verde', 'Gris', 'Rosa', 'Amarillo'];
-const TONOS: Record<string, string> = { Negro: '#1F1E1E', Blanco: '#FFFFFF', Beige: '#D8C3A5', Marrón: '#6F4E37', Azul: '#2563EB', Rojo: '#DC2626', Verde: '#16A34A', Gris: '#6B7280', Rosa: '#EC4899', Amarillo: '#CA8A04' };
+const TONOS: Record<string, string> = { Negro: '#1F1E1E', Blanco: '#FFFFFF', Beige: '#D8C3A5', Marrón: '#6F4E37', Azul: '#2563EB', Rojo: '#DC2626', Verde: '#19cc5b', Gris: '#6B7280', Rosa: '#EC4899', Amarillo: '#fdc03c' };
 
 const aRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 const aHex = (rgb: number[]) => `#${rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;

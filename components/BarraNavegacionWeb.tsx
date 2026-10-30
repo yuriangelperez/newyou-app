@@ -15,7 +15,7 @@ type Destino = { texto: string; icono: keyof typeof Ionicons.glyphMap; ruta: str
 const DESTINOS: Destino[] = [
   { texto: 'Inicio', icono: 'home-outline', ruta: ROUTES.home, activo: (p) => p === '/' },
   { texto: 'Categorías', icono: 'grid-outline', ruta: ROUTES.categories, activo: (p) => p.startsWith('/categorias') },
-  { texto: 'Favoritos', icono: 'heart-outline', ruta: ROUTES.favorites, activo: (p) => p.startsWith('/favoritos') },
+  { texto: 'Favoritos', icono: 'star-outline', ruta: ROUTES.favorites, activo: (p) => p.startsWith('/favoritos') },
   { texto: 'Mis compras', icono: 'bag-handle-outline', ruta: ROUTES.myPurchases, activo: (p) => p.startsWith('/mis-compras') },
 ];
 

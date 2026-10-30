@@ -2,7 +2,9 @@ import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { PinchGestureHandler, State as GestureState } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
@@ -31,13 +34,41 @@ import {
   selectTotalItems,
   useCarritoStore,
 } from "../../stores/useCarritoStore";
-import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { usePuedeGestionarProducto, usePuedeVender } from "../../hooks/usePuedeVender";
 import { useEsEscritorio } from "../../hooks/useEsEscritorio";
 import { useFavoritosStore } from "../../stores/useFavoritosStore";
 import { calcularPrecioFinal } from "../../types";
 
 const CANVAS_WIDTH = 412;
+
+function parseDescripcionParaLista(descripcion: string): string[] {
+  if (!descripcion) {
+    return [];
+  }
+
+  const lineas = descripcion
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((linea) => linea.trim())
+    .filter(Boolean);
+
+  if (lineas.length === 0) {
+    return [];
+  }
+
+  return lineas.reduce<string[]>((items, linea) => {
+    const limpia = linea
+      .replace(/^[-*•]\s+/, "")
+      .replace(/^\d+\.\s+/, "")
+      .trim();
+
+    if (limpia) {
+      items.push(limpia);
+    }
+
+    return items;
+  }, []);
+}
 
 export default function ProductDetailScreen() {
   const router = useRouter();
@@ -70,23 +101,28 @@ export default function ProductDetailScreen() {
     }
     return producto?.imagen ? [producto.imagen] : [];
   }, [producto]);
-  const detailItems = useMemo(
-    () =>
-      producto
-        ? [
-            producto.descripcion,
-            talles.length > 0
-              ? `Talles disponibles: ${talles.join(", ")}.`
-              : "Talle no indicado por el vendedor.",
-            producto.disponible
-              ? "Disponible para compra inmediata."
-              : "Producto agotado por el momento.",
-          ]
-        : [],
-    [producto, talles],
-  );
+  const detailItems = useMemo(() => {
+    if (!producto) {
+      return [];
+    }
+
+    const descripcionItems = parseDescripcionParaLista(producto.descripcion);
+    const extras = [
+      talles.length > 0
+        ? `Talles disponibles: ${talles.join(", ")}.`
+        : "Talle no indicado por el vendedor.",
+      producto.disponible
+        ? "Disponible para compra inmediata."
+        : "Producto agotado por el momento.",
+    ];
+
+    return [...descripcionItems, ...extras];
+  }, [producto, talles]);
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [zoomScale, setZoomScale] = useState(1);
+  const condicionTexto = producto?.condicion === "usado" ? "Usado" : "Nuevo";
   const [selectedSize, setSelectedSize] = useState(talles[0] ?? "");
   const [selectedColor, setSelectedColor] = useState(colores[0] ?? "");
   const [quantity, setQuantity] = useState(1);
@@ -149,6 +185,10 @@ export default function ProductDetailScreen() {
     if (producto) {
       toggleFavorito(producto);
     }
+  };
+
+  const resetZoom = () => {
+    setZoomScale(1);
   };
 
   // Valida stock/cantidad antes de agregar al carrito o comprar directo.
@@ -322,11 +362,17 @@ export default function ProductDetailScreen() {
               }}
             >
               {galleryImages.map((image, index) => (
-                <Image
+                <Pressable
                   key={`${producto.id}-${index.toString()}`}
-                  source={{ uri: image }}
-                  style={styles.carouselImage}
-                />
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel={`Ampliar imagen ${index + 1} de ${producto.nombre}`}
+                  onPress={() => setZoomImage(image)}
+                >
+                  <Image
+                    source={{ uri: image }}
+                    style={styles.carouselImage}
+                  />
+                </Pressable>
               ))}
             </ScrollView>
           </View>
@@ -362,6 +408,10 @@ export default function ProductDetailScreen() {
             <Text style={styles.price}>
               ${calcularPrecioFinal(producto).toLocaleString("es-AR")}
             </Text>
+            <View style={styles.conditionRow}>
+              <Text style={styles.conditionLabel}>Condición:</Text>
+              <Text style={styles.conditionValue}>{condicionTexto}</Text>
+            </View>
             {reputacion ? <ResumenReputacion promedio={reputacion.promedio} cantidad={reputacion.cantidad} /> : null}
             {producto.vendedor ? (
               <Pressable
@@ -544,6 +594,51 @@ export default function ProductDetailScreen() {
         </ScrollView>
       </View>
 
+      <Modal
+        visible={!!zoomImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setZoomImage(null)}
+      >
+        <Pressable style={styles.zoomBackdrop} onPress={() => setZoomImage(null)}>
+          <Pressable onPress={(event) => event.stopPropagation()} style={styles.zoomContent}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar imagen ampliada"
+              onPress={() => setZoomImage(null)}
+              style={styles.zoomCloseButton}
+            >
+              <Text style={styles.zoomCloseText}>✕</Text>
+            </Pressable>
+
+            <PinchGestureHandler
+              onGestureEvent={(event) => {
+                const scale = event.nativeEvent.scale;
+                if (scale >= 1) {
+                  setZoomScale(scale);
+                }
+              }}
+              onHandlerStateChange={(event) => {
+                if (
+                  event.nativeEvent.state === GestureState.END ||
+                  event.nativeEvent.state === GestureState.CANCELLED
+                ) {
+                  resetZoom();
+                }
+              }}
+            >
+              <Animated.View style={{ transform: [{ scale: zoomScale }] }}>
+                <Image
+                  source={{ uri: zoomImage ?? "" }}
+                  style={styles.zoomImage}
+                  resizeMode="contain"
+                />
+              </Animated.View>
+            </PinchGestureHandler>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <BottomTabBar
         activeTab="bag"
         canvasWidth={Math.min(width, 560)}
@@ -653,6 +748,47 @@ function createStyles(
     carouselDotActive: {
       backgroundColor: Colors.secondary,
     },
+    zoomBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.88)",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: s(20),
+    },
+    zoomContent: {
+      width: "100%",
+      height: "80%",
+      maxWidth: 700,
+      borderRadius: s(16),
+      backgroundColor: Colors.background,
+      overflow: "hidden",
+      justifyContent: "center",
+      alignItems: "center",
+      position: "relative",
+    },
+    zoomCloseButton: {
+      position: "absolute",
+      top: s(12),
+      right: s(12),
+      zIndex: 1,
+      width: s(36),
+      height: s(36),
+      borderRadius: s(18),
+      backgroundColor: "rgba(0, 0, 0, 0.35)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    zoomCloseText: {
+      color: Colors.white,
+      fontSize: s(20),
+      fontWeight: "700",
+    },
+    zoomImage: {
+      width: "100%",
+      height: "100%",
+      resizeMode: "contain",
+      backgroundColor: Colors.background,
+    },
     infoSection: esEscritorio
       ? { flex: 1, maxWidth: 520 }
       : {
@@ -689,6 +825,25 @@ function createStyles(
       fontSize: s(30),
       lineHeight: s(36),
       fontWeight: "700",
+    },
+    conditionRow: {
+      marginTop: s(10),
+      flexDirection: "row",
+      alignItems: "center",
+      columnGap: s(6),
+    },
+    conditionLabel: {
+      color: Colors.textMuted,
+      fontSize: s(13),
+      lineHeight: s(16),
+      fontWeight: "600",
+    },
+    conditionValue: {
+      color: Colors.textStrong,
+      fontSize: s(14),
+      lineHeight: s(18),
+      fontWeight: "700",
+      textTransform: "capitalize",
     },
     sizeSelector: {
       marginTop: s(18),

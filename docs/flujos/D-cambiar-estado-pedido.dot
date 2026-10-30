@@ -1,0 +1,38 @@
+digraph G {
+graph [fontname="DejaVu Sans", fontsize=13, rankdir=TB, nodesep=0.35, ranksep=0.32, bgcolor="white", pad=0.3, labelloc=t, labeljust=c];
+node [fontname="DejaVu Sans", fontsize=11, style="filled", color="#5B6770", penwidth=1.2, margin="0.15,0.07"];
+edge [fontname="DejaVu Sans", fontsize=10, color="#5B6770", arrowsize=0.7, fontcolor="#333333"];
+label=<<b>D. Cambiar el estado de un pedido</b>>;
+ini [label="Inicio: vendedor o comprador\nelige el nuevo estado", shape=ellipse, fillcolor="#2E5E4E", fontcolor="white", color="#2E5E4E"];
+lock [label="Bloquear el pedido (FOR UPDATE)", shape=box, style="rounded,filled", fillcolor="#EAF2EE"];
+existe [label="¿Existe el\npedido?", shape=diamond, fillcolor="#FFF4D6", color="#B58900", margin="0.03,0.02"];
+e1 [label="Error: el pedido no existe", shape=box, style="rounded,filled", fillcolor="#FDE8E6", color="#C0392B"];
+trans [label="¿La transición es válida\npara esa entrega?", shape=diamond, fillcolor="#FFF4D6", color="#B58900", margin="0.03,0.02"];
+e2 [label="Error: no se puede pasar\nde ese estado al nuevo", shape=box, style="rounded,filled", fillcolor="#FDE8E6", color="#C0392B"];
+perm [label="¿Tiene permiso?\n(vendedor, miembro con\npedidos.estado, o comprador\ncancelando un pendiente)", shape=diamond, fillcolor="#FFF4D6", color="#B58900", margin="0.03,0.02"];
+e3 [label="Error: no tenés permiso", shape=box, style="rounded,filled", fillcolor="#FDE8E6", color="#C0392B"];
+canc [label="¿El nuevo estado\nes cancelado?", shape=diamond, fillcolor="#FFF4D6", color="#B58900", margin="0.03,0.02"];
+stock [label="Devolver el stock a la\npublicación o a la sede", shape=cylinder, fillcolor="#EEE8F6", color="#6C4F9C"];
+upd [label="Actualizar el estado y registrar\nel evento (quién, cuándo, nota)", shape=cylinder, fillcolor="#EEE8F6", color="#6C4F9C"];
+push [label="Notificar al comprador (push)", shape=parallelogram, fillcolor="#E6EEF8", color="#3B6EA5", margin="0.02,0.04"];
+fin [label="Fin", shape=ellipse, fillcolor="#2E5E4E", fontcolor="white", color="#2E5E4E"];
+ini -> lock;
+lock -> existe;
+existe -> e1 [label=" No "];
+existe -> trans [label=" Sí "];
+trans -> e2 [label=" No "];
+trans -> perm [label=" Sí "];
+perm -> e3 [label=" No "];
+perm -> canc [label=" Sí "];
+canc -> stock [label=" Sí "];
+canc -> upd [label=" No "];
+stock -> upd;
+upd -> push;
+push -> fin;
+g1 [label="Fin", shape=ellipse, fillcolor="#2E5E4E", fontcolor="white", color="#2E5E4E"];
+g2 [label="Fin", shape=ellipse, fillcolor="#2E5E4E", fontcolor="white", color="#2E5E4E"];
+g3 [label="Fin", shape=ellipse, fillcolor="#2E5E4E", fontcolor="white", color="#2E5E4E"];
+e1 -> g1;
+e2 -> g2;
+e3 -> g3;
+}

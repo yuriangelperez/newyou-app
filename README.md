@@ -10,6 +10,87 @@ Marketplace móvil de indumentaria para la compra y venta de prendas nuevas y pr
 
 ---
 
+## Resumen ejecutivo
+
+**New You** es una app mobile de marketplace de moda y segunda mano diseñada para conectar compradores y vendedores de indumentaria en un único ecosistema digital.
+
+La propuesta de valor es clara: simplificar la compra y venta de ropa desde el celular, con una experiencia intuitiva, control de stock real, pagos lógicos, gestión de ventas y una base sólida en Supabase.
+
+Es una solución pensado para tres tipos de usuarios:
+
+* **Compradores** que quieren encontrar prendas con estilo, calidad y precio razonable.
+* **Vendedores particulares** que quieren vender ropa que ya no usan sin complicaciones.
+* **Marcas, tiendas o negocios pequeños** que necesitan una plataforma para listar productos y vender desde su móvil.
+
+### En criollo
+
+> Es una app para vender la ropa que ya no usás, comprar prendas nuevas o usadas con stock real, y hacer toda la operación desde el celular sin líos.
+
+> No es solo una galería de productos: es un marketplace completo con catálogo, filtros, publicación, carrito, checkout, historial de compras, dirección de entrega y gestión de ventas.
+
+### Valor de negocio
+
+New You no solo ofrece una experiencia de compra y venta; también resuelve un problema real del mercado de indumentaria:
+
+* evitá la fricción de publicar prendas manualmente y sin organización
+* evitá que el stock se rompa o que un producto se venda sin disponibilidad
+* evitá procesos de compra poco claros o poco confiables
+* centralizá la gestión comercial en una sola app móvil
+
+Esto la convierte en una herramienta útil tanto para el consumidor final como para negocios pequeños y vendedores emergentes.
+
+---
+
+## Detalles técnicos clave
+
+Desde la perspectiva técnica, **New You** está construida sobre una arquitectura mobile moderna con separación clara entre frontend, estado global, backend y storage.
+
+### Arquitectura principal
+
+* **Expo + React Native** como base del cliente móvil.
+* **Expo Router** para la navegación basada en rutas y pantalla por archivo.
+* **Zustand** para manejar el carrito y otros estados globales.
+* **Supabase** como backend principal para autenticación, base de datos, storage y reglas de seguridad.
+* **PostgreSQL** en Supabase para persistencia de productos, compras, usuarios, direcciones y pedidos.
+* **AsyncStorage + SecureStore** para persistencia local y sesión segura.
+
+### Módulos funcionales clave
+
+* **Autenticación**: registro, login, sesión y roles de usuario.
+* **Catálogo**: productos, filtros, categorías, talles y disponibilidad.
+* **Publicación**: alta y edición de prendas con validación de formulario.
+* **Carrito**: agregado, cantidades, stock y persistencia.
+* **Checkout**: selección de entrega, pago lógico, resumen y confirmación.
+* **Pedidos**: flujo de ventas, historial y estados.
+* **Direcciones**: geolocalización, guardado y entrega.
+* **Offline**: draft guardados y sincronización cuando vuelve la conexión.
+
+### Seguridad y backend
+
+* Uso de **Supabase Auth** para identidad y sesiones.
+* **RLS (Row Level Security)** para restringir acceso a datos según el usuario.
+* Validación con **Zod + React Hook Form** para evitar errores en publicaciones y checkout.
+* **Storage de imágenes** en Supabase para fotos de productos.
+* Control de stock y operaciones transaccionales para evitar inconsistencias.
+* `operationKey` para evitar compras duplicadas por reintentos.
+
+### Persistencia y UX móvil
+
+* Carrito y drafts persistidos localmente para una experiencia más robusta.
+* `NetInfo` para detectar conectividad y sincronizar acciones offline.
+* `FlashList` para rendimiento en listados largos de productos.
+* `Expo Location` y geocodificación para direcciones y mapas.
+* `Expo Notifications` y push tokens para estados de pedido.
+
+### Calidad y aseguramiento
+
+* Tests unitarios y de componentes con **Jest + React Native Testing Library**.
+* Verificación de tipos con **TypeScript**.
+* Linting con **ESLint**.
+* Integración continua con **GitHub Actions**.
+
+---
+
 ## Equipo de trabajo
 
 | Integrante            | Rol                               |

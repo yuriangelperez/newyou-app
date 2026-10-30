@@ -104,7 +104,7 @@ HU15 (chat) y HU19 (modo oscuro) quedan fuera de esta entrega, por lo que no tie
 | BUG-04 | Media | Totales calculados en el cliente | HU13 / TC-HU13-01 | Cerrado | mismo origen que BUG-03 |
 | BUG-05 | Media | En la web confirmar y eliminar no hacían nada | HU08 / TC-HU08-01 | Cerrado | `Alert.alert` con botones no existe en react-native-web; se usa `confirmar()` |
 | BUG-06 | Media | No había protección de rutas | HU02 / TC-SES-03 | Cerrado | guardia en `app/_layout.tsx` |
-| BUG-07 | Baja | Jeans y Pantalones comparten el ID de categoría 2 | HU06 | Abierto | mapa fijo en `productosService.ts`; conviene leer las categorías de la base |
+| BUG-07 | Baja | Jeans y Pantalones comparten el ID de categoría 2 | HU04, HU06 | Cerrado | mapa fijo en `productosService.ts`; ahora las categorías se leen de la tabla `categorias` (`useCategorias`) |
 | BUG-08 | Baja | El carrito usaba un stock congelado | HU09 / TC-HU09-02 | Cerrado | el servidor revalida el stock al confirmar |
 | BUG-09 | Media | En el detalle, el color elegido se pisaba en cada render si la prenda no tenía colores | HU05 / TC-HU05-01 | Cerrado | efecto que dependía de un arreglo nuevo en cada render; detectado por ESLint |
 

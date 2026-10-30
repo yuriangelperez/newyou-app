@@ -9,7 +9,10 @@ import { tallesPara, mismoTalle } from '../constants/talles';
 import { parsearPrecio } from '../utils/precio';
 
 export const NOMBRE_MAX = 30;
-export const DESCRIPCION_MAX = 30;
+export const DESCRIPCION_MAX = 500;
+
+export const CONDICIONES_PRODUCTO = ['nuevo', 'usado'] as const;
+export type CondicionProducto = (typeof CONDICIONES_PRODUCTO)[number];
 
 export const productoSchema = z.object({
   nombre: z
@@ -63,7 +66,9 @@ export const productoSchema = z.object({
 
   temporada: z.enum(TEMPORADAS),
 
-  publico: z.enum(PUBLICOS),
+  condicion: z.enum(CONDICIONES_PRODUCTO).default('nuevo'),
+
+  publico: z.array(z.enum(PUBLICOS)).min(1, 'Elegí al menos un público.'),
 
   disponible: z.boolean(),
 
