@@ -3,13 +3,17 @@
 #   testing -> https://yuriangelperez.github.io/newyou-app/testing/
 # GitHub Pages tiene un solo sitio por repo, así que en cada corrida se compilan las dos
 # ramas y se publican juntas, cada una en su carpeta.
-# Corre cuando algo llega a main o a testing (o a mano desde la pestaña Actions).
+# Corre cuando algo llega a testing, después de que version.yml sube la versión de main
+# (así la web de main se compila con el número nuevo), o a mano desde la pestaña Actions.
 # El workflow de tests (test.yml) sigue aparte; este sólo compila y publica.
 name: Deploy web (GitHub Pages)
 
 on:
   push:
-    branches: [main, testing]
+    branches: [testing]
+  workflow_run:
+    workflows: [Versión]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -24,6 +28,8 @@ concurrency:
 
 jobs:
   build:
+    # Si el workflow de versión falló, no se publica.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
       EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
