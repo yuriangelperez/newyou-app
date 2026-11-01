@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Colors, FontSize, Radius, Spacing } from '../../constants/theme';
 import { Direccion } from '../../services/direccionesService';
 import { BotonGps } from './BotonGps';
+import { SugerenciasDireccion } from './SugerenciasDireccion';
 import { VerEnMapa } from './VerEnMapa';
 
 interface SelectorDireccionProps {
@@ -26,6 +27,8 @@ export function SelectorDireccion({
   const [modoNueva, setModoNueva] = useState(false);
   // Enter en el campo abre o actualiza el mapa.
   const [pedidoMapa, setPedidoMapa] = useState(0);
+  // Sólo se sugieren direcciones mientras el usuario escribe (no si vino del GPS o del pin).
+  const [escribiendo, setEscribiendo] = useState(false);
   const sinGuardadas = direcciones.length === 0;
 
   // Preselecciona la principal cuando terminan de cargar las direcciones.
@@ -75,14 +78,36 @@ export function SelectorDireccion({
         <View style={styles.nueva}>
           <TextInput
             value={value}
-            onChangeText={onChange}
-            onSubmitEditing={() => setPedidoMapa((n) => n + 1)}
+            onChangeText={(texto) => {
+              setEscribiendo(true);
+              onChange(texto);
+            }}
+            onSubmitEditing={() => {
+              setEscribiendo(false);
+              setPedidoMapa((n) => n + 1);
+            }}
             returnKeyType="search"
             placeholder={placeholder}
             placeholderTextColor={Colors.textMuted}
             style={styles.input}
           />
-          <BotonGps onDireccion={onChange} direccionActual={value} pedidoMapa={pedidoMapa} />
+          <SugerenciasDireccion
+            texto={value}
+            activo={escribiendo}
+            onElegir={(direccion) => {
+              setEscribiendo(false);
+              onChange(direccion);
+              setPedidoMapa((n) => n + 1);
+            }}
+          />
+          <BotonGps
+            onDireccion={(direccion) => {
+              setEscribiendo(false);
+              onChange(direccion);
+            }}
+            direccionActual={value}
+            pedidoMapa={pedidoMapa}
+          />
         </View>
       ) : (
         <VerEnMapa direccion={value} pedido={pedidoMapa} />
