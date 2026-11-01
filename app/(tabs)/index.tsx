@@ -466,11 +466,11 @@ export default function HomeScreen() {
                     returnKeyType="search"
                     onFocus={() => setBuscadorActivo(true)}
                     // Con demora, para que el toque en una búsqueda reciente llegue antes de ocultarlas.
+                    // Se usa el texto que trae el evento: el estado podía estar atrasado una letra.
                     onBlur={() => {
                       setTimeout(() => setBuscadorActivo(false), 200);
-                      registrarBusqueda(searchText);
                     }}
-                    onSubmitEditing={() => registrarBusqueda(searchText)}
+                    onSubmitEditing={(evento) => registrarBusqueda(evento.nativeEvent.text)}
                   />
                   <Pressable
                     testID="home-filtros-buscador"

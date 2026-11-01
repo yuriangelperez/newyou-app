@@ -26,6 +26,32 @@ interface NominatimResponse {
   };
 }
 
+// Nominatim rechaza los pedidos sin una app identificada (el User-Agent por defecto
+// del celular, "okhttp", queda bloqueado): por eso fallaba la búsqueda en el .apk.
+const CABECERAS_OSM = {
+  'User-Agent': 'NewYouApp/1.0 (proyecto academico UNPilar)',
+  Referer: 'https://yuriangelperez.github.io/newyou-app/',
+  Accept: 'application/json',
+};
+
+/** GET a un servicio de mapas que devuelve JSON; null si responde con error. */
+async function pedirJson<T>(url: string): Promise<T | null> {
+  const respuesta = await fetch(url, { headers: Platform.OS === 'web' ? undefined : CABECERAS_OSM });
+  if (!respuesta.ok) {
+    return null;
+  }
+  return (await respuesta.json()) as T;
+}
+
+/** El geocoder del celular necesita el permiso de ubicación en Android; sin él ni se intenta. */
+async function hayPermisoUbicacion() {
+  try {
+    return (await Location.getForegroundPermissionsAsync()).granted;
+  } catch {
+    return false;
+  }
+}
+
 function formatearDireccion(partes: (string | null | undefined)[]) {
   return partes.filter(Boolean).join(', ');
 }
@@ -51,11 +77,10 @@ async function direccionConExpo(latitude: number, longitude: number) {
 /** Alternativa gratuita (OpenStreetMap Nominatim) cuando la nativa no devuelve nada. */
 async function direccionConNominatim(latitude: number, longitude: number) {
   try {
-    const respuesta = await fetch(
+    const data = await pedirJson<NominatimResponse>(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=es&lat=${latitude}&lon=${longitude}`,
     );
-    const data = (await respuesta.json()) as NominatimResponse;
-    const a = data.address;
+    const a = data?.address;
 
     return formatearDireccion([
       [a?.road ?? a?.pedestrian, a?.house_number].filter(Boolean).join(' '),
@@ -113,23 +138,38 @@ export async function buscarCoordenadas(
     return null;
   }
 
-  if (Platform.OS !== 'web') {
+  // 1) Geocoder del celular: sólo con permiso de ubicación (sin él, en Android falla).
+  if (Platform.OS !== 'web' && (await hayPermisoUbicacion())) {
     try {
       const [lugar] = await Location.geocodeAsync(consulta);
       if (lugar) {
         return { latitud: lugar.latitude, longitud: lugar.longitude };
       }
     } catch {
-      // Sigue con Nominatim.
+      // Sigue con OpenStreetMap.
     }
   }
 
+  // 2) Nominatim (OpenStreetMap). No necesita permiso ni clave.
   try {
-    const respuesta = await fetch(
+    const lugares = await pedirJson<{ lat: string; lon: string }[]>(
       `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=es&countrycodes=ar&q=${encodeURIComponent(consulta)}`,
     );
-    const [lugar] = (await respuesta.json()) as { lat: string; lon: string }[];
-    return lugar ? { latitud: Number(lugar.lat), longitud: Number(lugar.lon) } : null;
+    const lugar = lugares?.[0];
+    if (lugar) {
+      return { latitud: Number(lugar.lat), longitud: Number(lugar.lon) };
+    }
+  } catch {
+    // Sigue con Photon.
+  }
+
+  // 3) Photon (también usa datos de OpenStreetMap), por si Nominatim no responde.
+  try {
+    const data = await pedirJson<{ features?: { geometry?: { coordinates?: [number, number] } }[] }>(
+      `https://photon.komoot.io/api/?limit=1&lang=es&q=${encodeURIComponent(`${consulta}, Argentina`)}`,
+    );
+    const coordenadas = data?.features?.[0]?.geometry?.coordinates;
+    return coordenadas ? { latitud: coordenadas[1], longitud: coordenadas[0] } : null;
   } catch {
     return null;
   }

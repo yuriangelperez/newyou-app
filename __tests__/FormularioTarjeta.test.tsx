@@ -71,6 +71,16 @@ describe('FormularioTarjeta', () => {
     expect(onPagar).not.toHaveBeenCalled();
   });
 
+  it('TC-PAGO-06: al completar el número dice si es débito o crédito, o si está mal escrito', async () => {
+    await renderFormulario('debito');
+    await fireEvent.changeText(screen.getByTestId('tarjeta-numero'), '4002 7686 9439 5619');
+    expect(screen.getByTestId('tarjeta-tipo-detectado').props.children).toBe('Visa débito ✓');
+
+    // Un dígito mal tipeado se avisa sin esperar a "Pagar".
+    await fireEvent.changeText(screen.getByTestId('tarjeta-numero'), '4002768694395618');
+    expect(screen.getByTestId('tarjeta-aviso-numero').props.children).toBe('El número de tarjeta no es válido');
+  });
+
   it('en débito no acepta una de crédito', async () => {
     await renderFormulario('debito');
     await completar('4509953566233704');

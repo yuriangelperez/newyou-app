@@ -19,6 +19,8 @@ describe('historial del dispositivo', () => {
     registrarBusqueda('Campera');
     registrarBusqueda('campera');
     registrarBusqueda('a');
+    registrarBusqueda(' a ');
+    registrarBusqueda('a.');
     expect(useHistorialStore.getState().busquedas).toEqual(['campera']);
 
     // Al reabrir la app se recupera lo guardado.

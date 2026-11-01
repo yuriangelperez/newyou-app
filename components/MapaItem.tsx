@@ -1,4 +1,5 @@
-import { StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 import { Colors, Radius } from '../constants/theme';
@@ -17,6 +18,17 @@ const URL_EMBED = 'https://www.openstreetmap.org/export/embed.html';
  * WebView: funciona en Expo Go y en el .apk sin clave de Google Maps.
  */
 export function MapaItem({ latitud, longitud, titulo }: MapaItemProps) {
+  const [fallo, setFallo] = useState(false);
+
+  if (fallo) {
+    // Sin conexión o el servidor de mapas no respondió: se avisa en vez de dejar un recuadro vacío.
+    return (
+      <View style={[styles.contenedor, styles.aviso]} testID="mapa-item-error">
+        <Text style={styles.avisoTexto}>No se pudo cargar el mapa. Revisá tu conexión.</Text>
+      </View>
+    );
+  }
+
   return (
     <View
       style={styles.contenedor}
@@ -27,6 +39,19 @@ export function MapaItem({ latitud, longitud, titulo }: MapaItemProps) {
       <WebView
         source={{ uri: urlMapaOsm(latitud, longitud) }}
         style={styles.mapa}
+        originWhitelist={['https://*']}
+        javaScriptEnabled
+        domStorageEnabled
+        startInLoadingState
+        renderLoading={() => (
+          <View style={styles.cargando}>
+            <ActivityIndicator color={Colors.secondary} />
+          </View>
+        )}
+        onError={() => setFallo(true)}
+        onHttpError={(evento) => {
+          if (evento.nativeEvent.statusCode >= 400) setFallo(true);
+        }}
         scrollEnabled={false}
         setSupportMultipleWindows={false}
         // Los enlaces del mapa ("Ver mapa más grande") no navegan dentro de la tarjeta.
@@ -45,4 +70,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   mapa: { flex: 1 },
+  cargando: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  aviso: { alignItems: 'center', justifyContent: 'center', padding: 12 },
+  avisoTexto: { color: Colors.textMuted, textAlign: 'center' },
 });
