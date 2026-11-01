@@ -1,0 +1,152 @@
+# Publica la versión web de la app en GitHub Pages:
+#   main    -> https://yuriangelperez.github.io/newyou-app/
+#   testing -> https://yuriangelperez.github.io/newyou-app/testing/
+# GitHub Pages tiene un solo sitio por repo, así que en cada corrida se compilan las dos
+# ramas y se publican juntas, cada una en su carpeta.
+# Corre cuando algo llega a testing, después de que version.yml sube la versión de main
+# (así la web de main se compila con el número nuevo), o a mano desde la pestaña Actions.
+# El workflow de tests (test.yml) sigue aparte; este sólo compila y publica.
+name: Deploy web (GitHub Pages)
+
+on:
+  push:
+    branches: [testing]
+  workflow_run:
+    workflows: [Versión]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Si llegan dos pushes seguidos, se publica sólo el último.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Si el workflow de versión falló, no se publica.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_URL_INVITACION: https://yuriangelperez.github.io/newyou-app/invitacion/
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: rama-main
+
+      - name: Checkout testing
+        uses: actions/checkout@v4
+        with:
+          ref: testing
+          path: rama-testing
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            rama-main/package-lock.json
+            rama-testing/package-lock.json
+
+      # Scripts de ayuda (fuera de las ramas para no mezclarlos con el código).
+      # ruta-base.js: agrega la ruta base sólo para esta compilación; el app.json del repo
+      #   queda igual, así que Expo Go y las builds nativas no cambian.
+      # restaurar-ruta.js: suma al index.html un script que, si se llegó desde 404.html
+      #   con ?p=/ruta, vuelve a poner esa ruta antes de que arranque la app.
+      - name: Preparar scripts
+        run: |
+          mkdir -p ayuda
+          cat > ayuda/ruta-base.js <<'JS'
+          const fs = require('fs');
+          const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          app.expo.web = { ...app.expo.web, output: 'single' };
+          app.expo.experiments = { ...app.expo.experiments, baseUrl: process.env.BASE };
+          fs.writeFileSync('app.json', JSON.stringify(app, null, 2));
+          JS
+          cat > ayuda/restaurar-ruta.js <<'JS'
+          const fs = require('fs');
+          const html = fs.readFileSync('dist/index.html', 'utf8');
+          const script = `<script>(function () {
+            var q = new URLSearchParams(location.search), p = q.get('p');
+            if (p === null) return;
+            q.delete('p');
+            var resto = q.toString();
+            history.replaceState(null, '', ${JSON.stringify(process.env.BASE)} + p + (resto ? '?' + resto : '') + location.hash);
+          })();</script>`;
+          fs.writeFileSync('dist/index.html', html.replace('<head>', '<head>' + script));
+          JS
+
+      - name: Compilar main
+        working-directory: rama-main
+        env:
+          BASE: /newyou-app
+        run: |
+          npm ci
+          node ../ayuda/ruta-base.js
+          npx expo export -p web
+          node ../ayuda/restaurar-ruta.js
+
+      - name: Compilar testing
+        working-directory: rama-testing
+        env:
+          BASE: /newyou-app/testing
+        run: |
+          npm ci
+          node ../ayuda/ruta-base.js
+          npx expo export -p web
+          node ../ayuda/restaurar-ruta.js
+
+      # 404.html: si se entra directo a una ruta (o se recarga), Pages devuelve 404.html,
+      # que manda a la app que corresponde (main o testing) con la ruta en ?p=.
+      # invitacion/: la página de paso de las invitaciones queda en la URL que ya usa la app.
+      - name: Armar sitio
+        run: |
+          mkdir -p sitio/testing sitio/invitacion
+          cp -r rama-main/dist/. sitio/
+          cp -r rama-testing/dist/. sitio/testing/
+          # Se usa la de main; si main todavía no la tiene, la de testing.
+          for rama in main testing; do
+            if [ -f "rama-$rama/docs/invitacion/index.html" ]; then
+              cp "rama-$rama/docs/invitacion/index.html" sitio/invitacion/index.html
+              break
+            fi
+          done
+          cat > sitio/404.html <<'HTML'
+          <!doctype html>
+          <html lang="es"><head><meta charset="utf-8"><title>New You</title>
+          <script>
+            (function () {
+              var ruta = location.pathname;
+              var base = ruta.indexOf('/newyou-app/testing/') === 0 ? '/newyou-app/testing' : '/newyou-app';
+              var q = new URLSearchParams(location.search);
+              q.set('p', ruta.slice(base.length) || '/');
+              location.replace(base + '/?' + q.toString() + location.hash);
+            })();
+          </script></head><body></body></html>
+          HTML
+          touch sitio/.nojekyll
+
+      - name: Subir sitio
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: sitio
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

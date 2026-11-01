@@ -53,3 +53,10 @@ Característica: Publicar y gestionar prendas
     Dado que soy otro vendedor
     Cuando intento actualizar la prenda por la API
     Entonces RLS rechaza el cambio
+
+  @HU06 @TC-HU06-07 @L
+  Escenario: Los accesorios se publican sin talle
+    Dado que estoy publicando una prenda con talle "M"
+    Cuando cambio el tipo a "Cinturones"
+    Entonces el selector de talles desaparece y el talle se borra
+    Y puedo publicar la prenda sin talle

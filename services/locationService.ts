@@ -126,7 +126,7 @@ export async function buscarCoordenadas(
 
   try {
     const respuesta = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=es&q=${encodeURIComponent(consulta)}`,
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=es&countrycodes=ar&q=${encodeURIComponent(consulta)}`,
     );
     const [lugar] = (await respuesta.json()) as { lat: string; lon: string }[];
     return lugar ? { latitud: Number(lugar.lat), longitud: Number(lugar.lon) } : null;

@@ -9,12 +9,15 @@ Todo el material de pruebas del proyecto, organizado según la clase 7 de Testin
 | Historias de usuario y criterios Gherkin | [`features/`](features/) | A4, A5 |
 | Casos de prueba (feliz, negativo, límite) | escenarios `@F`, `@N`, `@L` de cada `.feature` | A6 |
 | Matriz de trazabilidad bidireccional (RTM) | sección 3 | A7 |
-| Pruebas unitarias y de componentes | [`__tests__/`](../../__tests__/) (Jest + RNTL, 65 pruebas) | D, B1 |
+| Pruebas unitarias y de componentes | [`__tests__/`](../../__tests__/) (Jest + RNTL, 30 archivos y 149 pruebas) | D, B1 |
 | Pruebas E2E móviles | [`.maestro/`](../../.maestro/) (Maestro) | D1 |
 | Pruebas de API | [`postman/`](postman/) (Postman + Newman) | D2, D3, D4 |
 | Prueba de carga | [`jmeter/catalogo.jmx`](jmeter/catalogo.jmx) (JMeter) | D5, B2 |
 | Integración continua | [`.github/workflows/test.yml`](../../.github/workflows/test.yml) | D3 |
+| Publicación web y versionado | `.github/workflows/deploy-web.yml` y `version.yml` (GitHub Pages: `/newyou-app/` y `/newyou-app/testing/`) | D3 |
 | Bug tracker | GitHub Issues con la plantilla [`bug`](../../.github/ISSUE_TEMPLATE/bug.md) | C1, C2 |
+| Planilla de casos manuales | `Casos de prueba — New You.xlsx` (Drive del equipo, carpeta Test) | A6 |
+| Capturas de la app por modo | [`../capturas/`](../capturas/) y sección Capturas del README | A3 |
 | Cronograma PERT / Gantt | [`../planificacion/cronograma.md`](../planificacion/cronograma.md) | E3, E4 |
 
 ## 1. Estrategia
@@ -26,7 +29,7 @@ Postman y los flujos críticos de punta a punta con Maestro en un celular o emul
 | Nivel | Herramienta | Qué cubre | Cuándo corre |
 | --- | --- | --- | --- |
 | Unitarias | Jest + jest-expo | reglas de negocio, sesión, interceptor, notificaciones | cada push y PR (CI) |
-| Componentes | RNTL | TarjetaProducto, useProductos | cada push y PR (CI) |
+| Componentes | RNTL | TarjetaProducto, useProductos, RequisitosContrasena, FiltroPrecio, PanelFiltros, CalendarioRango | cada push y PR (CI) |
 | API | Postman / Newman | auth, CRUD, RLS, negativos, concurrencia, tiempos | antes de cada entrega |
 | E2E móvil | Maestro | login, registro, carrito, checkout, favoritos | antes de cada entrega, con el `.apk` de preview |
 | Carga | JMeter | catálogo con 50 usuarios | una vez por entrega |
@@ -55,6 +58,8 @@ Estado: ✅ pasa · 🔁 automatizado en CI · 🖐️ manual · ⏳ pendiente d
 | HU01 | Registro válido | TC-HU01-01 | F | Postman `auth/registro` | ⏳ | |
 | HU01 | Contraseñas distintas | TC-HU01-02 | N | Jest `authSchemas`, Maestro 03 | 🔁 | |
 | HU01 | Reglas de contraseña | TC-HU01-03 | L | Jest `authSchemas`, Maestro 03 | 🔁 | |
+| HU01 | Requisitos en vivo | TC-HU01-04 | F | RNTL `RequisitosContrasena` | 🔁 | |
+| HU01 | Requisitos en nueva contraseña | TC-HU01-05 | F | manual (enlace de recuperación) | 🖐️ | |
 | HU02 | Login correcto | TC-HU02-01 | F | Postman `auth/login`, Maestro `_login` | ⏳ | |
 | HU02 | Credenciales inválidas | TC-HU02-02 | N | Postman `auth/login inválido`, Maestro 02 | ⏳ | |
 | HU02 | Correo inválido | TC-HU02-03 | N | Jest `authSchemas`, Maestro 01 | 🔁 | |
@@ -63,14 +68,27 @@ Estado: ✅ pasa · 🔁 automatizado en CI · 🖐️ manual · ⏳ pendiente d
 | HU02 | Ruta protegida sin sesión | TC-SES-03 | N | manual (web) | 🖐️ | BUG-06 ✅ |
 | HU03 | Catálogo carga | TC-HU03-01 | F | Jest `useProductos`, Postman `productos/listar` | 🔁 | |
 | HU03 | Error de red | TC-HU03-02 | N | Jest `useProductos` | 🔁 | |
-| HU03 | Catálogo vacío | TC-HU03-03 | L | manual | 🖐️ | |
+| HU03 | Catálogo vacío según rol | TC-HU03-03 | L | manual | 🖐️ | |
 | HU04 | Búsqueda | TC-HU04-01 | F | Maestro 04 | ⏳ | |
 | HU04 | Sin resultados | TC-HU04-02 | L | manual | 🖐️ | |
 | HU04 | Promociones | TC-HU04-03 | F | manual | 🖐️ | |
+| HU04 | Filtro por público | TC-HU04-04 | F | manual | 🖐️ | |
+| HU04 | Fila deslizable temporada + público | TC-HU04-05 | F | manual | 🖐️ | |
+| HU04 | Ordenar por precio | TC-HU04-06 | F | Jest `filtrosCatalogo`, RNTL `PanelFiltros` | 🔁 | |
+| HU04 | Atajos de precio | TC-HU04-07 | F | RNTL `FiltroPrecio`, Jest `filtrosCatalogo` | 🔁 | |
+| HU04 | Rango personalizado (límites) | TC-HU04-08 | L | RNTL `FiltroPrecio`, Jest `filtrosCatalogo` | 🔁 | |
+| HU04 | Estado nuevo/usado | TC-HU04-09 | F | Jest `filtrosCatalogo` | 🔁 | |
+| HU04 | Talles en chips | TC-HU04-10 | F | RNTL `PanelFiltros`, Jest `filtrosCatalogo` | 🔁 | |
+| HU04 | Cantidad de resultados | TC-HU04-11 | F | Jest `filtrosCatalogo` | 🔁 | |
+| HU04 | Limpiar filtros | TC-HU04-12 | F | RNTL `PanelFiltros` | 🔁 | |
+| HU04 | Filtros sin coincidencias | TC-HU04-13 | N | manual | 🖐️ | |
+| HU04 | Ordenar y filtrar en Categorías | TC-HU04-14 | F | manual | 🖐️ | |
+| HU04 | Accesorios sin talle | TC-HU04-15 | L | manual | 🖐️ | |
 | HU05 | Detalle y favorito | TC-HU05-01 | F | Maestro 06 | ⏳ | |
 | HU06 | Publicar con foto | TC-HU06-01 | F | manual en celular | 🖐️ | |
 | HU06 | Datos inválidos | TC-HU06-02 | N | Jest `productoSchema` | 🔁 | |
 | HU06 | Sexta imagen | TC-HU06-03 | L | Jest `productoSchema` | 🔁 | |
+| HU06 | Accesorio sin talle | TC-HU06-07 | L | Jest `productoSchema` | 🔁 | |
 | HU06 | Permiso de cámara denegado | TC-HW-01 | N | manual en celular | 🖐️ | |
 | HU06 | Recordatorio local | TC-HW-02 | F | Jest `notificaciones` | 🔁 | |
 | HU07 | Stock por sede | TC-HU07-01 | F | Jest `empresas` | 🔁 | |
@@ -86,13 +104,27 @@ Estado: ✅ pasa · 🔁 automatizado en CI · 🖐️ manual · ⏳ pendiente d
 | HU14 | Idempotencia | TC-HU14-02 | L | Postman `concurrencia` | ⏳ | BUG-03 ✅ |
 | HU16 | Sin conexión | TC-HU16-01 | N | manual (modo avión) | 🖐️ | |
 | HU20 | Agotado | TC-HU20-01 | F | RNTL `TarjetaProducto`, Jest `useCarritoStore` | 🔁 | |
+| HU21 | Métricas por período | TC-MET-01 | F | Jest `agruparIngresos`, `rangoFechas` | 🔁 | |
+| HU21 | Rango con calendario | TC-MET-02 | F | RNTL `CalendarioRango` | 🔁 | |
+| HU21 | Rango de más de un año | TC-MET-03 | N | Jest `rangoFechas` | 🔁 | |
+| HU28 | Vistos recientemente | TC-HU28-01 | F | Jest `useHistorialStore` | 🔁 | |
+| HU28 | Límite de 10 vistos | TC-HU28-02 | L | Jest `useHistorialStore` | 🔁 | |
+| HU28 | Búsquedas recientes | TC-HU28-03 | F | manual | 🖐️ | |
+| HU28 | Límites del historial | TC-HU28-04 | L | Jest `useHistorialStore` | 🔁 | |
+| HU29 | Compartir prenda | TC-HU29-01 | F | manual en celular | 🖐️ | |
+| HU29 | Abrir enlace compartido | TC-HU29-02 | F | manual (web) | 🖐️ | |
+| HU29 | Compartir tienda | TC-HU29-03 | F | manual | 🖐️ | |
+| HU29 | Navegador sin menú de compartir | TC-HU29-04 | L | manual (web) | 🖐️ | |
+| Web | Publicación de main | TC-DEP-01 | F | GitHub Actions `deploy-web` | 🔁 | |
+| Web | Publicación de testing | TC-DEP-02 | F | GitHub Actions `deploy-web` | 🔁 | |
+| Versión | Versionado automático | TC-VER-01 | F | GitHub Actions `version` | 🔁 | |
 | Push | Activar | TC-PUSH-01 | F | manual (build de EAS) | 🖐️ | |
 | Push | Venta nueva | TC-PUSH-02 | F | manual (2 celulares) | 🖐️ | |
 | Push | Cambio de estado | TC-PUSH-03 | F | manual + Jest `pedidos` | 🖐️ | |
 | Push | Cerrar sesión | TC-PUSH-04 | N | manual | 🖐️ | |
 | Push | Simulador / Expo Go | TC-PUSH-05 | L | manual | 🖐️ | |
 
-HU15 (chat) y HU19 (modo oscuro) quedan fuera de esta entrega, por lo que no tienen casos todavía.
+HU15 (chat) queda fuera de esta entrega, por lo que no tiene casos todavía. Los pagos (TC-PAGO-01..14), el correo de compra (TC-MAIL-01, 02) y favoritos (TC-FAV-01) están en la planilla de casos manuales.
 
 ### Defectos
 

@@ -5,6 +5,7 @@ import Toast from 'react-native-toast-message';
 
 import { Colors, FontSize, Radius, Spacing } from '../../constants/theme';
 import { MapaItem } from '../MapaItem';
+import { VerEnMapa } from './VerEnMapa';
 import { usePermission } from '../../hooks/usePermission';
 import { abrirDireccionEnMapa, obtenerDireccionActual } from '../../services/locationService';
 
@@ -19,6 +20,8 @@ interface BotonGpsProps {
   onDireccion: (direccion: string) => void;
   /** Dirección que hay ahora en el campo: si se la corrige, el mapa del GPS deja de mostrarse. */
   direccionActual?: string;
+  /** Cambiarlo abre el mapa de "Ver en el mapa" (Enter en el campo). Solo se usa cuando no hay punto de GPS. */
+  pedidoMapa?: number;
 }
 
 /**
@@ -26,7 +29,7 @@ interface BotonGpsProps {
  * un mapa (en el celular), un enlace para abrirlo en la app de mapas y un aviso para revisar la dirección; si el GPS falla,
  * avisa y deja la carga manual.
  */
-export function BotonGps({ onDireccion, direccionActual }: BotonGpsProps) {
+export function BotonGps({ onDireccion, direccionActual, pedidoMapa }: BotonGpsProps) {
   const [buscando, setBuscando] = useState(false);
   const [punto, setPunto] = useState<{
     direccion: string;
@@ -111,6 +114,9 @@ export function BotonGps({ onDireccion, direccionActual }: BotonGpsProps) {
             <Text style={styles.linkText}>Ver la ubicación detectada en el mapa</Text>
           </Pressable>
         </>
+      ) : direccionActual !== undefined ? (
+        // Un solo mapa a la vez: con punto de GPS manda el de arriba; si no, "Ver en el mapa" de lo escrito.
+        <VerEnMapa direccion={direccionActual} pedido={pedidoMapa} />
       ) : null}
     </View>
   );
