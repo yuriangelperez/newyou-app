@@ -6,6 +6,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Toast from "react-native-toast-message";
 
 import { EncabezadoPantalla } from "../../components/ui/EncabezadoPantalla";
+import { RequisitosContrasena } from "../../components/ui/RequisitosContrasena";
 import { estilosFormulario as styles } from "../../constants/estilosFormulario";
 import { ROUTES } from "../../constants/routes";
 import { Colors } from "../../constants/theme";
@@ -97,6 +98,7 @@ export default function NuevaContrasenaScreen() {
               style={styles.input}
               placeholderTextColor={Colors.textMuted}
             />
+            <RequisitosContrasena contrasena={contrasena} repetir={repetir} />
             <Pressable
               disabled={guardando}
               onPress={() => void onGuardar()}
