@@ -22,12 +22,6 @@ Es una solución pensado para tres tipos de usuarios:
 * **Vendedores particulares** que quieren vender ropa que ya no usan sin complicaciones.
 * **Marcas, tiendas o negocios pequeños** que necesitan una plataforma para listar productos y vender desde su móvil.
 
-### En criollo
-
-> Es una app para vender la ropa que ya no usás, comprar prendas nuevas o usadas con stock real, y hacer toda la operación desde el celular sin líos.
-
-> No es solo una galería de productos: es un marketplace completo con catálogo, filtros, publicación, carrito, checkout, historial de compras, dirección de entrega y gestión de ventas.
-
 ### Valor de negocio
 
 New You no solo ofrece una experiencia de compra y venta; también resuelve un problema real del mercado de indumentaria:
