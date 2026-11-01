@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
@@ -148,7 +149,7 @@ export default function AjustesScreen() {
           <View style={styles.divider} />
           <SettingButton title="Términos y condiciones" detail="Consultá las condiciones de uso." styles={styles} />
           <View style={styles.divider} />
-          <SettingButton title="Versión de la aplicación" detail="New You · 1.0.0" styles={styles} />
+          <SettingButton title="Versión de la aplicación" detail={`New You · ${Constants.expoConfig?.version ?? "?"}`} styles={styles} />
         </View>
       </ScrollView>
 
