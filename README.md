@@ -22,12 +22,6 @@ Es una solución pensado para tres tipos de usuarios:
 * **Vendedores particulares** que quieren vender ropa que ya no usan sin complicaciones.
 * **Marcas, tiendas o negocios pequeños** que necesitan una plataforma para listar productos y vender desde su móvil.
 
-### En criollo
-
-> Es una app para vender la ropa que ya no usás, comprar prendas nuevas o usadas con stock real, y hacer toda la operación desde el celular sin líos.
-
-> No es solo una galería de productos: es un marketplace completo con catálogo, filtros, publicación, carrito, checkout, historial de compras, dirección de entrega y gestión de ventas.
-
 ### Valor de negocio
 
 New You no solo ofrece una experiencia de compra y venta; también resuelve un problema real del mercado de indumentaria:
@@ -349,6 +343,111 @@ Implementado con `expo-location`:
 * **GPS con fallback manual:** el botón "Usar mi ubicación (GPS)" obtiene la dirección mediante geocodificación inversa (con OpenStreetMap como alternativa en web). Si el GPS falla, se deniegan los permisos o no hay señal, el campo de texto manual siempre queda disponible.
 * **Verificación:** el enlace "Ver en el mapa" abre la dirección escrita en Google Maps para comprobarla.
 * **Direcciones guardadas:** en **Perfil → Direcciones** cada usuario administra sus direcciones y elige una como principal. Al publicar una prenda se elige la dirección de retiro (o se carga una nueva); las publicaciones anteriores sin dirección toman automáticamente la principal.
+
+---
+
+# Capturas de la app
+
+Capturas tomadas en un Android con la app instalada. Están en [`docs/capturas`](docs/capturas) y se agrupan según el modo de uso: **comprador**, **vendedor particular** y **empresa**.
+
+## Primer ingreso
+
+Lo que ve cualquier persona antes de entrar: la tarjeta de bienvenida que explica qué es New You, el inicio de sesión y el registro (con la opción de registrarse como empresa).
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/capturas/1-tarjetaQueEsNewYou.png" width="220" alt="Tarjeta de bienvenida"/><br/><sub>Bienvenida: qué es New You</sub></td>
+    <td align="center"><img src="docs/capturas/2-Login.png" width="220" alt="Inicio de sesión"/><br/><sub>Inicio de sesión</sub></td>
+    <td align="center"><img src="docs/capturas/3-registro.png" width="220" alt="Registro"/><br/><sub>Registro</sub></td>
+  </tr>
+</table>
+
+## Modo comprador
+
+Recorrido completo de compra: explorar el catálogo, filtrar, ver el detalle de una prenda, armar el carrito, pagar y seguir el pedido.
+
+### Explorar el catálogo
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/capturas/4-home-comprador.png" width="220" alt="Inicio del comprador"/><br/><sub>Inicio</sub></td>
+    <td align="center"><img src="docs/capturas/5-DetalleProducto-Comprador.png" width="220" alt="Detalle de producto"/><br/><sub>Detalle de la prenda</sub></td>
+    <td align="center"><img src="docs/capturas/6-vistosRecientemente.png" width="220" alt="Vistos recientemente"/><br/><sub>Vistos recientemente</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/capturas/7-Categorias.png" width="220" alt="Categorías"/><br/><sub>Categorías</sub></td>
+    <td align="center"><img src="docs/capturas/8-categorias-vistacateoria.png" width="220" alt="Prendas de una categoría"/><br/><sub>Prendas de una categoría</sub></td>
+    <td align="center"><img src="docs/capturas/9-filtros-busqueda.png" width="220" alt="Filtros de búsqueda"/><br/><sub>Filtros: precio, talle, temporada y orden</sub></td>
+  </tr>
+</table>
+
+### Carrito y checkout
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/capturas/10-carrito.png" width="220" alt="Carrito"/><br/><sub>Carrito</sub></td>
+    <td align="center"><img src="docs/capturas/11-checkout-ubicacion.jpg" width="220" alt="Checkout: dirección de entrega"/><br/><sub>Checkout: dirección de entrega</sub></td>
+    <td align="center"><img src="docs/capturas/12-checkout-detallecompra.png" width="220" alt="Checkout: detalle de la compra"/><br/><sub>Checkout: detalle de la compra</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/capturas/13-checkut-tarjetacredito.png" width="220" alt="Pago con tarjeta de crédito"/><br/><sub>Pago con tarjeta de crédito y cuotas</sub></td>
+    <td align="center"><img src="docs/capturas/14-compraconfirmada.png" width="220" alt="Compra confirmada"/><br/><sub>Compra confirmada</sub></td>
+    <td align="center"><img src="docs/capturas/15-miscompras.png" width="220" alt="Mis compras"/><br/><sub>Mis compras</sub></td>
+  </tr>
+</table>
+
+### Perfil y preferencias
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/capturas/16-perfil-comprador.png" width="220" alt="Perfil del comprador"/><br/><sub>Perfil</sub></td>
+    <td align="center"><img src="docs/capturas/17-ajustes.png" width="220" alt="Ajustes"/><br/><sub>Ajustes</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/capturas/18-favoritos.png" width="220" alt="Favoritos"/><br/><sub>Favoritos</sub></td>
+    <td align="center"><img src="docs/capturas/19-misdirecciones.png" width="220" alt="Mis direcciones"/><br/><sub>Mis direcciones</sub></td>
+  </tr>
+</table>
+
+## Modo vendedor particular
+
+Una persona que vende sus propias prendas: su perfil de vendedor y el formulario para publicar una prenda nueva.
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/capturas/29-perfil-vendedor.png" width="220" alt="Perfil del vendedor particular"/><br/><sub>Perfil del vendedor</sub></td>
+    <td align="center"><img src="docs/capturas/30-nuevapublicacion-vendedor.png" width="220" alt="Nueva publicación como particular"/><br/><sub>Nueva publicación</sub></td>
+  </tr>
+</table>
+
+## Modo empresa
+
+Una marca que vende como empresa: publica a nombre de la tienda, administra su equipo de trabajo y sigue las ventas y métricas.
+
+### Catálogo y publicaciones de la empresa
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/capturas/20-home-vendedor-empresa.png" width="220" alt="Inicio en modo empresa"/><br/><sub>Inicio en modo empresa</sub></td>
+    <td align="center"><img src="docs/capturas/21-nuevapublicacion-empresa.png" width="220" alt="Nueva publicación como empresa"/><br/><sub>Nueva publicación como empresa</sub></td>
+    <td align="center"><img src="docs/capturas/22-detalleproducto-empresa-vendedor.png" width="220" alt="Detalle de una prenda propia"/><br/><sub>Detalle de una prenda propia</sub></td>
+  </tr>
+</table>
+
+### Gestión de la empresa
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/capturas/23-perfil-empresa.png" width="220" alt="Perfil de la empresa"/><br/><sub>Perfil de la empresa</sub></td>
+    <td align="center"><img src="docs/capturas/24-panelEmpresa.jpg" width="220" alt="Panel de la empresa"/><br/><sub>Panel de la empresa</sub></td>
+    <td align="center"><img src="docs/capturas/25-opiniones-calificaciones-empresa.png" width="220" alt="Opiniones y calificaciones"/><br/><sub>Opiniones y calificaciones</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/capturas/26-administrarEquipo-empresa.jpg" width="220" alt="Administrar equipo"/><br/><sub>Administrar el equipo</sub></td>
+    <td align="center"><img src="docs/capturas/27-ventas-empresa-vendedor.png" width="220" alt="Ventas"/><br/><sub>Ventas y estado de los pedidos</sub></td>
+    <td align="center"><img src="docs/capturas/28-metricasVentas.png" width="220" alt="Métricas de ventas"/><br/><sub>Métricas de ventas</sub></td>
+  </tr>
+</table>
 
 ---
 
