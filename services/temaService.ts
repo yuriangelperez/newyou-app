@@ -1,6 +1,6 @@
 import { reloadAppAsync } from 'expo';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { DevSettings, Platform } from 'react-native';
 
 import { CLAVE_TEMA, Tema } from '../constants/theme';
 
@@ -16,5 +16,11 @@ export async function cambiarTema(tema: Tema) {
   }
 
   await SecureStore.setItemAsync(CLAVE_TEMA, tema);
-  await reloadAppAsync('Cambio de tema');
+
+  // En Expo Go `reloadAppAsync` puede no estar disponible (y no hace nada): se usa el recargador de desarrollo.
+  if ((globalThis as { expo?: { reloadAppAsync?: unknown } }).expo?.reloadAppAsync) {
+    await reloadAppAsync('Cambio de tema');
+  } else {
+    DevSettings.reload('Cambio de tema');
+  }
 }

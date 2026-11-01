@@ -72,3 +72,23 @@ Característica: Registro e inicio de sesión
     Dado que no inicié sesión
     Cuando abro un enlace a "/carrito"
     Entonces la app me redirige al login
+
+  @HU01 @TC-HU01-04 @F
+  Escenario: Los requisitos de la contraseña se validan mientras escribo
+    Dado que estoy en la pantalla de registro con los campos vacíos
+    Entonces veo los requisitos "Al menos 6 caracteres", "Una letra mayúscula", "Una letra minúscula" y "Un número" en gris
+    Cuando escribo "ropa" como contraseña
+    Entonces "Una letra minúscula" se ve en verde y los otros tres en rojo
+    Cuando completo "Ropa2026"
+    Entonces los cuatro requisitos se ven en verde
+    Cuando escribo "Ropa2025" al repetirla
+    Entonces "Las contraseñas coinciden" se ve en rojo
+    Cuando la corrijo a "Ropa2026"
+    Entonces "Las contraseñas coinciden" se ve en verde
+
+  @HU01 @TC-HU01-05 @F
+  Escenario: La nueva contraseña usa la misma lista de requisitos
+    Dado que abrí el enlace de recuperación de mi cuenta
+    Cuando escribo "Clave2026" en los dos campos
+    Entonces todos los requisitos se ven en verde
+    Y puedo guardar la contraseña nueva

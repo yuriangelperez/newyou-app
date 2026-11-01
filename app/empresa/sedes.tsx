@@ -7,7 +7,6 @@ import Toast from "react-native-toast-message";
 
 import { BotonGps } from "../../components/ui/BotonGps";
 import { EncabezadoPantalla } from "../../components/ui/EncabezadoPantalla";
-import { VerEnMapa } from "../../components/ui/VerEnMapa";
 import { estilosFormulario as styles } from "../../constants/estilosFormulario";
 import { Colors, Spacing } from "../../constants/theme";
 import { actualizarSede, crearSede, DatosSede, listarSedes, Sede } from "../../services/empresasService";
@@ -63,8 +62,7 @@ function FormularioSede({
       <TextInput value={datos.nombre} onChangeText={(nombre) => cambiar({ nombre })} style={styles.input} placeholder="Sucursal Pilar" placeholderTextColor={Colors.textMuted} />
       <Text style={styles.label}>Dirección</Text>
       <TextInput value={datos.direccion} onChangeText={(direccion) => cambiar({ direccion })} onSubmitEditing={() => setPedidoMapa((n) => n + 1)} returnKeyType="search" style={styles.input} placeholder="Calle, número, ciudad" placeholderTextColor={Colors.textMuted} />
-      <BotonGps onDireccion={(direccion) => cambiar({ direccion })} direccionActual={datos.direccion} />
-      <VerEnMapa direccion={datos.direccion} pedido={pedidoMapa} />
+      <BotonGps onDireccion={(direccion) => cambiar({ direccion })} direccionActual={datos.direccion} pedidoMapa={pedidoMapa} />
       <Text style={styles.label}>Horarios (opcional)</Text>
       <TextInput value={datos.horarios ?? ""} onChangeText={(horarios) => cambiar({ horarios })} style={styles.input} placeholder="Lun a Sáb 9 a 19 h" placeholderTextColor={Colors.textMuted} />
       <View style={styles.switchRow}>
