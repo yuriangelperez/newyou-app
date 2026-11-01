@@ -197,6 +197,8 @@ export interface MetricasVentas {
   enCurso: number;
   cancelados: number;
   porDia: { dia: string; ingresos: number; pedidos: number }[];
+  /** Ingresos por hora (0 a 23) de todo el rango; vacío si falta la migración 20. */
+  porHora: { hora: number; ingresos: number; pedidos: number }[];
   topProductos: { nombre: string; unidades: number; ingresos: number }[];
   porSede: { sede: string; pedidos: number; ingresos: number }[];
   stockBajo: { id: number; nombre: string; stock: number }[];
@@ -248,6 +250,7 @@ export async function obtenerMetricasRango(
 function mapearMetricas(data: unknown): MetricasVentas {
   const m = data as Record<string, unknown> & {
     por_dia: { dia: string; ingresos: number | string; pedidos: number | string }[] | null;
+    por_hora?: { hora: number | string; ingresos: number | string; pedidos: number | string }[] | null;
     top_productos: { nombre: string; unidades: number | string; ingresos: number | string }[] | null;
     por_sede: { sede: string; pedidos: number | string; ingresos: number | string }[] | null;
     stock_bajo: { id: number; nombre: string; stock: number }[] | null;
@@ -262,6 +265,7 @@ function mapearMetricas(data: unknown): MetricasVentas {
     enCurso: Number(m.en_curso),
     cancelados: Number(m.cancelados),
     porDia: (m.por_dia ?? []).map((d) => ({ dia: d.dia, ingresos: Number(d.ingresos), pedidos: Number(d.pedidos) })),
+    porHora: (m.por_hora ?? []).map((h) => ({ hora: Number(h.hora), ingresos: Number(h.ingresos), pedidos: Number(h.pedidos) })),
     topProductos: (m.top_productos ?? []).map((t) => ({
       nombre: t.nombre,
       unidades: Number(t.unidades),

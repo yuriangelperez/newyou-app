@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useRouter } from "expo-router";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,7 +7,7 @@ import { PRODUCT_DETAIL_ICONS } from "../../constants/assets";
 import { Colors, FontSize, Spacing } from "../../constants/theme";
 
 /** Encabezado con botón de volver y título, como el de Mis direcciones. */
-export function EncabezadoPantalla({ titulo }: { titulo: string }) {
+export function EncabezadoPantalla({ titulo, accion }: { titulo: string; /** Botón opcional a la derecha. */ accion?: ReactNode }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -19,6 +20,7 @@ export function EncabezadoPantalla({ titulo }: { titulo: string }) {
         <Text numberOfLines={1} style={styles.title}>
           {titulo}
         </Text>
+        {accion}
       </View>
     </View>
   );

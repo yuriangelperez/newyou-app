@@ -34,12 +34,20 @@ export const loginSchema = z.object({
   contrasena: z.string().min(1, 'Ingresá tu contraseña'),
 });
 
-export const contrasenaSchema = z
-  .string()
-  .min(6, 'La contraseña debe tener al menos 6 caracteres')
-  .regex(/[A-Z]/, 'La contraseña necesita una mayúscula')
-  .regex(/[a-z]/, 'La contraseña necesita una minúscula')
-  .regex(/[0-9]/, 'La contraseña necesita un número');
+// Requisitos de la contraseña. Los usa el esquema y la lista que se valida mientras se escribe.
+export const REQUISITOS_CONTRASENA = [
+  { id: 'largo', texto: 'Al menos 6 caracteres', cumple: (valor: string) => valor.length >= 6, error: 'La contraseña debe tener al menos 6 caracteres' },
+  { id: 'mayuscula', texto: 'Una letra mayúscula', cumple: (valor: string) => /[A-Z]/.test(valor), error: 'La contraseña necesita una mayúscula' },
+  { id: 'minuscula', texto: 'Una letra minúscula', cumple: (valor: string) => /[a-z]/.test(valor), error: 'La contraseña necesita una minúscula' },
+  { id: 'numero', texto: 'Un número', cumple: (valor: string) => /[0-9]/.test(valor), error: 'La contraseña necesita un número' },
+] as const;
+
+export const contrasenaSchema = z.string().superRefine((valor, context) => {
+  const pendiente = REQUISITOS_CONTRASENA.find((requisito) => !requisito.cumple(valor));
+  if (pendiente) {
+    context.addIssue({ code: 'custom', message: pendiente.error });
+  }
+});
 
 export const registerSchema = z
   .object({

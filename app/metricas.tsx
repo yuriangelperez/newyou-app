@@ -1,14 +1,21 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CalendarioRango } from "../components/ui/CalendarioRango";
 import { EncabezadoPantalla } from "../components/ui/EncabezadoPantalla";
 import { estilosFormulario as styles } from "../constants/estilosFormulario";
 import { Colors, FontSize, Radius, Spacing } from "../constants/theme";
 import { MetricasVentas, obtenerMetricasRango } from "../services/pedidosService";
 import { puede, selectEmpresaActiva, useEmpresaStore } from "../stores/useEmpresaStore";
 import {
+  agrupacionDelPeriodo,
+  agruparIngresos,
+  AgrupacionIngresos,
+  barrasPorHora,
+  diasDelRango,
   etiquetaRango,
   fechaArgentina,
   fechaISO,
@@ -22,23 +29,37 @@ const PERIODOS: { id: PeriodoMetricas; texto: string }[] = [
   { id: "hoy", texto: "Hoy" },
   { id: "semana", texto: "Esta semana" },
   { id: "mes", texto: "Este mes" },
+  { id: "anio", texto: "Este año" },
   { id: "personalizado", texto: "Personalizado" },
 ];
 
 const formatPrecio = (valor: number) => `$${Math.round(valor).toLocaleString("es-AR")}`;
 
-/** Ingresos por día como barras; con muchos días se agrupan por semana para que se lean. */
-function GraficoIngresos({ porDia }: { porDia: MetricasVentas["porDia"] }) {
-  const barras =
-    porDia.length > 31
-      ? Array.from({ length: Math.ceil(porDia.length / 7) }, (_, i) => {
-          const semana = porDia.slice(i * 7, i * 7 + 7);
-          return { etiqueta: semana[0].dia.slice(5).split("-").reverse().join("/"), ingresos: semana.reduce((t, d) => t + d.ingresos, 0) };
-        })
-      : porDia.map((d) => ({ etiqueta: d.dia.slice(5).split("-").reverse().join("/"), ingresos: d.ingresos }));
+const LEYENDAS: Record<AgrupacionIngresos, string> = {
+  hora: "Ingresos por hora",
+  dia: "Ingresos por día",
+  semana: "Ingresos por semana (de lunes a domingo)",
+  mes: "Ingresos por mes",
+};
+
+/** Ingresos como barras; cómo se dividen depende del período (hoy por hora, semana por día, mes por semana, año por mes). */
+function GraficoIngresos({
+  metricas,
+  agrupacion,
+}: {
+  metricas: MetricasVentas;
+  agrupacion: AgrupacionIngresos;
+}) {
+  // Sin la migración 20 no hay datos por hora: se muestra el día completo en una sola barra.
+  const sinHoras = agrupacion === "hora" && metricas.porHora.length === 0;
+  const modo = sinHoras ? "dia" : agrupacion;
+  const barras = useMemo(
+    () => (modo === "hora" ? barrasPorHora(metricas.porHora) : agruparIngresos(metricas.porDia, modo)),
+    [metricas.porDia, metricas.porHora, modo],
+  );
   const mayor = Math.max(...barras.map((b) => b.ingresos), 0);
   const maximo = mayor || 1;
-  const cadaCuanto = Math.ceil(barras.length / 6);
+  const cadaCuanto = modo === "hora" ? 3 : Math.ceil(barras.length / 6);
 
   return (
     <View style={grafico.wrapper}>
@@ -60,7 +81,9 @@ function GraficoIngresos({ porDia }: { porDia: MetricasVentas["porDia"] }) {
           </Text>
         ))}
       </View>
-      <Text style={grafico.leyenda}>{porDia.length > 31 ? "Ingresos por semana" : "Ingresos por día"}</Text>
+      <Text style={grafico.leyenda}>
+        {sinHoras ? "Para ver las horas falta correr la migración 20-metricas-por-hora.sql." : LEYENDAS[modo]}
+      </Text>
     </View>
   );
 }
@@ -70,10 +93,12 @@ export default function MetricasScreen() {
   const empresaActiva = useEmpresaStore(selectEmpresaActiva);
   const empresaId = empresaActiva?.empresaId ?? null;
   const [periodo, setPeriodo] = useState<PeriodoMetricas>("mes");
-  // Rango personalizado: se escribe en DD/MM/AAAA y se aplica con el botón (no en cada tecla).
+  // Rango personalizado: se elige en el calendario y se aplica con el botón (no en cada clic).
   const [rangoPersonalizado, setRangoPersonalizado] = useState<RangoFechas>(() => rangoPredefinido("mes"));
-  const [desdeTexto, setDesdeTexto] = useState(() => fechaArgentina(rangoPredefinido("mes").desde));
-  const [hastaTexto, setHastaTexto] = useState(() => fechaArgentina(rangoPredefinido("mes").hasta));
+  const [desdeElegido, setDesdeElegido] = useState(() => rangoPredefinido("mes").desde);
+  const [hastaElegido, setHastaElegido] = useState(() => rangoPredefinido("mes").hasta);
+  // Qué extremo se está eligiendo en el calendario (null = calendario cerrado).
+  const [eligiendo, setEligiendo] = useState<"desde" | "hasta" | null>(null);
   const [errorRango, setErrorRango] = useState<string | null>(null);
   const [metricas, setMetricas] = useState<MetricasVentas | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -85,8 +110,20 @@ export default function MetricasScreen() {
     [periodo, rangoPersonalizado],
   );
 
+  const elegirDia = (iso: string) => {
+    if (eligiendo === "desde") {
+      setDesdeElegido(iso);
+      if (iso > hastaElegido) setHastaElegido(iso);
+      setEligiendo("hasta"); // sigue con el "hasta" para elegir el rango con dos clics
+    } else {
+      if (iso < desdeElegido) setDesdeElegido(iso);
+      setHastaElegido(iso);
+      setEligiendo(null);
+    }
+  };
+
   const aplicarRango = () => {
-    const resultado = validarRango(desdeTexto, hastaTexto);
+    const resultado = validarRango(fechaArgentina(desdeElegido), fechaArgentina(hastaElegido));
     if (!resultado.ok) {
       setErrorRango(resultado.mensaje);
       return;
@@ -139,33 +176,35 @@ export default function MetricasScreen() {
         {periodo === "personalizado" ? (
           <View style={styles.card}>
             <View style={local.fechas}>
-              <View style={local.fecha}>
-                <Text style={styles.label}>Desde</Text>
-                <TextInput
-                  testID="metricas-desde"
-                  value={desdeTexto}
-                  onChangeText={setDesdeTexto}
-                  placeholder="DD/MM/AAAA"
-                  placeholderTextColor={Colors.textMuted}
-                  keyboardType="numbers-and-punctuation"
-                  maxLength={10}
-                  style={styles.input}
-                />
-              </View>
-              <View style={local.fecha}>
-                <Text style={styles.label}>Hasta</Text>
-                <TextInput
-                  testID="metricas-hasta"
-                  value={hastaTexto}
-                  onChangeText={setHastaTexto}
-                  placeholder="DD/MM/AAAA"
-                  placeholderTextColor={Colors.textMuted}
-                  keyboardType="numbers-and-punctuation"
-                  maxLength={10}
-                  style={styles.input}
-                />
-              </View>
+              {(["desde", "hasta"] as const).map((extremo) => {
+                const activo = eligiendo === extremo;
+                return (
+                  <View key={extremo} style={local.fecha}>
+                    <Text style={styles.label}>{extremo === "desde" ? "Desde" : "Hasta"}</Text>
+                    <Pressable
+                      testID={`metricas-${extremo}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Elegir fecha ${extremo}`}
+                      onPress={() => setEligiendo(activo ? null : extremo)}
+                      style={[styles.input, local.campoFecha, activo && local.campoFechaActivo]}
+                    >
+                      <Text style={local.campoFechaTexto}>
+                        {fechaArgentina(extremo === "desde" ? desdeElegido : hastaElegido)}
+                      </Text>
+                      <Ionicons name="calendar-outline" size={18} color={Colors.primary} />
+                    </Pressable>
+                  </View>
+                );
+              })}
             </View>
+            {eligiendo ? (
+              <CalendarioRango
+                desde={desdeElegido}
+                hasta={hastaElegido}
+                maximo={fechaISO(new Date())}
+                onElegir={elegirDia}
+              />
+            ) : null}
             {errorRango ? <Text style={styles.error}>{errorRango}</Text> : null}
             <Pressable testID="metricas-aplicar" accessibilityRole="button" onPress={aplicarRango} style={styles.saveButton}>
               <Text style={styles.saveText}>Ver rango</Text>
@@ -198,7 +237,7 @@ export default function MetricasScreen() {
             </Text>
 
             <View style={styles.card}>
-              <GraficoIngresos porDia={metricas.porDia} />
+              <GraficoIngresos metricas={metricas} agrupacion={agrupacionDelPeriodo(periodo, diasDelRango(rango))} />
             </View>
 
             <Text style={styles.sectionTitle}>Más vendidos</Text>
@@ -248,6 +287,9 @@ export default function MetricasScreen() {
 const local = StyleSheet.create({
   fechas: { flexDirection: "row", gap: Spacing.sm },
   fecha: { flex: 1, gap: Spacing.xs },
+  campoFecha: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  campoFechaActivo: { borderColor: Colors.secondary, borderWidth: 2 },
+  campoFechaTexto: { color: Colors.text, fontSize: FontSize.md, fontFamily: "Montserrat_400Regular" },
   kpis: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
   kpi: {
     flexGrow: 1,

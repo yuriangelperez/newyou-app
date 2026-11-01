@@ -11,6 +11,7 @@ export function TallesSelector({ control }: { control: Control<ProductoFormValue
   const { field, fieldState } = useController({ control, name: 'talle' });
   const tipoPrenda = useWatch({ control, name: 'tipoPrenda' });
   const esCalzado = tipoPrenda === 'Calzado';
+  const sinTalles = tipoPrenda === 'Accesorio';
   const opciones = tallesPara(esCalzado);
   const valor = String(field.value || '');
   const seleccionados = valor.split(',').map((talle) => talle.trim()).filter(Boolean);
@@ -18,12 +19,16 @@ export function TallesSelector({ control }: { control: Control<ProductoFormValue
 
   // Al pasar de ropa a calzado (o al revés) se quitan los talles que ya no corresponden.
   useEffect(() => {
+    if (sinTalles) {
+      if (valor) onChange('');
+      return;
+    }
     const actuales = valor.split(',').map((talle) => talle.trim()).filter(Boolean);
     const validos = tallesValidos(actuales, esCalzado);
     if (validos.length !== actuales.length) {
       onChange(validos.join(', '));
     }
-  }, [esCalzado, onChange, valor]);
+  }, [esCalzado, onChange, sinTalles, valor]);
 
   const toggle = (talle: string) => {
     const elegido = seleccionados.some((item) => mismoTalle(item, talle));
@@ -33,6 +38,8 @@ export function TallesSelector({ control }: { control: Control<ProductoFormValue
     // Se guardan en el orden de la lista (XS antes que M, 38 antes que 40).
     onChange(tallesValidos(lista, esCalzado).join(', '));
   };
+
+  if (sinTalles) return null;
 
   return (
     <View style={styles.container}>

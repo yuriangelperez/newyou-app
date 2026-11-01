@@ -64,7 +64,6 @@ export function CategoriaProductoSelector({ control }: CategoriaProductoSelector
               onPress={() => {
                 categoria.field.onChange(item.nombre);
                 const grupo = categorias.find((categoriaItem) => categoriaItem.nombre === item.nombre)?.grupo;
-                setGrupoActivo(grupo ?? 'TODO');
                 tipoPrenda.field.onChange(tipoPrendaDeCategoria(item.nombre, grupo));
               }}
               style={[styles.option, categoria.field.value === item.nombre && styles.optionSelected]}>

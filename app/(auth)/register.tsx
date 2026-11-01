@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useRouter } from 'expo-router';
 import {
   Image,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
+import { RequisitosContrasena } from '../../components/ui/RequisitosContrasena';
 import { BRANDING_LOGO } from '../../constants/assets';
 import { ROUTES } from '../../constants/routes';
 import { Colors, Radius, Shadow } from '../../constants/theme';
@@ -46,6 +47,9 @@ export default function RegisterScreen() {
       comoEmpresa: false,
     },
   });
+  // Se leen mientras se escribe para pintar la lista de requisitos.
+  const contrasena = useWatch({ control, name: 'contrasena' });
+  const repetirContrasena = useWatch({ control, name: 'repetirContrasena' });
   const quiereVender = watch('quiereVender');
   const comoEmpresa = watch('comoEmpresa');
   // Comprar, vender como particular o vender como empresa (la empresa se crea al entrar).
@@ -150,7 +154,7 @@ export default function RegisterScreen() {
                 <TextInput
                   testID="registro-contrasena"
                   style={styles.passwordInput}
-                  placeholder="6+ caracteres, mayúscula, minúscula y número"
+                  placeholder="Creá tu contraseña"
                   placeholderTextColor={Colors.textMuted}
                   secureTextEntry={!mostrarContrasena}
                   value={value}
@@ -209,6 +213,7 @@ export default function RegisterScreen() {
               />
             </Pressable>
           </View>
+          <RequisitosContrasena contrasena={contrasena} repetir={repetirContrasena} />
         </View>
         <View style={styles.roleGroup}>
           <Text style={styles.fieldLabel}>¿Querés vender prendas?</Text>
