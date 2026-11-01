@@ -52,6 +52,24 @@ async function hayPermisoUbicacion() {
   }
 }
 
+// El permiso para buscar con Google se pide una sola vez por sesión (si lo niega, no se insiste).
+let permisoYaPedido = false;
+
+/**
+ * Pide el permiso de ubicación para poder buscar la dirección con el geocodificador
+ * del celular (en Android es el de Google: gratis y sin clave). No usa el GPS.
+ */
+async function pedirPermisoParaBuscar() {
+  if (await hayPermisoUbicacion()) return true;
+  if (permisoYaPedido) return false;
+  permisoYaPedido = true;
+  try {
+    return (await Location.requestForegroundPermissionsAsync()).granted;
+  } catch {
+    return false;
+  }
+}
+
 function formatearDireccion(partes: (string | null | undefined)[]) {
   return partes.filter(Boolean).join(', ');
 }
@@ -130,16 +148,30 @@ export async function obtenerDireccionActual(): Promise<UbicacionResultado> {
  * Coordenadas de una dirección escrita, para mostrarla en el mapa de la app.
  * Primero prueba el geocoder del celular y si no encuentra nada usa Nominatim.
  */
+// Puntos ya conocidos (elegidos con el pin o de una sugerencia): no se vuelven a buscar,
+// así el mapa no salta a otro lugar después de que el usuario lo marcó.
+const puntosConocidos = new Map<string, { latitud: number; longitud: number }>();
+
+export function recordarPunto(direccion: string, punto: { latitud: number; longitud: number }) {
+  puntosConocidos.set(direccion.trim().toLowerCase(), { latitud: punto.latitud, longitud: punto.longitud });
+}
+
 export async function buscarCoordenadas(
   direccion: string,
-): Promise<{ latitud: number; longitud: number } | null> {
+): Promise<{ latitud: number; longitud: number; aproximada?: boolean } | null> {
   const consulta = direccion.trim();
   if (!consulta) {
     return null;
   }
 
-  // 1) Geocoder del celular: sólo con permiso de ubicación (sin él, en Android falla).
-  if (Platform.OS !== 'web' && (await hayPermisoUbicacion())) {
+  const conocido = puntosConocidos.get(consulta.toLowerCase());
+  if (conocido) {
+    return conocido;
+  }
+
+  // 1) Geocodificador del celular (Google en Android): necesita el permiso de ubicación,
+  //    así que se pide la primera vez. OpenStreetMap sólo dibuja el mapa con esas coordenadas.
+  if (Platform.OS !== 'web' && (await pedirPermisoParaBuscar())) {
     try {
       const [lugar] = await Location.geocodeAsync(consulta);
       if (lugar) {
@@ -150,26 +182,108 @@ export async function buscarCoordenadas(
     }
   }
 
-  // 2) Nominatim (OpenStreetMap). No necesita permiso ni clave.
+  // 2) OpenStreetMap con la dirección completa.
+  const exacta = await buscarEnOsm(consulta);
+  if (exacta) {
+    return exacta;
+  }
+
+  // 3) En muchas calles del conurbano OSM no tiene cargadas las alturas
+  //    (p. ej. "Adolfo Alsina 3048, Manuel Alberti"): se busca la calle sin el
+  //    número y se avisa que el punto es aproximado.
+  const sinAltura = quitarAltura(consulta);
+  if (sinAltura && sinAltura !== consulta) {
+    const calle = await buscarEnOsm(sinAltura);
+    if (calle) {
+      return { ...calle, aproximada: true };
+    }
+  }
+
+  return null;
+}
+
+/** "Adolfo Alsina 3048, Manuel Alberti" → "Adolfo Alsina, Manuel Alberti". */
+export function quitarAltura(direccion: string) {
+  // Sólo se toca la primera parte (calle y altura); la localidad queda igual.
+  // Se usa recién cuando la dirección completa no aparece en el mapa.
+  const [calle, ...resto] = direccion.split(',');
+  const sinNumero = calle.replace(/\s+(n[°º]\.?\s*)?\d+\s*[a-z]?$/i, '').trim();
+  return [sinNumero, ...resto.map((parte) => parte.trim())].filter(Boolean).join(', ');
+}
+
+// Photon sólo acepta lang=default/en/de/fr: se limita a Argentina con un recuadro.
+const BBOX_ARGENTINA = '-73.6,-55.1,-53.6,-21.8';
+// Las sugerencias priorizan lo más cercano a Pilar (zona de la app).
+const CERCA_DE = { lat: -34.4587, lon: -58.9142 };
+
+interface PhotonFeature {
+  geometry?: { coordinates?: [number, number] };
+  properties?: {
+    name?: string;
+    street?: string;
+    housenumber?: string;
+    city?: string;
+    locality?: string;
+    district?: string;
+    county?: string;
+    state?: string;
+  };
+}
+
+export interface SugerenciaDireccion {
+  texto: string;
+  latitud: number;
+  longitud: number;
+}
+
+/**
+ * Autocompletado de direcciones mientras se escribe (Photon, de OpenStreetMap:
+ * gratis, sin clave y pensado para buscar letra por letra; Nominatim no lo permite).
+ */
+export async function sugerirDirecciones(texto: string): Promise<SugerenciaDireccion[]> {
+  const consulta = texto.trim();
+  if (consulta.length < 4) {
+    return [];
+  }
+  try {
+    const data = await pedirJson<{ features?: PhotonFeature[] }>(
+      `https://photon.komoot.io/api/?limit=5&bbox=${BBOX_ARGENTINA}&lat=${CERCA_DE.lat}&lon=${CERCA_DE.lon}&location_bias_scale=0.5&q=${encodeURIComponent(consulta)}`,
+    );
+    const vistas = new Set<string>();
+    const sugerencias: SugerenciaDireccion[] = [];
+    for (const lugar of data?.features ?? []) {
+      const p = lugar.properties ?? {};
+      const coordenadas = lugar.geometry?.coordinates;
+      const calle = p.street ? [p.street, p.housenumber].filter(Boolean).join(' ') : p.name;
+      const localidad = p.city ?? p.locality ?? p.district ?? p.county;
+      const textoSugerido = formatearDireccion([calle, localidad, p.state]);
+      if (!coordenadas || !textoSugerido || vistas.has(textoSugerido)) continue;
+      vistas.add(textoSugerido);
+      sugerencias.push({ texto: textoSugerido, latitud: coordenadas[1], longitud: coordenadas[0] });
+    }
+    return sugerencias;
+  } catch {
+    return [];
+  }
+}
+
+/** Dirección legible de un punto del mapa (para el pin que mueve el usuario). */
+export async function direccionDeCoordenadas(latitud: number, longitud: number) {
+  const nativa = (await hayPermisoUbicacion()) ? await direccionConExpo(latitud, longitud) : '';
+  return nativa || (await direccionConNominatim(latitud, longitud));
+}
+
+/**
+ * Búsqueda en Nominatim (OpenStreetMap). Photon no se usa acá: con direcciones
+ * del conurbano devolvía la calle homónima de otra ciudad y el pin quedaba lejos.
+ */
+async function buscarEnOsm(consulta: string): Promise<{ latitud: number; longitud: number } | null> {
   try {
     const lugares = await pedirJson<{ lat: string; lon: string }[]>(
       `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=es&countrycodes=ar&q=${encodeURIComponent(consulta)}`,
     );
     const lugar = lugares?.[0];
-    if (lugar) {
-      return { latitud: Number(lugar.lat), longitud: Number(lugar.lon) };
-    }
-  } catch {
-    // Sigue con Photon.
-  }
-
-  // 3) Photon (también usa datos de OpenStreetMap), por si Nominatim no responde.
-  try {
-    const data = await pedirJson<{ features?: { geometry?: { coordinates?: [number, number] } }[] }>(
-      `https://photon.komoot.io/api/?limit=1&lang=es&q=${encodeURIComponent(`${consulta}, Argentina`)}`,
-    );
-    const coordenadas = data?.features?.[0]?.geometry?.coordinates;
-    return coordenadas ? { latitud: coordenadas[1], longitud: coordenadas[0] } : null;
+    return lugar ? { latitud: Number(lugar.lat), longitud: Number(lugar.lon) } : null;
   } catch {
     return null;
   }

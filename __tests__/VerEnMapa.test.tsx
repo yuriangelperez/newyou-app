@@ -1,11 +1,24 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { VerEnMapa } from '../components/ui/VerEnMapa';
-import { buscarCoordenadas } from '../services/locationService';
+import { buscarCoordenadas, direccionDeCoordenadas, recordarPunto } from '../services/locationService';
 
 jest.mock('../services/locationService', () => ({
   buscarCoordenadas: jest.fn(),
   abrirDireccionEnMapa: jest.fn(),
+  direccionDeCoordenadas: jest.fn(),
+  recordarPunto: jest.fn(),
+}));
+// El mapa con pin real es un WebView: acá un botón simula que el usuario movió el pin.
+jest.mock('../components/MapaPin', () => ({
+  MapaPin: ({ onMover }: { onMover: (lat: number, lng: number) => void }) => {
+    const { Pressable, Text: Texto } = jest.requireActual('react-native');
+    return (
+      <Pressable onPress={() => onMover(-34.43, -58.8)}>
+        <Texto>mover pin</Texto>
+      </Pressable>
+    );
+  },
 }));
 jest.mock('../components/MapaItem', () => ({
   MapaItem: ({ latitud }: { latitud: number }) => {
@@ -51,5 +64,26 @@ describe('VerEnMapa', () => {
     await rerender(<VerEnMapa direccion="Pilar" pedido={1} />);
     await esperarBusqueda();
     expect(screen.getByText('mapa 3')).toBeTruthy();
+  });
+
+  it('con pin: si la dirección no aparece, se marca en el mapa y se usa esa ubicación', async () => {
+    buscar.mockResolvedValue(null);
+    (direccionDeCoordenadas as jest.Mock).mockResolvedValue('Adolfo Alsina, Manuel Alberti');
+    const onElegir = jest.fn();
+    await render(<VerEnMapa direccion="Adolfo Alsina 3048, Manuel Alberti" onElegirDireccion={onElegir} />);
+    await fireEvent.press(screen.getByText('Ver en el mapa'));
+    await esperarBusqueda();
+
+    expect(screen.getByText(/Marcala con el pin/)).toBeTruthy();
+    await fireEvent.press(screen.getByText('mover pin'));
+    expect(await screen.findByText('Pin en: Adolfo Alsina, Manuel Alberti')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('mapa-usar-pin'));
+    // El mapa no conoce la altura: queda lo escrito (con el 3048) y se guarda el punto marcado.
+    expect(onElegir).toHaveBeenCalledWith('Adolfo Alsina 3048, Manuel Alberti');
+    expect(recordarPunto).toHaveBeenCalledWith(
+      'Adolfo Alsina 3048, Manuel Alberti',
+      expect.objectContaining({ latitud: -34.43, longitud: -58.8 }),
+    );
   });
 });
