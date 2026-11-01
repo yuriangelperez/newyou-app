@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -16,7 +17,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar } from "../../components/BottomTabBar";
 import TarjetaProducto from "../../components/TarjetaProducto";
+import { ChipsTemporadaPublico } from "../../components/ui/ChipsTemporadaPublico";
 import { ErrorView } from "../../components/ui/ErrorView";
+import { FiltroPrecio } from "../../components/ui/FiltroPrecio";
+import { PanelFiltros } from "../../components/ui/PanelFiltros";
 import { SkeletonList } from "../../components/ui/SkeletonList";
 import { BRANDING_LOGO, CATEGORY_DIAGONAL_CUT } from "../../constants/assets";
 import { Categoria, tipoPrendaDeCategoria } from "../../constants/categoriasProductos";
@@ -29,6 +33,16 @@ import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore"
 import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { usePuedeVender } from "../../hooks/usePuedeVender";
 import { Producto } from "../../types";
+import {
+  CONDICIONES,
+  cumpleFiltrosExtra,
+  cumpleTemporadaPublico,
+  FILTROS_EXTRA_INICIALES,
+  ORDENES,
+  ordenarPorPrecio,
+  PUBLICOS_FILTRO,
+  TEMPORADAS,
+} from "../../utils/filtrosCatalogo";
 import { incluyeTexto, normalizarTexto } from "../../utils/texto";
 
 const CANVAS_WIDTH = 412;
@@ -62,6 +76,13 @@ export default function CategoriasScreen() {
   );
   const [searchText, setSearchText] = useState("");
   const [selectedSize, setSelectedSize] = useState("Todos");
+  const [filtrosVisibles, setFiltrosVisibles] = useState(false);
+  const [orden, setOrden] = useState<string>(ORDENES[0]);
+  const [temporada, setTemporada] = useState("Todo");
+  const [publico, setPublico] = useState("Todo");
+  const [precioMin, setPrecioMin] = useState<number | null>(null);
+  const [precioMax, setPrecioMax] = useState<number | null>(null);
+  const [condicion, setCondicion] = useState<string>(FILTROS_EXTRA_INICIALES.condicion);
 
   const isDesktop = width >= 768;
   const containerWidth = Math.min(width, MAX_CONTENT_WIDTH);
@@ -119,9 +140,30 @@ export default function CategoriasScreen() {
     ? tipoPrendaDeCategoria(selectedFilter.nombre, selectedFilter.grupo) === "Calzado"
     : false;
 
+  const hayFiltros =
+    orden !== ORDENES[0] ||
+    temporada !== "Todo" ||
+    publico !== "Todo" ||
+    precioMin !== null ||
+    precioMax !== null ||
+    condicion !== FILTROS_EXTRA_INICIALES.condicion ||
+    selectedSize !== "Todos";
+  const limpiarFiltros = () => {
+    setOrden(ORDENES[0]);
+    setTemporada("Todo");
+    setPublico("Todo");
+    setPrecioMin(null);
+    setPrecioMax(null);
+    setCondicion(FILTROS_EXTRA_INICIALES.condicion);
+    setSelectedSize("Todos");
+  };
+
+  // Cinturones, gorras, lentes, etc. no tienen talle: no se ofrece el filtro.
+  const sinTalles = selectedFilter?.grupo === "ACCESORIOS";
+
   const sizeFilters = isCalzado ? CALZADO_SIZES : ROPA_SIZES;
   const visibleProducts = selectedFilter
-    ? productos.filter((item) => {
+    ? ordenarPorPrecio(productos.filter((item) => {
         // Cada categoría muestra sólo sus prendas ("Pantalones" ya no trae las de "Jeans").
         const matchesCategory =
           normalizarTexto(item.categoria) === normalizarTexto(selectedFilter.nombre) ||
@@ -145,8 +187,12 @@ export default function CategoriasScreen() {
           selectedSize === "Todos" ||
           (item.talle ?? []).some((talle) => mismoTalle(talle, selectedSize));
 
-        return matchesSize;
-      })
+        return (
+          matchesSize &&
+          cumpleTemporadaPublico(item, temporada, publico) &&
+          cumpleFiltrosExtra(item, { precioMin, precioMax, condicion, talle: "Todos" })
+        );
+      }), orden)
     : [];
 
   const onPressAgregar = (producto: Producto) => {
@@ -183,7 +229,7 @@ export default function CategoriasScreen() {
                 setActiveFilter(filter);
                 setSelectedCategoryId(null);
                 setSearchText("");
-                setSelectedSize("Todos");
+                limpiarFiltros();
               }}
               style={[
                 styles.filterChip,
@@ -199,50 +245,75 @@ export default function CategoriasScreen() {
       {selectedCategoryId ? (
         <>
           <View style={styles.categoryFilters}>
-            <TextInput
-              value={searchText}
-              onChangeText={setSearchText}
-              placeholder="Buscar en esta categoría..."
-              placeholderTextColor={Colors.textMuted}
-              style={styles.searchInput}
-              returnKeyType="search"
-            />
+            <View style={styles.searchRow}>
+              <TextInput
+                value={searchText}
+                onChangeText={setSearchText}
+                placeholder="Buscar en esta categoría..."
+                placeholderTextColor={Colors.textMuted}
+                style={styles.searchInput}
+                returnKeyType="search"
+              />
+              <Pressable
+                testID="categoria-filtros"
+                accessibilityRole="button"
+                accessibilityLabel="Ordenar y filtrar"
+                onPress={() => setFiltrosVisibles(true)}
+                style={styles.filtrosBoton}
+              >
+                <Ionicons name="options-outline" size={20} color={Colors.textStrong} />
+                {hayFiltros ? <View style={styles.filtrosPunto} /> : null}
+              </Pressable>
+            </View>
 
-            <Text style={styles.sizeLabel}>Talle</Text>
+            <View style={styles.chipsTemporada}>
+              <ChipsTemporadaPublico
+                temporada={temporada}
+                publico={publico}
+                onTemporada={setTemporada}
+                onPublico={setPublico}
+              />
+            </View>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.sizeFiltersContent}
-            >
-              {sizeFilters.map((size) => {
-                const selected = selectedSize === size;
+            {!sinTalles ? (
+              <>
+                <Text style={styles.sizeLabel}>Talle</Text>
 
-                return (
-                  <Pressable
-                    key={size}
-                    onPress={() => setSelectedSize(size)}
-                    style={[styles.sizeChip, selected && styles.sizeChipActive]}
-                  >
-                    <Text
-                      style={[
-                        styles.sizeChipText,
-                        selected && styles.sizeChipTextActive,
-                      ]}
-                    >
-                      {size}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.sizeFiltersContent}
+                >
+                  {sizeFilters.map((size) => {
+                    const selected = selectedSize === size;
+
+                    return (
+                      <Pressable
+                        key={size}
+                        onPress={() => setSelectedSize(size)}
+                        style={[styles.sizeChip, selected && styles.sizeChipActive]}
+                      >
+                        <Text
+                          style={[
+                            styles.sizeChipText,
+                            selected && styles.sizeChipTextActive,
+                          ]}
+                        >
+                          {size}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            ) : null}
           </View>
           <View style={styles.selectedHeader}>
             <Pressable
               onPress={() => {
                 setSelectedCategoryId(null);
                 setSearchText("");
-                setSelectedSize("Todos");
+                limpiarFiltros();
               }}
             >
               <Text style={styles.backText}>Categorias</Text>
@@ -323,6 +394,32 @@ export default function CategoriasScreen() {
         />
       )}
 
+      <PanelFiltros
+        visible={filtrosVisibles}
+        onCerrar={() => setFiltrosVisibles(false)}
+        onLimpiar={limpiarFiltros}
+        secciones={[
+          { id: "orden", titulo: "Ordenar por", opciones: ORDENES, valor: orden, onCambiar: setOrden },
+          { id: "temporada", titulo: "Temporada", opciones: TEMPORADAS, valor: temporada, onCambiar: setTemporada },
+          { id: "publico", titulo: "Público", opciones: PUBLICOS_FILTRO, valor: publico, onCambiar: setPublico },
+          {
+            id: "precio",
+            titulo: "Precio",
+            contenido: (
+              <FiltroPrecio
+                min={precioMin}
+                max={precioMax}
+                onCambiar={(min, max) => {
+                  setPrecioMin(min);
+                  setPrecioMax(max);
+                }}
+              />
+            ),
+          },
+          { id: "condicion", titulo: "Estado", opciones: CONDICIONES, valor: condicion, onCambiar: setCondicion },
+        ]}
+      />
+
       <BottomTabBar
         activeTab="bag"
         canvasWidth={Math.min(width, 560)}
@@ -388,10 +485,37 @@ function createStyles({
       paddingBottom: s(4),
     },
 
-    searchInput: {
+    searchRow: {
       width: "100%",
       maxWidth: 640,
-      alignSelf: isDesktop ? "center" : "stretch",
+      alignSelf: "center",
+      flexDirection: "row",
+      columnGap: s(8),
+    },
+    filtrosBoton: {
+      width: s(42),
+      height: s(42),
+      borderRadius: s(12),
+      backgroundColor: Colors.chip,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    filtrosPunto: {
+      position: "absolute",
+      top: s(8),
+      right: s(8),
+      width: s(8),
+      height: s(8),
+      borderRadius: s(4),
+      backgroundColor: Colors.secondary,
+    },
+    chipsTemporada: {
+      marginTop: s(10),
+      marginHorizontal: -horizontalPadding,
+    },
+    searchInput: {
+      flex: 1,
+      maxWidth: 640,
       height: s(42),
       borderRadius: s(12),
       backgroundColor: Colors.chip,

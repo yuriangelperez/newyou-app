@@ -1,7 +1,7 @@
-// Rangos de fechas de Métricas: Hoy, Esta semana (desde el lunes), Este mes y personalizado.
+// Rangos de fechas de Métricas: Hoy, Esta semana (desde el lunes), Este mes, Este año y personalizado.
 // Las fechas viajan como "AAAA-MM-DD" en la hora del celular; el servidor cuenta en hora argentina.
 
-export type PeriodoMetricas = 'hoy' | 'semana' | 'mes' | 'personalizado';
+export type PeriodoMetricas = 'hoy' | 'semana' | 'mes' | 'anio' | 'personalizado';
 
 export interface RangoFechas {
   desde: string;
@@ -32,6 +32,9 @@ export function rangoPredefinido(periodo: Exclude<PeriodoMetricas, 'personalizad
     // La semana arranca el lunes: getDay() da 0 el domingo.
     const lunes = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - ((hoy.getDay() + 6) % 7));
     return { desde: fechaISO(lunes), hasta };
+  }
+  if (periodo === 'anio') {
+    return { desde: fechaISO(new Date(hoy.getFullYear(), 0, 1)), hasta };
   }
   return { desde: fechaISO(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta };
 }
@@ -94,4 +97,72 @@ export function etiquetaRango(rango: RangoFechas): string {
   return rango.desde === rango.hasta
     ? fechaArgentina(rango.desde)
     : `${fechaArgentina(rango.desde)} al ${fechaArgentina(rango.hasta)}`;
+}
+
+export type AgrupacionIngresos = 'hora' | 'dia' | 'semana' | 'mes';
+
+export interface BarraIngresos {
+  etiqueta: string;
+  ingresos: number;
+}
+
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const DIAS_CORTOS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+
+/** Cómo se divide el gráfico según el período: Hoy por hora, semana por día, mes por semana, año por mes. */
+export function agrupacionDelPeriodo(periodo: PeriodoMetricas, dias: number): AgrupacionIngresos {
+  if (periodo === 'hoy') return 'hora';
+  if (periodo === 'semana') return 'dia';
+  if (periodo === 'mes') return 'semana';
+  if (periodo === 'anio') return 'mes';
+  // Personalizado: se elige lo que mejor se lee según el largo del rango.
+  if (dias <= 1) return 'hora';
+  if (dias <= 14) return 'dia';
+  if (dias <= 62) return 'semana';
+  return 'mes';
+}
+
+/** "AAAA-MM-DD" del lunes de la semana de esa fecha. */
+function lunesDe(iso: string): string {
+  const fecha = new Date(`${iso}T00:00:00Z`);
+  fecha.setUTCDate(fecha.getUTCDate() - ((fecha.getUTCDay() + 6) % 7));
+  return fecha.toISOString().slice(0, 10);
+}
+
+const diaYMes = (iso: string) => iso.slice(5).split('-').reverse().join('/');
+
+/**
+ * Suma los ingresos diarios por día ("lun 26" si son pocos, si no "26/10"), por semana (de lunes a
+ * domingo, etiquetada con su primer día dentro del rango) o por mes ("sep 2026"), en orden cronológico.
+ */
+export function agruparIngresos(
+  porDia: { dia: string; ingresos: number }[],
+  por: Exclude<AgrupacionIngresos, 'hora'>,
+): BarraIngresos[] {
+  if (por === 'dia') {
+    return porDia.map((d) => {
+      const diaSemana = DIAS_CORTOS[new Date(`${d.dia}T00:00:00Z`).getUTCDay()];
+      return { etiqueta: porDia.length <= 14 ? `${diaSemana} ${Number(d.dia.slice(8))}` : diaYMes(d.dia), ingresos: d.ingresos };
+    });
+  }
+
+  const grupos = new Map<string, { primerDia: string; ingresos: number }>();
+  for (const { dia, ingresos } of porDia) {
+    const clave = por === 'semana' ? lunesDe(dia) : dia.slice(0, 7);
+    const grupo = grupos.get(clave) ?? { primerDia: dia, ingresos: 0 };
+    grupo.ingresos += ingresos;
+    grupos.set(clave, grupo);
+  }
+
+  return [...grupos.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([clave, { primerDia, ingresos }]) => ({
+      etiqueta: por === 'semana' ? diaYMes(primerDia) : `${MESES_CORTOS[Number(clave.slice(5)) - 1]} ${clave.slice(0, 4)}`,
+      ingresos,
+    }));
+}
+
+/** Las 24 horas del día: "00h", "01h"... */
+export function barrasPorHora(porHora: { hora: number; ingresos: number }[]): BarraIngresos[] {
+  return porHora.map((h) => ({ etiqueta: `${dosCifras(h.hora)}h`, ingresos: h.ingresos }));
 }

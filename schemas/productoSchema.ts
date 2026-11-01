@@ -72,11 +72,8 @@ export const productoSchema = z.object({
 
   disponible: z.boolean(),
 
-  // Talles elegidos con chips, separados por comas ("S, M, L" o "38, 39").
-  talle: z
-    .string()
-    .trim()
-    .min(1, 'Elegí al menos un talle.'),
+  // Talles elegidos con chips, separados por comas ("S, M, L" o "38, 39"). Los accesorios no llevan.
+  talle: z.string().trim(),
 
   colores: z
     .string()
@@ -98,6 +95,13 @@ export const productoSchema = z.object({
       path: ['descuentoPorcentaje'],
       message: 'Ingresa un descuento mayor a 0%.',
     });
+  }
+
+  if (values.tipoPrenda === 'Accesorio') return;
+
+  if (!values.talle) {
+    context.addIssue({ code: 'custom', path: ['talle'], message: 'Elegí al menos un talle.' });
+    return;
   }
 
   // Sólo se aceptan los talles de los filtros (ropa o calzado según la categoría).

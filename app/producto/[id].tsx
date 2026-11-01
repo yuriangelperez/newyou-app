@@ -15,6 +15,7 @@ import {
 import { PinchGestureHandler, State as GestureState } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import { Ionicons } from "@expo/vector-icons";
 
 import { BotonFavorito } from "../../components/BotonFavorito";
 import { BottomTabBar } from "../../components/BottomTabBar";
@@ -37,6 +38,8 @@ import {
 import { usePuedeGestionarProducto, usePuedeVender } from "../../hooks/usePuedeVender";
 import { useEsEscritorio } from "../../hooks/useEsEscritorio";
 import { useFavoritosStore } from "../../stores/useFavoritosStore";
+import { useHistorialStore } from "../../stores/useHistorialStore";
+import { compartir, enlaceProducto } from "../../services/compartirService";
 import { calcularPrecioFinal } from "../../types";
 
 const CANVAS_WIDTH = 412;
@@ -108,9 +111,11 @@ export default function ProductDetailScreen() {
 
     const descripcionItems = parseDescripcionParaLista(producto.descripcion);
     const extras = [
-      talles.length > 0
-        ? `Talles disponibles: ${talles.join(", ")}.`
-        : "Talle no indicado por el vendedor.",
+      ...(talles.length > 0
+        ? [`Talles disponibles: ${talles.join(", ")}.`]
+        : producto.categoriaProducto?.tipoPrenda === "Accesorio"
+          ? []
+          : ["Talle no indicado por el vendedor."]),
       producto.disponible
         ? "Disponible para compra inmediata."
         : "Producto agotado por el momento.",
@@ -130,6 +135,20 @@ export default function ProductDetailScreen() {
     producto ? state.favoritos.some((item) => item.id === producto.id) : false,
   );
   const toggleFavorito = useFavoritosStore((state) => state.toggleFavorito);
+  const registrarVisto = useHistorialStore((state) => state.registrarVisto);
+
+  // Se guarda en "Vistos recientemente" del inicio (sólo en este dispositivo).
+  useEffect(() => {
+    if (producto?.id && producto.estado !== "borrador") {
+      registrarVisto(producto.id);
+    }
+  }, [producto?.id, producto?.estado, registrarVisto]);
+
+  const compartirProducto = () => {
+    if (!producto) return;
+    const precio = calcularPrecioFinal(producto).toLocaleString("es-AR");
+    void compartir(`Mirá ${producto.nombre} a $${precio} en New You:\n${enlaceProducto(producto.id)}`);
+  };
   const [purchaseFeedback, setPurchaseFeedback] = useState(false);
   const purchaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [reputacion, setReputacion] = useState<{ promedio: number | null; cantidad: number } | null>(null);
@@ -334,12 +353,23 @@ export default function ProductDetailScreen() {
             style={styles.logo}
           />
 
-          <BotonFavorito
-            activo={isFavorite}
-            onToggle={toggleFavorite}
-            style={styles.headerIconButton}
-            iconStyle={styles.favoriteIcon}
-          />
+          <View style={styles.headerActions}>
+            <Pressable
+              testID="producto-compartir"
+              accessibilityRole="button"
+              accessibilityLabel="Compartir prenda"
+              onPress={compartirProducto}
+              style={styles.headerIconButton}
+            >
+              <Ionicons name="share-social-outline" size={24} color={Colors.textStrong} />
+            </Pressable>
+            <BotonFavorito
+              activo={isFavorite}
+              onToggle={toggleFavorite}
+              style={styles.headerIconButton}
+              iconStyle={styles.favoriteIcon}
+            />
+          </View>
         </View>
 
         <ScrollView
@@ -688,6 +718,10 @@ function createStyles(
       backgroundColor: Colors.background,
       borderBottomWidth: s(2),
       borderBottomColor: Colors.secondary,
+    },
+    headerActions: {
+      flexDirection: "row",
+      alignItems: "center",
     },
     headerIconButton: {
       width: s(39),

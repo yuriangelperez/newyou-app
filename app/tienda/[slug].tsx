@@ -1,6 +1,7 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import TarjetaProducto from "../../components/TarjetaProducto";
@@ -12,6 +13,7 @@ import { estilosFormulario as styles } from "../../constants/estilosFormulario";
 import { Colors, Spacing } from "../../constants/theme";
 import { Empresa, listarSedes, obtenerEmpresaPorSlug, Sede } from "../../services/empresasService";
 import { getProductosDeEmpresa } from "../../services/productosService";
+import { compartir, enlaceTienda } from "../../services/compartirService";
 import { obtenerReputacion, Reputacion } from "../../services/pedidosService";
 import { useCarritoStore } from "../../stores/useCarritoStore";
 import { Producto } from "../../types";
@@ -116,7 +118,22 @@ export default function TiendaScreen() {
 
   return (
     <View style={styles.screen}>
-      <EncabezadoPantalla titulo={empresa ? empresa.nombre.toUpperCase() : "TIENDA"} />
+      <EncabezadoPantalla
+        titulo={empresa ? empresa.nombre.toUpperCase() : "TIENDA"}
+        accion={
+          empresa ? (
+            <Pressable
+              testID="tienda-compartir"
+              accessibilityRole="button"
+              accessibilityLabel="Compartir tienda"
+              hitSlop={8}
+              onPress={() => void compartir(`Mirá la tienda ${empresa.nombre} en New You:\n${enlaceTienda(empresa.slug)}`)}
+            >
+              <Ionicons name="share-social-outline" size={24} color={Colors.primary} />
+            </Pressable>
+          ) : null
+        }
+      />
       <FlatList
         key={`tienda-${columnas}`}
         data={empresa ? productos : []}
