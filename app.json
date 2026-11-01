@@ -18,6 +18,7 @@
         "monochromeImage": "./assets/app-icons/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
+      "googleServicesFile": "./google-services.json",
       "package": "com.anonymous.newyouapp",
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -59,7 +60,8 @@
           "backgroundColor": "#F4F4F4",
           "resizeMode": "contain"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "router": {},

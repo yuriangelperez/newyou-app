@@ -488,6 +488,27 @@ export default function CheckoutScreen() {
         <View style={styles.summary}>
           <View style={styles.summaryInner}>
           <Text style={styles.summaryTitle}>Resumen de compra</Text>
+          {/* HU13: cada prenda con su precio de lista tachado y el precio con descuento. */}
+          {items.map((item) => {
+            const conDescuento = !!item.precioOriginal && item.precioOriginal > item.precio;
+            return (
+              <View key={item.key} style={styles.itemRow} testID={`checkout-item-${item.key}`}>
+                <Text style={[styles.summaryText, styles.itemNombre]} numberOfLines={1}>
+                  {`${item.cantidad} × ${item.nombre}`}
+                  {conDescuento && item.descuentoPorcentaje ? ` (-${item.descuentoPorcentaje}%)` : ''}
+                </Text>
+                <View style={styles.itemPrecios}>
+                  {conDescuento ? (
+                    <Text style={styles.precioTachado}>
+                      {formatPrecio((item.precioOriginal ?? item.precio) * item.cantidad)}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.summaryText}>{formatPrecio(item.precio * item.cantidad)}</Text>
+                </View>
+              </View>
+            );
+          })}
+          <View style={styles.itemSeparador} />
           <View style={styles.summaryRow}>
             <Text style={styles.summaryText}>{`Productos (${totalItems})`}</Text>
             <Text style={styles.summaryText}>{formatPrecio(subtotalOriginal)}</Text>
@@ -660,6 +681,21 @@ function createStyles(scale: number, bottomInset: number) {
     summaryRow: { flexDirection: "row", justifyContent: "space-between" },
     summaryText: font(15, "Montserrat_400Regular"),
     totalRow: { marginTop: s(8) },
+    itemRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      columnGap: s(8),
+      marginBottom: s(4),
+    },
+    itemNombre: { flex: 1 },
+    itemPrecios: { flexDirection: "row", alignItems: "center", columnGap: s(6) },
+    precioTachado: {
+      color: Colors.textMuted,
+      fontSize: s(12),
+      textDecorationLine: "line-through",
+    },
+    itemSeparador: { height: 1, backgroundColor: Colors.border, marginVertical: s(6) },
     totalText: font(20, "Montserrat_700Bold"),
     payButton: {
       marginTop: s(12),

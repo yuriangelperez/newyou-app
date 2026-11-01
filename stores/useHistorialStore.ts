@@ -64,8 +64,9 @@ export const useHistorialStore = create<HistorialStore>((set, get) => ({
   },
 
   registrarBusqueda: (texto) => {
-    const limpio = texto.trim();
-    if (limpio.length < 2) return;
+    // Espacios repetidos o invisibles cuentan como uno; menos de 2 letras/números no se guarda.
+    const limpio = texto.replace(/\s+/g, ' ').trim();
+    if (limpio.replace(/[^a-z0-9áéíóúüñ]/gi, '').length < 2) return;
     const busquedas = agregarAlFrente(
       get().busquedas,
       limpio,

@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 import { BottomTabBar } from '../../components/BottomTabBar';
 import { BRANDING_LOGO, PRODUCT_DETAIL_ICONS } from '../../constants/assets';
@@ -34,6 +35,21 @@ export default function CarritoScreen() {
   const totalItems = useCarritoStore(selectTotalItems);
   const subtotal = useCarritoStore(selectSubtotal);
   const esVendedor = usePuedeVender();
+  // HU09: no deja superar el stock y avisa cuántas unidades quedan.
+  const sumarUnidad = (item: (typeof items)[number]) => {
+    if (item.cantidad >= item.stock) {
+      Toast.show({
+        type: 'info',
+        text1: 'No hay más stock',
+        text2:
+          item.stock === 1
+            ? `De "${item.nombre}" queda 1 sola unidad.`
+            : `De "${item.nombre}" quedan ${item.stock} unidades.`,
+      });
+      return;
+    }
+    incrementarUnidad(item.key);
+  };
   const verPrenda = (id: string) => router.push({ pathname: ROUTES.productDetail, params: { id } });
 
   // Envío estimado a domicilio (el costo de cada sede de empresa; los particulares no cobran).
@@ -100,8 +116,23 @@ export default function CarritoScreen() {
                 <Text style={styles.bulletText}>{'\u2022 '}Categoría: {item.categoria}</Text>
               </View>
 
+              {/* HU13: con descuento se ve el precio de lista tachado y el porcentaje. */}
+              {item.precioOriginal && item.precioOriginal > item.precio ? (
+                <View style={styles.descuentoRow}>
+                  <Text style={styles.precioTachado} testID={`carrito-precio-original-${item.key}`}>
+                    ${item.precioOriginal.toLocaleString('es-AR')}
+                  </Text>
+                  <Text style={styles.descuentoBadge}>
+                    -{item.descuentoPorcentaje ?? Math.round((1 - item.precio / item.precioOriginal) * 100)}%
+                  </Text>
+                </View>
+              ) : null}
               <Text style={styles.productPrice}>${item.precio.toLocaleString('es-AR')}</Text>
-              <Text style={styles.productPriceCaption}>Precio por unidad</Text>
+              <Text style={styles.productPriceCaption}>
+                {item.cantidad >= item.stock
+                  ? `Precio por unidad · máximo ${item.stock} en stock`
+                  : 'Precio por unidad'}
+              </Text>
 
               <View style={styles.actionsRow}>
                 <View style={styles.quantityRow}>
@@ -120,8 +151,8 @@ export default function CarritoScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={`Sumar una unidad de ${item.nombre}`}
                     testID={`carrito-sumar-${item.key}`}
-                    onPress={() => incrementarUnidad(item.key)}
-                    style={styles.quantityButton}>
+                    onPress={() => sumarUnidad(item)}
+                    style={[styles.quantityButton, item.cantidad >= item.stock && styles.quantityButtonLimite]}>
                     <Text style={styles.quantitySymbol}>+</Text>
                   </Pressable>
                 </View>
@@ -308,6 +339,25 @@ function createStyles(scale: number, _canvasWidth: number, topInset: number, bot
       backgroundColor: Colors.secondary,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    quantityButtonLimite: {
+      opacity: 0.4,
+    },
+    descuentoRow: {
+      marginTop: s(8),
+      flexDirection: 'row',
+      alignItems: 'center',
+      columnGap: s(6),
+    },
+    precioTachado: {
+      color: Colors.textMuted,
+      fontSize: s(13),
+      textDecorationLine: 'line-through',
+    },
+    descuentoBadge: {
+      color: Colors.primary,
+      fontSize: s(12),
+      fontWeight: '700',
     },
     quantitySymbol: {
       color: Colors.textStrong,

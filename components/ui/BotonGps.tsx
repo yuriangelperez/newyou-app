@@ -116,7 +116,7 @@ export function BotonGps({ onDireccion, direccionActual, pedidoMapa }: BotonGpsP
         </>
       ) : direccionActual !== undefined ? (
         // Un solo mapa a la vez: con punto de GPS manda el de arriba; si no, "Ver en el mapa" de lo escrito.
-        <VerEnMapa direccion={direccionActual} pedido={pedidoMapa} />
+        <VerEnMapa direccion={direccionActual} pedido={pedidoMapa} onElegirDireccion={onDireccion} />
       ) : null}
     </View>
   );

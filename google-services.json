@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "402877534926",
+    "project_id": "newyou-b94e4",
+    "storage_bucket": "newyou-b94e4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:402877534926:android:57b26bc94b0559f6bd769f",
+        "android_client_info": {
+          "package_name": "com.anonymous.newyouapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSy_iZv-RJjxSDcqGxXHKu3NW_XvfJriE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
