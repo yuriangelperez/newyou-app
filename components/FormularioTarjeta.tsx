@@ -9,6 +9,7 @@ import {
   DatosTarjeta,
   INTERES_CUOTAS,
   detectarMarca,
+  detectarTipo,
   formatearNumero,
   formatearVencimiento,
   largoCvv,
@@ -47,8 +48,12 @@ export function FormularioTarjeta({ visible, monto, tipo, procesando, onPagar, o
   // Débito siempre en 1 pago; en crédito el total suma el interés de las cuotas elegidas.
   const aPagar = calcularCuotas(monto, tipo === 'debito' ? 1 : datos.cuotas);
   const errores = validarTarjeta(datos, new Date(), tipo);
-  // El tipo de tarjeta se avisa apenas se completa el número, sin esperar a "Pagar".
-  const errorTipo = !intentado && errores.numero?.startsWith('Esta tarjeta es') ? errores.numero : null;
+  // Apenas se completa el número se avisa si es inválido o si es de débito/crédito
+  // (TC-PAGO-06), sin esperar a "Pagar".
+  const digitos = soloDigitos(datos.numero);
+  const numeroCompleto = digitos.length >= (marca === 'American Express' ? 15 : 16);
+  const errorTipo = !intentado && numeroCompleto && errores.numero ? errores.numero : null;
+  const tipoDetectado = numeroCompleto && !errores.numero ? detectarTipo(digitos) : null;
   const cambiar = (campo: keyof DatosTarjeta) => (valor: string) => {
     setRechazo(null);
     setDatos((previo) => ({ ...previo, [campo]: valor }));
@@ -102,16 +107,23 @@ export function FormularioTarjeta({ visible, monto, tipo, procesando, onPagar, o
           <TextInput
             testID="tarjeta-numero"
             style={[styles.input, intentado && errores.numero && styles.inputError]}
-            value={formatearNumero(datos.numero)}
-            onChangeText={(valor) => cambiar('numero')(soloDigitos(valor))}
+            // Sólo dígitos en el campo: reformatear con espacios mientras se escribe movía
+            // el cursor en Android y desordenaba el número. Con espacios se ve en la tarjeta de arriba.
+            value={datos.numero}
+            onChangeText={(valor) => cambiar('numero')(soloDigitos(valor).slice(0, 19))}
             keyboardType="number-pad"
             placeholder="1234 5678 9012 3456"
             placeholderTextColor={Colors.textMuted}
-            maxLength={23}
+            maxLength={19}
             autoComplete="cc-number"
           />
           {error('numero')}
-          {errorTipo ? <Text style={styles.error}>{errorTipo}</Text> : null}
+          {errorTipo ? <Text style={styles.error} testID="tarjeta-aviso-numero">{errorTipo}</Text> : null}
+          {tipoDetectado ? (
+            <Text style={styles.ok} testID="tarjeta-tipo-detectado">
+              {`${marca} ${tipoDetectado === 'debito' ? 'débito' : 'crédito'} ✓`}
+            </Text>
+          ) : null}
 
           <Text style={styles.label}>Nombre del titular</Text>
           <TextInput
@@ -280,6 +292,7 @@ const styles = StyleSheet.create({
   },
   inputError: { borderColor: Colors.danger },
   error: { color: Colors.danger, fontSize: 12, fontFamily: 'Montserrat_500Medium', marginTop: 4 },
+  ok: { color: Colors.success, fontSize: 12, fontFamily: 'Montserrat_600SemiBold', marginTop: 4 },
   fila: { flexDirection: 'row', columnGap: Spacing.sm },
   columna: { flex: 1 },
   cuotas: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },

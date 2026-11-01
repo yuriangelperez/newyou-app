@@ -12,7 +12,11 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { PinchGestureHandler, State as GestureState } from "react-native-gesture-handler";
+import {
+  GestureHandlerRootView,
+  PinchGestureHandler,
+  State as GestureState,
+} from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import { Ionicons } from "@expo/vector-icons";
@@ -630,6 +634,9 @@ export default function ProductDetailScreen() {
         animationType="fade"
         onRequestClose={() => setZoomImage(null)}
       >
+        {/* El Modal se dibuja fuera de la raíz de gestos: en Android necesita la suya
+            para que el pellizco funcione (TC-HU05-02). */}
+        <GestureHandlerRootView style={styles.zoomRoot}>
         <Pressable style={styles.zoomBackdrop} onPress={() => setZoomImage(null)}>
           <Pressable onPress={(event) => event.stopPropagation()} style={styles.zoomContent}>
             <Pressable
@@ -657,7 +664,8 @@ export default function ProductDetailScreen() {
                 }
               }}
             >
-              <Animated.View style={{ transform: [{ scale: zoomScale }] }}>
+              {/* Con tamaño propio: sin él la imagen (100% de alto y ancho) medía 0 y se veía en blanco. */}
+              <Animated.View style={[styles.zoomLienzo, { transform: [{ scale: zoomScale }] }]}>
                 <Image
                   source={{ uri: zoomImage ?? "" }}
                   style={styles.zoomImage}
@@ -667,6 +675,7 @@ export default function ProductDetailScreen() {
             </PinchGestureHandler>
           </Pressable>
         </Pressable>
+        </GestureHandlerRootView>
       </Modal>
 
       <BottomTabBar
@@ -782,6 +791,8 @@ function createStyles(
     carouselDotActive: {
       backgroundColor: Colors.secondary,
     },
+    zoomRoot: { flex: 1 },
+    zoomLienzo: { width: "100%", height: "100%" },
     zoomBackdrop: {
       flex: 1,
       backgroundColor: "rgba(0, 0, 0, 0.88)",
