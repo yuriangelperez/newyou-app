@@ -82,11 +82,11 @@ export function SelectorDireccion({
             placeholderTextColor={Colors.textMuted}
             style={styles.input}
           />
-          <BotonGps onDireccion={onChange} direccionActual={value} />
+          <BotonGps onDireccion={onChange} direccionActual={value} pedidoMapa={pedidoMapa} />
         </View>
-      ) : null}
-
-      <VerEnMapa direccion={value} pedido={pedidoMapa} />
+      ) : (
+        <VerEnMapa direccion={value} pedido={pedidoMapa} />
+      )}
     </View>
   );
 }

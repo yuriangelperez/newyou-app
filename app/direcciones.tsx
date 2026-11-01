@@ -152,8 +152,7 @@ export default function DireccionesScreen() {
             placeholderTextColor={Colors.textMuted}
             style={styles.input}
           />
-          <BotonGps onDireccion={setDireccion} direccionActual={direccion} />
-          <VerEnMapa direccion={direccion} pedido={pedidoMapa} />
+          <BotonGps onDireccion={setDireccion} direccionActual={direccion} pedidoMapa={pedidoMapa} />
           <Pressable
             disabled={guardando}
             onPress={() => void onGuardar()}
