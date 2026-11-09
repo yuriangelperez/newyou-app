@@ -128,7 +128,7 @@ Estado: ✅ pasa · 🔁 automatizado en CI · 🖐️ manual · ⏳ pendiente d
 | HU30 | La base rechaza efectivo con envío | TC-HU30-03 | N | SQL (migración 21) | 🖐️ | |
 | HU31 | Registro sin aceptar términos | TC-HU31-01 | N | Jest `authSchemas` | 🔁 | |
 | HU31 | Términos de vendedor al publicar | TC-HU31-02 | F | Jest `terminosService`, manual | 🔁 | |
-| HU31 | Versión nueva de los términos | TC-HU31-03 | L | Jest `terminosService` | 🔁 | |
+| HU31 | Leer los términos desde Ajustes | TC-HU31-03 | F | manual | 🖐️ | |
 | HU31 | Publicar sin términos por API | TC-HU31-04 | N | SQL (migración 22) | 🖐️ | |
 | HU32 | Preguntar y responder | TC-HU32-01 | F | RNTL `PreguntasProducto` | 🔁 | |
 | HU32 | Datos de contacto | TC-HU32-02 | N | Jest `contacto`, RNTL `PreguntasProducto` | 🔁 | |

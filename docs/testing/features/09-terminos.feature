@@ -21,11 +21,11 @@ Característica: Términos y condiciones explícitos
     Entonces se abren los términos con la casilla de aceptación
     Y al aceptarlos puedo publicar
 
-  @HU31 @TC-HU31-03 @L
-  Escenario: Cambia la versión de los términos
-    Dado que acepté una versión anterior de los términos
-    Cuando inicio sesión con una versión nueva publicada
-    Entonces se me piden aceptar los términos otra vez
+  @HU31 @TC-HU31-03 @F
+  Escenario: Leer los términos desde Ajustes
+    Dado que ya tengo cuenta e inicié sesión
+    Entonces no se me muestran los términos al entrar
+    Y cuando toco "Términos y condiciones" en Ajustes los puedo leer
 
   @HU31 @TC-HU31-04 @N
   Escenario: La base no deja publicar sin términos de vendedor

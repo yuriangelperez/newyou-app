@@ -17,7 +17,6 @@ import { ROUTES } from '../constants/routes';
 import { bienvenidaVista, marcarBienvenidaVista } from '../services/bienvenidaService';
 import { Notifications } from '../services/notificacionesService';
 import { sincronizarBorradores } from '../services/offlineService';
-import { faltaAceptarTerminos } from '../services/terminosService';
 import { supabase } from '../services/supabase';
 import { tokenService } from '../services/tokenService';
 import { useEmpresaStore } from '../stores/useEmpresaStore';
@@ -113,27 +112,6 @@ export default function RootLayout() {
       useEmpresaStore.getState().limpiar();
     }
   }, [haySesion]);
-
-  // Términos y condiciones: si falta aceptar la versión vigente, se abre la pantalla para hacerlo.
-  // Quien tildó la casilla al registrarse queda guardado sin volver a preguntar.
-  useEffect(() => {
-    if (!haySesion) {
-      return;
-    }
-    let activo = true;
-    supabase.auth
-      .getUser()
-      .then(({ data }) => faltaAceptarTerminos(data.user))
-      .then((falta) => {
-        if (activo && falta) {
-          router.push({ pathname: ROUTES.terms, params: { aceptar: 'comprador' } });
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      activo = false;
-    };
-  }, [haySesion, router]);
 
   // Al recuperar la red (y con sesión) se suben los borradores de `ny_drafts`.
   useEffect(() => {
