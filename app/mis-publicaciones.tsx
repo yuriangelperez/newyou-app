@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 
+import { EstadoVerificacion } from "../components/EstadoVerificacion";
 import { FilaDeslizable } from "../components/FilaDeslizable";
 import { Colors, Radius, Spacing } from "../constants/theme";
 import { ROUTES } from "../constants/routes";
@@ -20,6 +21,7 @@ import { usePuedeVender } from "../hooks/usePuedeVender";
 import { useMisProductos } from "../hooks/useMisProductos";
 import { deleteProducto, DIAS_BORRADOR } from "../services/productosService";
 import { traducirError } from "../services/erroresSupabase";
+import { misPreguntasPendientes } from "../services/preguntasService";
 import {
   Borrador,
   descartarBorrador,
@@ -72,10 +74,16 @@ export default function MisPublicacionesScreen() {
     setBorradoresLocales(lista.filter((item) => (item.payload.empresa?.empresaId ?? null) === empresaId));
   }, [empresaActiva?.empresaId]);
 
+  // Preguntas sin responder por prenda (se avisa en cada tarjeta).
+  const [preguntasPendientes, setPreguntasPendientes] = useState<Record<string, number>>({});
+
   useFocusEffect(
     useCallback(() => {
       void refrescar();
       void cargarBorradoresLocales();
+      misPreguntasPendientes()
+        .then(setPreguntasPendientes)
+        .catch(() => setPreguntasPendientes({}));
     }, [refrescar, cargarBorradoresLocales]),
   );
 
@@ -295,6 +303,18 @@ export default function MisPublicacionesScreen() {
         <Text style={styles.stock}>
           Stock: {item.stock}
         </Text>
+
+        <EstadoVerificacion producto={item} onCambio={() => void refrescar()} />
+
+        {preguntasPendientes[item.id] ? (
+          <Pressable onPress={() => handleVer(item)} testID={`preguntas-pendientes-${item.id}`}>
+            <Text style={styles.preguntasPendientes}>
+              {preguntasPendientes[item.id] === 1
+                ? "1 pregunta sin responder"
+                : `${preguntasPendientes[item.id]} preguntas sin responder`}
+            </Text>
+          </Pressable>
+        ) : null}
 
         {item.estado === "borrador" ? (
           <Text style={[styles.status, styles.statusUnavailable]}>
@@ -597,6 +617,12 @@ const styles = StyleSheet.create({
     marginTop: 3,
     color: Colors.textEarth,
     fontSize: 13,
+  },
+  preguntasPendientes: {
+    marginTop: 3,
+    color: Colors.warning,
+    fontSize: 13,
+    fontWeight: "600",
   },
 
   status: {

@@ -57,6 +57,7 @@ export const registerSchema = z
     repetirContrasena: z.string(),
     quiereVender: z.boolean(),
     comoEmpresa: z.boolean(),
+    aceptaTerminos: z.boolean().refine((valor) => valor, 'Tenés que aceptar los términos y condiciones'),
   })
   .refine((datos) => datos.contrasena === datos.repetirContrasena, {
     message: 'Las contraseñas no coinciden',

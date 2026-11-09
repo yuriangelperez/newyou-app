@@ -24,6 +24,10 @@ export const ROUTES = {
   seller: '/vendedor/[id]',
   admin: '/admin',
   metrics: '/metricas',
+  terms: '/terminos',
+  orderChat: '/pedido/[id]/chat',
+  bankDetails: '/datos-bancarios',
+  myPayouts: '/mis-cobros',
 
   categories: '/categorias',
   cart: '/carrito',

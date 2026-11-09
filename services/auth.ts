@@ -1,5 +1,6 @@
 import * as Linking from 'expo-linking';
 
+import { VERSION_TERMINOS } from '../constants/terminos';
 import { errorTraducido } from './erroresSupabase';
 import { supabase } from './supabase';
 
@@ -77,6 +78,8 @@ export async function signUpWithPassword(
           username,
           role,
           ...(crearEmpresa ? { crear_empresa: true } : {}),
+          // Casilla obligatoria del registro: al iniciar sesión se guarda en terminos_aceptaciones.
+          terminos_version: VERSION_TERMINOS,
         },
       },
     });

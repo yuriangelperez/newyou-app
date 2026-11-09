@@ -39,6 +39,7 @@ import { encolarBorrador, hayConexion } from "../../services/offlineService";
 import { SelectorImagenes } from "../../components/ui/SelectorImagenes";
 import { StockPorSede } from "../../components/ui/StockPorSede";
 import { usePuedeVender } from "../../hooks/usePuedeVender";
+import { useTerminosVendedor } from "../../hooks/useTerminosVendedor";
 import { useSedesEmpresa } from "../../hooks/useSedesEmpresa";
 import { selectEmpresaActiva, useEmpresaStore } from "../../stores/useEmpresaStore";
 
@@ -65,6 +66,8 @@ const DEFAULT_VALUES: ProductoFormValues = {
 
 export default function NuevoProductoScreen() {
   const router = useRouter();
+  // Hay que aceptar los términos de vendedor antes de la primera publicación.
+  useTerminosVendedor();
   const insets = useSafeAreaInsets();
   const esVendedor = usePuedeVender();
   const { recordarPublicacion } = useNotifications();

@@ -1,5 +1,6 @@
 import * as Linking from 'expo-linking';
 
+import { coordenadasDe } from './coordenadasService';
 import { supabase } from './supabase';
 
 export type EstadoEmpresa = 'pendiente' | 'verificada' | 'suspendida';
@@ -257,12 +258,20 @@ export async function listarSedes(empresaId: number): Promise<Sede[]> {
 }
 
 export async function crearSede(empresaId: number, datos: DatosSede) {
-  const { error } = await supabase.from('sedes').insert({ empresa_id: empresaId, ...toSedeRow(datos) });
+  // Coordenadas para el filtro por cercanía (si no se encuentran, se guarda igual).
+  const punto = await coordenadasDe(datos.direccion);
+  const { error } = await supabase
+    .from('sedes')
+    .insert({ empresa_id: empresaId, ...toSedeRow(datos), lat: punto?.lat ?? null, lng: punto?.lng ?? null });
   fallar(error);
 }
 
 export async function actualizarSede(id: number, datos: DatosSede) {
-  const { error } = await supabase.from('sedes').update(toSedeRow(datos)).eq('id', id);
+  const punto = await coordenadasDe(datos.direccion);
+  const { error } = await supabase
+    .from('sedes')
+    .update({ ...toSedeRow(datos), lat: punto?.lat ?? null, lng: punto?.lng ?? null })
+    .eq('id', id);
   fallar(error);
 }
 

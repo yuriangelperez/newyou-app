@@ -1,6 +1,7 @@
-import { Producto, VendedorProducto } from "../types";
+import { EstadoVerificacion, Producto, VendedorProducto } from "../types";
 import { CategoriaProducto, normalizarPublicos } from "../constants/categoriasProductos";
 import { supabase } from "./supabase";
+import { coordenadasDe } from "./coordenadasService";
 import { cancelarRecordatorioPublicacion } from "./notificacionesService";
 
 const TABLA_PRODUCTOS = "productos";
@@ -27,8 +28,16 @@ const COLUMNAS_PRODUCTO = `
   creado_por,
   estado,
   borrador_vence,
+  estado_verificacion,
+  verificacion_codigo,
+  verificacion_foto_url,
+  verificacion_motivo,
+  verificacion_vence_at,
   categorias ( nombre )
 `;
+
+// Catálogo público: las usadas sólo aparecen cuando New You las verificó (migración 26).
+const FILTRO_VERIFICADAS = "condicion.neq.usado,estado_verificacion.eq.aprobada";
 
 /** Días que dura un borrador (sin foto o guardado sin conexión) antes de borrarse. */
 export const DIAS_BORRADOR = 7;
@@ -99,6 +108,11 @@ interface ProductoRow {
   categorias?: { nombre: string } | { nombre: string }[] | null;
   estado?: "publicada" | "borrador" | null;
   borrador_vence?: string | null;
+  estado_verificacion?: EstadoVerificacion | null;
+  verificacion_codigo?: string | null;
+  verificacion_foto_url?: string | null;
+  verificacion_motivo?: string | null;
+  verificacion_vence_at?: string | null;
   empresa_id?: number | null;
   sede_id?: number | null;
   creado_por?: string;
@@ -360,6 +374,15 @@ function mapRowToProducto(row: ProductoRow): Producto {
     creadoPor: row.creado_por,
     estado: row.estado ?? "publicada",
     borradorVence: row.borrador_vence ?? null,
+    verificacion: row.estado_verificacion
+      ? {
+          estado: row.estado_verificacion,
+          codigo: row.verificacion_codigo ?? null,
+          fotoUrl: row.verificacion_foto_url ?? null,
+          motivo: row.verificacion_motivo ?? null,
+          venceAt: row.verificacion_vence_at ?? null,
+        }
+      : undefined,
   };
 }
 
@@ -419,9 +442,16 @@ async function mapInputToPersistData(
     ...(payload.empresa
       ? { empresa_id: payload.empresa.empresaId, sede_id: payload.empresa.sedeId }
       : payload.direccionRetiro?.trim()
-        ? { direccion_retiro: payload.direccionRetiro.trim() }
+        ? { direccion_retiro: payload.direccionRetiro.trim(), ...(await coordenadasRetiro(payload.direccionRetiro)) }
         : {}),
   };
+}
+
+/** lat/lng del punto de retiro para el filtro por cercanía (vacío si no se encuentra). */
+async function coordenadasRetiro(direccion: string) {
+  const punto = await coordenadasDe(direccion);
+  // Sin punto se manda null: la base toma las coordenadas de la dirección guardada si coincide.
+  return { lat: punto?.lat ?? null, lng: punto?.lng ?? null };
 }
 
 /*
@@ -434,6 +464,7 @@ export async function getProductos() {
     .from(TABLA_PRODUCTOS)
     .select(COLUMNAS_PRODUCTO)
     .eq("estado", "publicada")
+    .or(FILTRO_VERIFICADAS)
     .order("productoid", {
       ascending: false,
     });
@@ -514,6 +545,7 @@ export async function getProductosDeVendedor(usuarioId: string) {
     .eq("creado_por", usuarioId)
     .is("empresa_id", null)
     .eq("estado", "publicada")
+    .or(FILTRO_VERIFICADAS)
     .order("productoid", {
       ascending: false,
     });
@@ -583,7 +615,7 @@ export async function getProductosDeEmpresa(empresaId: number, incluirBorradores
     .select(COLUMNAS_PRODUCTO)
     .eq("empresa_id", empresaId);
   if (!incluirBorradores) {
-    consulta = consulta.eq("estado", "publicada");
+    consulta = consulta.eq("estado", "publicada").or(FILTRO_VERIFICADAS);
   }
 
   const { data, error } = await consulta.order("productoid", {

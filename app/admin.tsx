@@ -4,6 +4,9 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
+import { PanelLiquidaciones } from "../components/admin/PanelLiquidaciones";
+import { PanelReclamos } from "../components/admin/PanelReclamos";
+import { PanelVerificaciones } from "../components/admin/PanelVerificaciones";
 import { EncabezadoPantalla } from "../components/ui/EncabezadoPantalla";
 import { ROUTES } from "../constants/routes";
 import { estilosFormulario as styles } from "../constants/estilosFormulario";
@@ -30,11 +33,21 @@ const TEXTO_ESTADO: Record<EstadoEmpresa, string> = {
   suspendida: "Suspendida",
 };
 
-/** Panel de administrador de la plataforma: revisar y verificar empresas. */
+type SeccionAdmin = "empresas" | "verificaciones" | "reclamos" | "liquidaciones";
+
+const SECCIONES: { valor: SeccionAdmin; texto: string }[] = [
+  { valor: "empresas", texto: "Empresas" },
+  { valor: "verificaciones", texto: "Verificaciones" },
+  { valor: "reclamos", texto: "Reclamos" },
+  { valor: "liquidaciones", texto: "Liquidaciones" },
+];
+
+/** Panel de administrador de la plataforma: empresas, verificación de usadas, reclamos y liquidaciones. */
 export default function AdminScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const esAdmin = useUsuarioStore((state) => state.usuario?.esAdmin === true);
+  const [seccion, setSeccion] = useState<SeccionAdmin>("empresas");
   const [filtro, setFiltro] = useState<EstadoEmpresa | null>("pendiente");
   const [empresas, setEmpresas] = useState<EmpresaAdmin[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -95,6 +108,28 @@ export default function AdminScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.xl }]}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={styles.chips}>
+          {SECCIONES.map((opcion) => {
+            const activo = seccion === opcion.valor;
+            return (
+              <Pressable
+                key={opcion.valor}
+                testID={`admin-seccion-${opcion.valor}`}
+                onPress={() => setSeccion(opcion.valor)}
+                style={[styles.chip, activo && styles.chipActivo]}
+              >
+                <Text style={[styles.chipTexto, activo && styles.chipTextoActivo]}>{opcion.texto}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {seccion === "verificaciones" ? <PanelVerificaciones /> : null}
+        {seccion === "reclamos" ? <PanelReclamos /> : null}
+        {seccion === "liquidaciones" ? <PanelLiquidaciones /> : null}
+
+        {seccion === "empresas" ? (
+        <>
         <Text style={styles.aviso}>
           Antes de verificar, comprobá que el CUIT exista y corresponda a la razón social (por ejemplo, en la
           constancia de inscripción de ARCA).
@@ -179,6 +214,8 @@ export default function AdminScreen() {
             )}
           </View>
         ))}
+        </>
+        ) : null}
       </ScrollView>
     </View>
   );

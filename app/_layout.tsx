@@ -17,6 +17,7 @@ import { ROUTES } from '../constants/routes';
 import { bienvenidaVista, marcarBienvenidaVista } from '../services/bienvenidaService';
 import { Notifications } from '../services/notificacionesService';
 import { sincronizarBorradores } from '../services/offlineService';
+import { faltaAceptarTerminos } from '../services/terminosService';
 import { supabase } from '../services/supabase';
 import { tokenService } from '../services/tokenService';
 import { useEmpresaStore } from '../stores/useEmpresaStore';
@@ -113,6 +114,27 @@ export default function RootLayout() {
     }
   }, [haySesion]);
 
+  // Términos y condiciones: si falta aceptar la versión vigente, se abre la pantalla para hacerlo.
+  // Quien tildó la casilla al registrarse queda guardado sin volver a preguntar.
+  useEffect(() => {
+    if (!haySesion) {
+      return;
+    }
+    let activo = true;
+    supabase.auth
+      .getUser()
+      .then(({ data }) => faltaAceptarTerminos(data.user))
+      .then((falta) => {
+        if (activo && falta) {
+          router.push({ pathname: ROUTES.terms, params: { aceptar: 'comprador' } });
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      activo = false;
+    };
+  }, [haySesion, router]);
+
   // Al recuperar la red (y con sesión) se suben los borradores de `ny_drafts`.
   useEffect(() => {
     if (!haySesion) {
@@ -159,8 +181,11 @@ export default function RootLayout() {
       const datos = respuesta.notification.request.content.data as {
         tipo?: string;
         productoId?: string;
+        pedidoId?: number | string;
       };
-      if (datos.tipo === 'venta') {
+      if (datos.tipo === 'chat' && datos.pedidoId) {
+        router.push({ pathname: ROUTES.orderChat, params: { id: String(datos.pedidoId) } });
+      } else if (datos.tipo === 'venta') {
         router.push(ROUTES.mySales);
       } else if (datos.tipo === 'compra') {
         router.push(ROUTES.myPurchases);
@@ -215,9 +240,14 @@ export default function RootLayout() {
             <Stack.Screen name="vendedor/[id]" />
             <Stack.Screen name="admin" />
             <Stack.Screen name="metricas" />
+            <Stack.Screen name="pedido/[id]/chat" />
+            <Stack.Screen name="datos-bancarios" />
+            <Stack.Screen name="mis-cobros" />
           </Stack.Protected>
           {/* El enlace de recuperación abre una sesión antes de elegir la contraseña nueva. */}
           <Stack.Screen name="(auth)/nueva-contrasena" />
+          {/* Los términos se leen también sin sesión (enlace del registro). */}
+          <Stack.Screen name="terminos" />
         </Stack>
         <TarjetaBienvenida visible={haySesion && mostrarBienvenida} onCerrar={cerrarBienvenida} />
         <AvisoSinConexion />

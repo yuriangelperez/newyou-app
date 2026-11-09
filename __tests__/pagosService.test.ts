@@ -6,6 +6,7 @@ import {
   cancelarPagoMp,
   crearPagoMp,
   esPagoOnline,
+  medioPermitido,
   pagarConTarjeta,
   resultadoDeRetorno,
   tipoTarjeta,
@@ -104,5 +105,19 @@ describe('tarjetas', () => {
     expect(mockInvoke).toHaveBeenCalledWith('pago-tarjeta', {
       body: { accion: 'pagar', compraid: 15, tarjeta },
     });
+  });
+});
+
+describe('medioPermitido', () => {
+  it('el efectivo sólo se acepta con retiro en el local', () => {
+    expect(medioPermitido('Efectivo', 'local')).toBe(true);
+    expect(medioPermitido('Efectivo', 'domicilio')).toBe(false);
+  });
+
+  it('tarjetas y Mercado Pago se aceptan con cualquier entrega', () => {
+    for (const medio of ['Tarjeta de crédito', 'Tarjeta de débito', 'Mercado Pago'] as const) {
+      expect(medioPermitido(medio, 'domicilio')).toBe(true);
+      expect(medioPermitido(medio, 'local')).toBe(true);
+    }
   });
 });
