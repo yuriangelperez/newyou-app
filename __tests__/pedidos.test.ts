@@ -1,7 +1,7 @@
-jest.mock('../services/supabase', () => ({ supabase: {} }));
-
 import { calcularEnvio, TiendaRetiro } from '../services/comprasService';
 import { mapPedido, pedidoActivo, sePuedeCancelar, siguienteEstado } from '../services/pedidosService';
+
+jest.mock('../services/supabase', () => ({ supabase: {} }));
 
 describe('siguienteEstado', () => {
   it('sigue el circuito de retiro en el local', () => {

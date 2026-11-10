@@ -23,6 +23,20 @@ export interface PagoIniciado {
   retorno: string;
 }
 
+/** Forma de entrega de la compra (igual que EntregaCompra en comprasService). */
+type Entrega = 'domicilio' | 'local';
+
+/** Aviso que se muestra cuando el efectivo no está disponible. */
+export const AVISO_EFECTIVO_SOLO_RETIRO = 'Disponible solo para retiro en el local';
+
+/**
+ * El efectivo se paga en mano al retirar la prenda: con envío a domicilio sólo se
+ * acepta tarjeta o Mercado Pago. El servidor aplica la misma regla (21-efectivo-solo-retiro.sql).
+ */
+export function medioPermitido(medio: MedioPago, entrega: Entrega) {
+  return !(medio === 'Efectivo' && entrega === 'domicilio');
+}
+
 export function esPagoOnline(medio: MedioPago) {
   return MEDIOS_ONLINE.includes(medio);
 }

@@ -37,12 +37,14 @@ import { guardarSiEsNueva } from "../../services/direccionesService";
 import { traducirError } from "../../services/erroresSupabase";
 import { encolarBorrador, hayConexion } from "../../services/offlineService";
 import {
+  AVISO_EFECTIVO_SOLO_RETIRO,
   calcularComision,
   cancelarPagoMp,
   cancelarPagoTarjeta,
   COMISION_CREDITO,
   crearPagoMp,
   esPagoOnline,
+  medioPermitido,
   EstadoPago,
   PagoIniciado,
   pagarConTarjeta,
@@ -54,7 +56,6 @@ import {
   selectTotalItems,
   useCarritoStore,
 } from "../../stores/useCarritoStore";
-import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { DatosTarjeta } from "../../utils/tarjeta";
 import { usePuedeVender } from "../../hooks/usePuedeVender";
 
@@ -105,7 +106,7 @@ export default function CheckoutScreen() {
   const styles = useMemo(() => createStyles(scale, insets.bottom), [scale, insets.bottom]);
 
   const [entrega, setEntrega] = useState<EntregaCompra>("domicilio");
-  const [medioPago, setMedioPago] = useState<MedioPago>("Efectivo");
+  const [medioPago, setMedioPago] = useState<MedioPago>("Mercado Pago");
   const [isSubmitting, setIsSubmitting] = useState(false);
   // La clave se mantiene entre reintentos: si el primer intento llegó al
   // servidor pero falló la respuesta, el reintento no duplica la orden.
@@ -160,6 +161,19 @@ export default function CheckoutScreen() {
   const comision = calcularComision(medioPago, subtotal + envio);
   const total = subtotal + envio + comision;
 
+  // Con envío a domicilio no se acepta efectivo: si estaba elegido, pasa a Mercado Pago.
+  const elegirEntrega = (valor: EntregaCompra) => {
+    setEntrega(valor);
+    if (!medioPermitido(medioPago, valor)) {
+      setMedioPago("Mercado Pago");
+      Toast.show({
+        type: "info",
+        text1: "Efectivo solo para retiro en el local",
+        text2: "Para envíos a domicilio pagá con tarjeta o Mercado Pago.",
+      });
+    }
+  };
+
   const onConfirmar = async () => {
     if (items.length === 0 || isSubmitting) {
       return;
@@ -197,7 +211,9 @@ export default function CheckoutScreen() {
         Toast.show({
           type: "error",
           text1: "Sin conexión",
-          text2: `Para pagar con ${medioPago} necesitás Internet. También podés elegir efectivo.`,
+          text2: entrega === "local"
+            ? `Para pagar con ${medioPago} necesitás Internet. También podés elegir efectivo.`
+            : `Para pagar con ${medioPago} necesitás Internet.`,
         });
         return;
       }
@@ -425,7 +441,7 @@ export default function CheckoutScreen() {
             testID={`checkout-entrega-${opcion.value}`}
             accessibilityRole="radio"
             accessibilityState={{ selected: entrega === opcion.value }}
-            onPress={() => setEntrega(opcion.value)}
+            onPress={() => elegirEntrega(opcion.value)}
             style={[styles.entregaCard, entrega === opcion.value && styles.selected]}
           >
             <View style={styles.entregaTextos}>
@@ -473,18 +489,29 @@ export default function CheckoutScreen() {
         ) : null}
 
         <Text style={[styles.sectionTitle, styles.sectionSpaced]}>Método de pago</Text>
-        {MEDIOS_PAGO.map((medio) => (
-          <Pressable
-            key={medio.value}
-            testID={`checkout-pago-${medio.value}`}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: medioPago === medio.value }}
-            onPress={() => setMedioPago(medio.value)}
-            style={[styles.pagoCard, medioPago === medio.value && styles.selected]}
-          >
-            <Text style={styles.pagoText}>{medio.label}</Text>
-          </Pressable>
-        ))}
+        {MEDIOS_PAGO.map((medio) => {
+          const permitido = medioPermitido(medio.value, entrega);
+          return (
+            <Pressable
+              key={medio.value}
+              testID={`checkout-pago-${medio.value}`}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: medioPago === medio.value, disabled: !permitido }}
+              disabled={!permitido}
+              onPress={() => setMedioPago(medio.value)}
+              style={[
+                styles.pagoCard,
+                medioPago === medio.value && styles.selected,
+                !permitido && styles.pagoDeshabilitado,
+              ]}
+            >
+              <Text style={styles.pagoText}>{medio.label}</Text>
+              {!permitido ? (
+                <Text style={styles.pagoDetalle}>{AVISO_EFECTIVO_SOLO_RETIRO}</Text>
+              ) : null}
+            </Pressable>
+          );
+        })}
         <View style={styles.summary}>
           <View style={styles.summaryInner}>
           <Text style={styles.summaryTitle}>Resumen de compra</Text>
@@ -666,6 +693,8 @@ function createStyles(scale: number, bottomInset: number) {
       justifyContent: "center",
     },
     pagoText: font(12, "Montserrat_500Medium"),
+    pagoDeshabilitado: { opacity: 0.45 },
+    pagoDetalle: { ...font(10, "Montserrat_400Regular"), marginTop: s(2) },
     summary: {
       marginTop: s(24),
       backgroundColor: Colors.surface,

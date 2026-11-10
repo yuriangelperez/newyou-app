@@ -145,9 +145,19 @@ export default function AjustesScreen() {
 
         <Text style={styles.sectionTitle}>INFORMACIÓN</Text>
         <View style={styles.card}>
-          <SettingButton title="Política de privacidad" detail="Conocé cómo cuidamos tus datos." styles={styles} />
+          <SettingButton
+            title="Política de privacidad"
+            detail="Conocé cómo cuidamos tus datos."
+            styles={styles}
+            onPress={() => router.push(ROUTES.privacy)}
+          />
           <View style={styles.divider} />
-          <SettingButton title="Términos y condiciones" detail="Consultá las condiciones de uso." styles={styles} />
+          <SettingButton
+            title="Términos y condiciones"
+            detail="Consultá las condiciones de uso."
+            styles={styles}
+            onPress={() => router.push(ROUTES.terms)}
+          />
           <View style={styles.divider} />
           <SettingButton title="Versión de la aplicación" detail={`New You · ${Constants.expoConfig?.version ?? "?"}`} styles={styles} />
         </View>
@@ -211,13 +221,15 @@ function SettingButton({
   title,
   detail,
   styles,
+  onPress,
 }: {
   title: string;
   detail: string;
   styles: SettingStyles;
+  onPress?: () => void;
 }) {
   return (
-    <Pressable style={styles.settingRow} accessibilityRole="button">
+    <Pressable style={styles.settingRow} accessibilityRole="button" onPress={onPress}>
       <View style={styles.settingCopy}>
         <Text style={styles.settingTitle}>{title}</Text>
         <Text style={styles.settingDetail}>{detail}</Text>

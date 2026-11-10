@@ -50,7 +50,16 @@ export default function LoginScreen() {
   const goToHome = handleSubmit(async ({ identificador, contrasena }) => {
     setErrorServidor('');
     // Se puede ingresar con el correo o con el nombre de usuario.
-    const { error: authError, quiereCrearEmpresa } = await signInWithPassword(identificador, contrasena);
+    const { error: authError, quiereCrearEmpresa, correoSinConfirmar } = await signInWithPassword(
+      identificador,
+      contrasena,
+    );
+
+    // Contraseña correcta pero el correo no se confirmó: se ofrece reenviar el enlace.
+    if (correoSinConfirmar) {
+      router.push({ pathname: ROUTES.checkEmail, params: { correo: correoSinConfirmar, reenviar: '1' } });
+      return;
+    }
 
     if (authError) {
       setErrorServidor(authError.message);

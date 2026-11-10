@@ -4,6 +4,10 @@ tags: [auth, smoke]
 ---
 - launchApp:
     clearState: true
+# La tarjeta de bienvenida aparece en cada inicio sin sesión.
+- tapOn:
+    id: "bienvenida-cerrar"
+    optional: true
 - tapOn:
     id: "login-ir-registro"
 - tapOn:
@@ -29,6 +33,9 @@ tags: [auth, smoke]
     id: "registro-repetir"
 - eraseText: 20
 - inputText: "Clave124"
+# Zod valida el refine de "coinciden" sólo cuando el resto del formulario es válido.
+- tapOn:
+    id: "registro-terminos"
 - tapOn:
     id: "registro-boton"
 - assertVisible: "Las contraseñas no coinciden"

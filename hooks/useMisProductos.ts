@@ -2,6 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Producto } from '../types';
 import { getMisProductos, getProductosDeEmpresa } from '../services/productosService';
 
+const MENSAJE_ERROR = 'No se pudieron cargar tus publicaciones.';
+
+function pedirProductos(empresaId: number | null) {
+  return empresaId ? getProductosDeEmpresa(empresaId, true) : getMisProductos();
+}
+
 /** Publicaciones propias, o las de la empresa activa si se pasa su id. */
 export function useMisProductos(empresaId: number | null = null) {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -9,37 +15,31 @@ export function useMisProductos(empresaId: number | null = null) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const cargar = useCallback(async () => {
-    try {
-      setError(null);
+  const aplicar = useCallback((pedido: Promise<Producto[]>) => {
+    return pedido.then(
+      (data) => {
+        setError(null);
+        setProductos(data);
+      },
+      (err: unknown) => {
+        setError(err instanceof Error ? err.message : MENSAJE_ERROR);
+      },
+    );
+  }, []);
 
-      const data = empresaId ? await getProductosDeEmpresa(empresaId, true) : await getMisProductos();
-
-      setProductos(data);
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'No se pudieron cargar tus publicaciones.';
-
-      setError(message);
-    }
-  }, [empresaId]);
-
+  // El setState ocurre cuando llega la respuesta, no de forma síncrona en el efecto.
   useEffect(() => {
-    void cargar().finally(() => {
-      setCargando(false);
-    });
-  }, [cargar]);
+    void aplicar(pedirProductos(empresaId)).finally(() => setCargando(false));
+  }, [aplicar, empresaId]);
 
   const refrescar = useCallback(async () => {
     try {
       setRefreshing(true);
-      await cargar();
+      await aplicar(pedirProductos(empresaId));
     } finally {
       setRefreshing(false);
     }
-  }, [cargar]);
+  }, [aplicar, empresaId]);
 
   return {
     productos,

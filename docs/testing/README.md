@@ -123,8 +123,42 @@ Estado: ✅ pasa · 🔁 automatizado en CI · 🖐️ manual · ⏳ pendiente d
 | Push | Cambio de estado | TC-PUSH-03 | F | manual + Jest `pedidos` | 🖐️ | |
 | Push | Cerrar sesión | TC-PUSH-04 | N | manual | 🖐️ | |
 | Push | Simulador / Expo Go | TC-PUSH-05 | L | manual | 🖐️ | |
+| HU30 | Efectivo con retiro | TC-HU30-01 | F | Jest `pagosService` (`medioPermitido`) | 🔁 | |
+| HU30 | Efectivo deshabilitado con envío | TC-HU30-02 | N | Jest `pagosService`, manual | 🔁 | |
+| HU30 | La base rechaza efectivo con envío | TC-HU30-03 | N | SQL (migración 21) | 🖐️ | |
+| HU31 | Registro sin aceptar términos | TC-HU31-01 | N | Jest `authSchemas` | 🔁 | |
+| HU31 | Términos de vendedor al publicar | TC-HU31-02 | F | Jest `terminosService`, manual | 🔁 | |
+| HU31 | Leer los términos desde Ajustes | TC-HU31-03 | F | manual | 🖐️ | |
+| HU31 | Publicar sin términos por API | TC-HU31-04 | N | SQL (migración 22) | 🖐️ | |
+| HU32 | Preguntar y responder | TC-HU32-01 | F | RNTL `PreguntasProducto` | 🔁 | |
+| HU32 | Datos de contacto | TC-HU32-02 | N | Jest `contacto`, RNTL `PreguntasProducto` | 🔁 | |
+| HU32 | Preguntarse a sí mismo | TC-HU32-03 | N | RNTL `PreguntasProducto` | 🔁 | |
+| HU32 | Aviso de preguntas pendientes | TC-HU32-04 | F | manual | 🖐️ | |
+| HU15 | Mensajes en tiempo real | TC-HU15-01 | F | Jest `chatService`, manual (2 celulares) | 🖐️ | |
+| HU15 | Cambios de estado en el chat | TC-HU15-02 | F | manual | 🖐️ | |
+| HU15 | No leídos | TC-HU15-03 | F | manual | 🖐️ | |
+| HU15 | Chat cerrado a los 30 días | TC-HU15-04 | L | SQL (migración 24) | 🖐️ | |
+| HU15 | Tercero no lee el chat | TC-HU15-05 | N | Postman / SQL (RLS) | 🖐️ | |
+| HU33 | Filtrar a 5 km | TC-HU33-01 | F | Jest `cercania`, manual | 🔁 | |
+| HU33 | Sin permiso de ubicación | TC-HU33-02 | N | manual | 🖐️ | |
+| HU33 | Formato de la distancia | TC-HU33-03 | L | Jest `cercania` | 🔁 | |
+| HU34 | Usada en verificación con código | TC-HU34-01 | F | Jest `verificacion`, manual | 🔁 | |
+| HU34 | Aprobar | TC-HU34-02 | F | manual (panel de admin) | 🖐️ | |
+| HU34 | Rechazar con motivo | TC-HU34-03 | N | manual (panel de admin) | 🖐️ | |
+| HU34 | Comprar sin verificar | TC-HU34-04 | N | Jest `verificacion`, SQL (migración 26) | 🔁 | |
+| HU34 | Plazo vencido | TC-HU34-05 | L | manual | 🖐️ | |
+| HU34 | Cambiar fotos reinicia | TC-HU34-06 | L | SQL (migración 26) | 🖐️ | |
+| HU36 | Cargar datos bancarios | TC-HU36-01 | F | manual | 🖐️ | |
+| HU36 | CBU / CUIT inválidos | TC-HU36-02 | N | Jest `cbu` | 🔁 | |
+| HU36 | Retención por cambio de CBU | TC-HU36-03 | L | SQL (migración 27) | 🖐️ | |
+| HU36 | Generar liquidación | TC-HU36-04 | F | SQL (migración 27), manual | 🖐️ | |
+| HU36 | Marcar pagada | TC-HU36-05 | F | manual (panel de admin), Jest `liquidaciones` (CSV) | 🖐️ | |
+| HU35 | Abrir reclamo | TC-HU35-01 | F | manual | 🖐️ | |
+| HU35 | Reclamo fuera de plazo | TC-HU35-02 | N | SQL (migración 27) | 🖐️ | |
+| HU35 | Cargos al vendedor | TC-HU35-03 | F | SQL (migración 27), manual | 🖐️ | |
+| HU35 | Saldo negativo | TC-HU35-04 | L | SQL (migración 27) | 🖐️ | |
 
-HU15 (chat) queda fuera de esta entrega, por lo que no tiene casos todavía. Los pagos (TC-PAGO-01..14), el correo de compra (TC-MAIL-01, 02) y favoritos (TC-FAV-01) están en la planilla de casos manuales.
+Los pagos (TC-PAGO-01..14), el correo de compra (TC-MAIL-01, 02) y favoritos (TC-FAV-01) están en la planilla de casos manuales.
 
 ### Defectos
 

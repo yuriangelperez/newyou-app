@@ -135,6 +135,13 @@ export default function PerfilScreen() {
         ...(!empresaActiva || puede(empresaActiva, "metricas.ver")
           ? [fila("stats-chart-outline", "Métricas", () => router.push(ROUTES.metrics))]
           : []),
+        // Liquidaciones semanales y cuenta bancaria (de la empresa, sólo para quien la administra).
+        ...(!empresaActiva || puede(empresaActiva, "empresa.editar")
+          ? [
+              fila("cash-outline", "Mis cobros", () => router.push(ROUTES.myPayouts)),
+              fila("card-outline", "Datos bancarios", () => router.push(ROUTES.bankDetails)),
+            ]
+          : []),
       ]
     : puede(empresaActiva, "pedidos.ver")
       ? // Por ejemplo, el rol Envíos: no publica, pero gestiona los pedidos de la empresa.

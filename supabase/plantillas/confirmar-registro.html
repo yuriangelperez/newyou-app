@@ -1,0 +1,16 @@
+<!-- Plantilla del correo "Confirm signup" (Supabase > Authentication > Emails > Templates).
+     Asunto sugerido: Confirmá tu cuenta de New You -->
+<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #2D1F16;">
+  <h2 style="color: #493628;">¡Bienvenido a New You!</h2>
+  <p>Para activar tu cuenta, confirmá tu correo tocando el botón <strong>desde el celular donde tenés la app</strong>:</p>
+  <p style="text-align: center; margin: 28px 0;">
+    <a href="{{ .ConfirmationURL }}"
+       style="background: #AB876D; color: #ffffff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold;">
+      Confirmar mi correo
+    </a>
+  </p>
+  <p style="font-size: 13px; color: #6b5a4e;">
+    Si el botón no abre la app, tu cuenta igual queda confirmada: volvé a New You e iniciá sesión con tu correo y contraseña.
+  </p>
+  <p style="font-size: 13px; color: #6b5a4e;">Si no creaste una cuenta en New You, ignorá este correo.</p>
+</div>

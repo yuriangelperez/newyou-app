@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { create, isAxiosError } from 'axios';
 
 import { supabase } from './supabase';
 import { tokenService } from './tokenService';
@@ -7,7 +7,7 @@ import { tokenService } from './tokenService';
  * Cliente HTTP para APIs REST propias o de terceros (Clase 12). Supabase tiene su
  * propio cliente; esta instancia es para todo lo demás.
  */
-export const api = axios.create({
+export const api = create({
   baseURL: process.env.EXPO_PUBLIC_API_URL || 'https://dummyjson.com',
   timeout: 10_000, // corta el pedido si el servidor no responde en 10 s
 });
@@ -26,7 +26,7 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (respuesta) => respuesta,
   async (error) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
+    if (isAxiosError(error) && error.response?.status === 401) {
       await tokenService.clear();
       await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
     }

@@ -332,3 +332,12 @@ export async function obtenerReputacionProducto(productoId: string): Promise<Pic
 
   return { promedio: data.promedio === null ? null : Number(data.promedio), cantidad: Number(data.cantidad) };
 }
+
+/** Un pedido puntual (para el detalle arriba del chat). La base controla que sea mío o de mi empresa. */
+export async function obtenerPedido(pedidoId: number): Promise<Pedido | null> {
+  const { data, error } = await supabase.rpc('pedido_detalle', { p_pedido: pedidoId });
+  if (error) {
+    throw new Error(traducirError(error));
+  }
+  return data ? mapPedido(data as PedidoJson) : null;
+}

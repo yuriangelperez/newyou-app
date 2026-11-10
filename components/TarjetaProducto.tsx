@@ -11,6 +11,7 @@ import {
 import { Colors, Radius } from "../constants/theme";
 import { useCarritoStore } from "../stores/useCarritoStore";
 import { calcularPrecioFinal, Producto } from "../types";
+import { formatearDistancia } from "../utils/cercania";
 
 interface TarjetaProductoProps {
   producto: Producto;
@@ -21,6 +22,8 @@ interface TarjetaProductoProps {
   onPressAgregar: (producto: Producto) => void;
   cardWidth?: number;
   imageHeight?: number;
+  /** Distancia al punto de retiro, cuando se filtra por cercanía. */
+  distanciaKm?: number | null;
 }
 
 function TarjetaProductoBase({
@@ -32,6 +35,7 @@ function TarjetaProductoBase({
   onPressAgregar,
   cardWidth,
   imageHeight,
+  distanciaKm,
 }: TarjetaProductoProps) {
   const styles = useMemo(() => createStyles(scale), [scale]);
   const productoEnCarrito = useCarritoStore((state) =>
@@ -105,6 +109,11 @@ function TarjetaProductoBase({
         <Text numberOfLines={2} style={styles.title}>
           {producto.nombre}
         </Text>
+        {distanciaKm != null ? (
+          <Text style={styles.distancia} testID={`distancia-${producto.id}`}>
+            {formatearDistancia(distanciaKm)}
+          </Text>
+        ) : null}
 
         <View style={styles.footer}>
           <View>
@@ -224,6 +233,11 @@ function createStyles(scale: number) {
       height: s(100),
       borderRadius: s(10),
       backgroundColor: Colors.secondary,
+    },
+    distancia: {
+      color: Colors.secondary,
+      fontSize: s(11),
+      fontWeight: "600",
     },
     title: {
       marginTop: s(8),

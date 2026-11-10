@@ -33,7 +33,6 @@ export default function RegisterScreen() {
   const {
     control,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegisterForm>({
@@ -45,13 +44,15 @@ export default function RegisterScreen() {
       repetirContrasena: '',
       quiereVender: false,
       comoEmpresa: false,
+      aceptaTerminos: false,
     },
   });
   // Se leen mientras se escribe para pintar la lista de requisitos.
   const contrasena = useWatch({ control, name: 'contrasena' });
   const repetirContrasena = useWatch({ control, name: 'repetirContrasena' });
-  const quiereVender = watch('quiereVender');
-  const comoEmpresa = watch('comoEmpresa');
+  const quiereVender = useWatch({ control, name: 'quiereVender' });
+  const comoEmpresa = useWatch({ control, name: 'comoEmpresa' });
+  const aceptaTerminos = useWatch({ control, name: 'aceptaTerminos' });
   // Comprar, vender como particular o vender como empresa (la empresa se crea al entrar).
   const elegirTipo = (tipo: 'comprador' | 'particular' | 'empresa') => {
     setValue('quiereVender', tipo === 'particular');
@@ -62,12 +63,13 @@ export default function RegisterScreen() {
     errors.usuario?.message ??
     errors.contrasena?.message ??
     errors.repetirContrasena?.message ??
+    errors.aceptaTerminos?.message ??
     errorServidor;
   const cargando = isSubmitting;
 
   const handleRegister = handleSubmit(async (datos) => {
     setErrorServidor('');
-    const { error: authError } = await signUpWithPassword(
+    const { error: authError, necesitaConfirmar } = await signUpWithPassword(
       datos.correo,
       datos.contrasena,
       datos.usuario,
@@ -77,6 +79,12 @@ export default function RegisterScreen() {
 
     if (authError) {
       setErrorServidor(authError.message);
+      return;
+    }
+
+    // Con la confirmación de correo activada en Supabase, la cuenta espera el enlace del correo.
+    if (necesitaConfirmar) {
+      router.replace({ pathname: ROUTES.checkEmail, params: { correo: datos.correo.trim() } });
       return;
     }
 
@@ -246,6 +254,26 @@ export default function RegisterScreen() {
         </View>
       </View>
 
+      <View style={styles.terminosFila}>
+        <Pressable
+          testID="registro-terminos"
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: aceptaTerminos }}
+          onPress={() => setValue('aceptaTerminos', !aceptaTerminos, { shouldValidate: true })}
+          style={[styles.casilla, aceptaTerminos && styles.casillaMarcada]}>
+          {aceptaTerminos ? <Ionicons name="checkmark" size={16} color={Colors.background} /> : null}
+        </Pressable>
+        <Text style={styles.terminosTexto}>
+          {'Leí y acepto los '}
+          <Text
+            style={styles.terminosEnlace}
+            accessibilityRole="link"
+            onPress={() => router.push(ROUTES.terms)}>
+            términos y condiciones
+          </Text>
+        </Text>
+      </View>
+
       {error ? (
         <Text style={styles.errorText} testID="registro-error">
           {error}
@@ -355,6 +383,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingLeft: 4,
     fontFamily: 'Montserrat_600SemiBold',
+  },
+  terminosFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 28,
+  },
+  casilla: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: Colors.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  casillaMarcada: {
+    backgroundColor: Colors.secondary,
+  },
+  terminosTexto: {
+    flex: 1,
+    color: Colors.text,
+    fontSize: 13,
+  },
+  terminosEnlace: {
+    color: Colors.secondary,
+    textDecorationLine: 'underline',
   },
   errorText: {
     marginTop: -20,

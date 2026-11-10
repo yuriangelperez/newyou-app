@@ -1,11 +1,13 @@
 # TC-E-04 · HU03/HU04/HU09/HU10: buscar una prenda, agregarla y cambiar la cantidad.
 appId: com.anonymous.newyouapp
 tags: [catalogo, carrito]
+env:
+  PRENDA: ${PRENDA || 'Remera'}
 ---
 - runFlow: _login.yaml
 - tapOn:
     id: "home-buscar"
-- inputText: ${PRENDA:-Remera}
+- inputText: ${PRENDA}
 - hideKeyboard
 - tapOn:
     id: "agregar-producto-.*"

@@ -7,6 +7,7 @@ const registroValido = {
   repetirContrasena: 'Clave123',
   quiereVender: false,
   comoEmpresa: false,
+  aceptaTerminos: true,
 };
 
 const primerError = (resultado: { success: boolean; error?: { issues: { message: string }[] } }) =>
@@ -29,6 +30,12 @@ describe('loginSchema', () => {
 });
 
 describe('registerSchema', () => {
+  it('exige aceptar los términos y condiciones', () => {
+    expect(primerError(registerSchema.safeParse({ ...registroValido, aceptaTerminos: false }))).toBe(
+      'Tenés que aceptar los términos y condiciones',
+    );
+  });
+
   it('acepta un registro válido', () => {
     expect(registerSchema.safeParse(registroValido).success).toBe(true);
   });

@@ -30,7 +30,6 @@ import { ROUTES } from "../../constants/routes";
 import { useCategorias } from "../../hooks/useCategorias";
 import { useProductos } from "../../hooks/useProductos";
 import { selectTotalItems, useCarritoStore } from "../../stores/useCarritoStore";
-import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { usePuedeVender } from "../../hooks/usePuedeVender";
 import { Producto } from "../../types";
 import {

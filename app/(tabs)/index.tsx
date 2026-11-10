@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar } from "../../components/BottomTabBar";
+import { CampanaAvisos } from "../../components/CampanaAvisos";
 import { ErrorView } from "../../components/ui/ErrorView";
 import { FiltroPrecio } from "../../components/ui/FiltroPrecio";
 import { PanelFiltros } from "../../components/ui/PanelFiltros";
@@ -47,6 +48,9 @@ import {
   TALLES_ROPA,
 } from "../../utils/filtrosCatalogo";
 import { incluyeTexto } from "../../utils/texto";
+import { CERCANIAS, ordenarPorDistancia, radioDeCercania } from "../../utils/cercania";
+import { obtenerMiPunto, productosCercanos } from "../../services/cercaniaService";
+import Toast from "react-native-toast-message";
 
 const CANVAS_WIDTH = 412;
 const MAX_CONTENT_WIDTH = 1160;
@@ -146,6 +150,38 @@ export default function HomeScreen() {
   const [precioMax, setPrecioMax] = useState<number | null>(FILTROS_EXTRA_INICIALES.precioMax);
   const [condicion, setCondicion] = useState<string>(FILTROS_EXTRA_INICIALES.condicion);
   const [talle, setTalle] = useState<string>(FILTROS_EXTRA_INICIALES.talle);
+  // Cercanía: radio elegido y distancia de cada prenda cercana (null = sin filtro).
+  const [cercania, setCercania] = useState<string>(CERCANIAS[0]);
+  const [distanciasCargadas, setDistancias] = useState<Record<string, number> | null>(null);
+  const distancias = radioDeCercania(cercania) === null ? null : distanciasCargadas;
+
+  useEffect(() => {
+    const radio = radioDeCercania(cercania);
+    if (radio === null) {
+      return;
+    }
+    let vigente = true;
+    (async () => {
+      const punto = await obtenerMiPunto();
+      if (!punto) {
+        Toast.show({
+          type: "error",
+          text1: "No sabemos dónde estás",
+          text2: "Activá la ubicación o cargá una dirección principal en Mis direcciones.",
+        });
+        if (vigente) setCercania(CERCANIAS[0]);
+        return;
+      }
+      const resultado = await productosCercanos(punto, radio);
+      if (vigente) setDistancias(resultado);
+    })().catch((error) => {
+      Toast.show({ type: "error", text1: "No se pudo filtrar por cercanía", text2: error instanceof Error ? error.message : undefined });
+      if (vigente) setCercania(CERCANIAS[0]);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [cercania]);
 
   // Historial del dispositivo: búsquedas recientes y prendas vistas.
   const busquedasRecientes = useHistorialStore((state) => state.busquedas);
@@ -183,7 +219,8 @@ export default function HomeScreen() {
     precioMin !== FILTROS_EXTRA_INICIALES.precioMin ||
     precioMax !== FILTROS_EXTRA_INICIALES.precioMax ||
     condicion !== FILTROS_EXTRA_INICIALES.condicion ||
-    talle !== FILTROS_EXTRA_INICIALES.talle;
+    talle !== FILTROS_EXTRA_INICIALES.talle ||
+    cercania !== CERCANIAS[0];
   const limpiarFiltros = useCallback(() => {
     setOrden(ORDENES[0]);
     setSelectedTag("Todo");
@@ -192,6 +229,7 @@ export default function HomeScreen() {
     setPrecioMax(FILTROS_EXTRA_INICIALES.precioMax);
     setCondicion(FILTROS_EXTRA_INICIALES.condicion);
     setTalle(FILTROS_EXTRA_INICIALES.talle);
+    setCercania(CERCANIAS[0]);
   }, []);
   const selectedCategory = Array.isArray(category) ? category[0] : category;
 
@@ -240,6 +278,11 @@ export default function HomeScreen() {
         return false;
       }
 
+      // Cercanía: sólo las prendas con punto de retiro dentro del radio.
+      if (distancias && distancias[item.id] === undefined) {
+        return false;
+      }
+
       if (selectedTag === "Todo") {
         return true;
       }
@@ -252,12 +295,15 @@ export default function HomeScreen() {
     });
 
     // Orden por precio final (con descuento aplicado). "Destacados" deja el orden original.
-    const ordenados = ordenarPorPrecio(filtrados, orden);
+    // Con cercanía y orden "Destacados", primero las más cercanas.
+    const ordenados =
+      distancias && orden === ORDENES[0] ? ordenarPorDistancia(filtrados, distancias) : ordenarPorPrecio(filtrados, orden);
 
     // Las agotadas van al final (grises, con "AGOTADO") para no tapar lo que se puede comprar (CA2).
     return [...ordenados.filter((item) => item.disponible), ...ordenados.filter((item) => !item.disponible)];
   }, [
     condicion,
+    distancias,
     precioMin,
     precioMax,
     talle,
@@ -354,12 +400,14 @@ export default function HomeScreen() {
             imageHeight={cardImageHeight}
             onPressProducto={onPressProducto}
             onPressAgregar={onPressAgregar}
+            distanciaKm={distancias?.[item.id] ?? null}
           />
         </View>
       );
     },
     [
       addedProductId,
+      distancias,
       cardImageHeight,
       cardWidth,
       containerWidth,
@@ -390,7 +438,9 @@ export default function HomeScreen() {
             tintColor={Colors.textStrong}
             style={styles.logo}
           />
-          <View style={[styles.headerSide, styles.headerRightSide]} />
+          <View style={[styles.headerSide, styles.headerRightSide]}>
+            {usuario ? <CampanaAvisos /> : null}
+          </View>
         </View>
       </View>
 
@@ -668,6 +718,7 @@ export default function HomeScreen() {
             ),
           },
           { id: "condicion", titulo: "Estado", opciones: CONDICIONES, valor: condicion, onCambiar: setCondicion },
+          { id: "cercania", titulo: "Cercanía (desde tu ubicación)", opciones: CERCANIAS, valor: cercania, onCambiar: setCercania },
           {
             id: "talle-ropa",
             titulo: "Talle de prendas",

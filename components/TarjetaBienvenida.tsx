@@ -50,6 +50,7 @@ export function TarjetaBienvenida({ visible, onCerrar }: Props) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Cerrar bienvenida"
+              testID="bienvenida-cerrar"
               hitSlop={10}
               style={styles.cerrar}
               onPress={onCerrar}>

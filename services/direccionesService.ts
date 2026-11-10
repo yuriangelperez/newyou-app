@@ -1,3 +1,4 @@
+import { coordenadasDe } from './coordenadasService';
 import { supabase } from './supabase';
 
 export interface Direccion {
@@ -39,6 +40,7 @@ export async function listarDirecciones(): Promise<Direccion[]> {
 /** Crea una dirección; si es la primera del usuario queda como principal. */
 export async function crearDireccion(direccion: string, alias?: string): Promise<Direccion> {
   const existentes = await listarDirecciones();
+  const punto = await coordenadasDe(direccion);
 
   const { data, error } = await supabase
     .from('direcciones')
@@ -46,6 +48,8 @@ export async function crearDireccion(direccion: string, alias?: string): Promise
       direccion: direccion.trim(),
       alias: alias?.trim() || null,
       es_principal: existentes.length === 0,
+      lat: punto?.lat ?? null,
+      lng: punto?.lng ?? null,
     })
     .select('id, alias, direccion, es_principal')
     .single();

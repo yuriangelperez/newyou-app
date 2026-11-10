@@ -1,5 +1,20 @@
 import { CategoriaProducto } from '../constants/categoriasProductos';
 
+export type EstadoVerificacion = 'no_aplica' | 'pendiente' | 'aprobada' | 'rechazada' | 'requiere_cambios';
+
+export interface VerificacionProducto {
+  estado: EstadoVerificacion;
+  /** Código de 4 dígitos que el vendedor escribe a mano y fotografía junto a la prenda. */
+  codigo: string | null;
+  fotoUrl: string | null;
+  motivo: string | null;
+  venceAt: string | null;
+}
+
+/** Una usada sólo se puede comprar cuando New You la aprobó. */
+export const enVerificacion = (producto: Pick<Producto, 'condicion' | 'verificacion'>) =>
+  producto.condicion === 'usado' && !!producto.verificacion && producto.verificacion.estado !== 'aprobada';
+
 export interface Producto {
   id: string;
   nombre: string;
@@ -11,6 +26,8 @@ export interface Producto {
   categoriaId?: number;
   categoriaProducto?: CategoriaProducto;
   condicion?: 'nuevo' | 'usado';
+  /** Verificación de prendas usadas (migración 26); falta si la base todavía no la tiene. */
+  verificacion?: VerificacionProducto;
   disponible: boolean;
   stock: number;
   talle?: string[];

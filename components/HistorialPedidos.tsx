@@ -17,6 +17,9 @@ import Toast from "react-native-toast-message";
 import { Colors, FontSize, Radius, Shadow, Spacing } from "../constants/theme";
 import { EncabezadoPantalla } from "./ui/EncabezadoPantalla";
 import { Estrellas } from "./ui/Estrellas";
+import { chatsSinLeer } from "../services/chatService";
+import { Reclamo, reclamosPorPedido } from "../services/liquidacionesService";
+import { ReclamoPedido } from "./ReclamoPedido";
 import { confirmar } from "../services/confirmar";
 import {
   calificarPedido,
@@ -109,10 +112,21 @@ export function HistorialPedidos({
     }
   }, [cargar]);
 
+  // Mensajes sin leer del chat de cada pedido.
+  const [sinLeer, setSinLeer] = useState<Record<number, number>>({});
+  // Reclamos de cada pedido (el comprador puede abrir uno sobre un pedido entregado).
+  const [reclamos, setReclamos] = useState<Record<number, Reclamo>>({});
+
   useFocusEffect(
     useCallback(() => {
       setCargando(true);
       void recargar();
+      chatsSinLeer()
+        .then(setSinLeer)
+        .catch(() => setSinLeer({}));
+      reclamosPorPedido()
+        .then(setReclamos)
+        .catch(() => setReclamos({}));
     }, [recargar]),
   );
 
@@ -385,6 +399,31 @@ export function HistorialPedidos({
           </View>
         ) : null}
 
+        <ReclamoPedido
+          pedidoId={item.id}
+          reclamo={reclamos[item.id]}
+          puedeAbrir={modo === "compra" && item.estado === "entregado"}
+          onAbierto={(reclamo) => setReclamos((actuales) => ({ ...actuales, [item.id]: reclamo }))}
+        />
+        <Pressable
+          testID={`pedido-chat-${item.id}`}
+          accessibilityRole="button"
+          onPress={() =>
+            router.push({
+              pathname: ROUTES.orderChat,
+              params: {
+                id: String(item.id),
+                titulo: modo === "compra" ? `Chat con ${item.vendedor ?? "el vendedor"}` : `Chat con ${item.comprador ?? "el comprador"}`,
+              },
+            })
+          }
+        >
+          <Text style={styles.link}>
+            {`${modo === "compra" ? "Escribir al vendedor" : "Escribir al comprador"}${
+              sinLeer[item.id] ? ` (${sinLeer[item.id]} sin leer)` : ""
+            }`}
+          </Text>
+        </Pressable>
         <Pressable onPress={() => setAbierto(abierto === item.id ? null : item.id)}>
           <Text style={styles.link}>{abierto === item.id ? "Ocultar historial" : "Ver historial"}</Text>
         </Pressable>

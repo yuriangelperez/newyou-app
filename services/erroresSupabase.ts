@@ -14,6 +14,10 @@ const TRADUCCIONES: [RegExp, string][] = [
     /rate limit|over_email_send_rate_limit|you can only request this after|too many requests/i,
     'Hiciste demasiados intentos. Esperá unos minutos y probá de nuevo.',
   ],
+  [
+    /error sending (confirmation|recovery|magic link|invite|email change)|sending (confirmation|recovery) email/i,
+    'No pudimos mandar el correo de confirmación. Probá de nuevo en unos minutos.',
+  ],
   [/signups? (not allowed|is disabled)/i, 'El registro está deshabilitado por el momento.'],
   [/user not found/i, 'No encontramos una cuenta con esos datos.'],
   [
@@ -52,7 +56,12 @@ export function traducirError(error: unknown): string {
     return traduccion[1];
   }
 
-  return INGLES.test(mensaje) ? MENSAJE_GENERICO : mensaje;
+  if (INGLES.test(mensaje)) {
+    // El usuario ve el mensaje genérico; el original queda en la consola para diagnosticar.
+    console.warn('[New You] Error sin traducir:', mensaje);
+    return MENSAJE_GENERICO;
+  }
+  return mensaje;
 }
 
 /** Mismo error con el mensaje traducido (para devolverlo donde se espera un Error). */

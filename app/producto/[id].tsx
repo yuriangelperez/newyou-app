@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import { Ionicons } from "@expo/vector-icons";
 
+import { PreguntasProducto } from "../../components/PreguntasProducto";
 import { BotonFavorito } from "../../components/BotonFavorito";
 import { BottomTabBar } from "../../components/BottomTabBar";
 import { ErrorView } from "../../components/ui/ErrorView";
@@ -44,7 +45,7 @@ import { useEsEscritorio } from "../../hooks/useEsEscritorio";
 import { useFavoritosStore } from "../../stores/useFavoritosStore";
 import { useHistorialStore } from "../../stores/useHistorialStore";
 import { compartir, enlaceProducto } from "../../services/compartirService";
-import { calcularPrecioFinal } from "../../types";
+import { calcularPrecioFinal, enVerificacion } from "../../types";
 
 const CANVAS_WIDTH = 412;
 
@@ -132,6 +133,8 @@ export default function ProductDetailScreen() {
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
   const condicionTexto = producto?.condicion === "usado" ? "Usado" : "Nuevo";
+  // Usada sin aprobar: se ve, pero no se puede comprar todavía (migración 26).
+  const esperandoVerificacion = producto ? enVerificacion(producto) : false;
   const [selectedSize, setSelectedSize] = useState(talles[0] ?? "");
   const [selectedColor, setSelectedColor] = useState(colores[0] ?? "");
   const [quantity, setQuantity] = useState(1);
@@ -217,6 +220,15 @@ export default function ProductDetailScreen() {
   // Valida stock/cantidad antes de agregar al carrito o comprar directo.
   const puedeComprar = () => {
     if (!producto || !producto.disponible) {
+      return false;
+    }
+
+    if (esperandoVerificacion) {
+      Toast.show({
+        type: "info",
+        text1: "Prenda en verificación",
+        text2: "New You está revisando esta prenda usada. Vas a poder comprarla cuando se apruebe.",
+      });
       return false;
     }
 
@@ -445,6 +457,12 @@ export default function ProductDetailScreen() {
             <View style={styles.conditionRow}>
               <Text style={styles.conditionLabel}>Condición:</Text>
               <Text style={styles.conditionValue}>{condicionTexto}</Text>
+              {producto.condicion === "usado" && producto.verificacion?.estado === "aprobada" ? (
+                <Text style={styles.verificada} testID="producto-verificada">✓ Verificada por New You</Text>
+              ) : null}
+              {esperandoVerificacion ? (
+                <Text style={styles.enVerificacion} testID="producto-en-verificacion">En verificación</Text>
+              ) : null}
             </View>
             {reputacion ? <ResumenReputacion promedio={reputacion.promedio} cantidad={reputacion.cantidad} /> : null}
             {producto.vendedor ? (
@@ -596,16 +614,18 @@ export default function ProductDetailScreen() {
             <Pressable
               accessibilityLabel="Agregar al carrito"
               onPress={onPressAgregarAlCarrito}
-              disabled={!producto.disponible}
+              disabled={!producto.disponible || esperandoVerificacion}
               style={[
                 styles.buyButton,
                 styles.cartButton,
-                !producto.disponible && styles.buyButtonDisabled,
+                (!producto.disponible || esperandoVerificacion) && styles.buyButtonDisabled,
                 purchaseFeedback && styles.buyButtonAdded,
               ]}
             >
               <Text style={[styles.buyButtonText, styles.cartButtonText]}>
-                {producto.disponible
+                {esperandoVerificacion
+                  ? "EN VERIFICACIÓN"
+                  : producto.disponible
                   ? purchaseFeedback
                     ? "AGREGADO"
                     : "AGREGAR AL CARRITO"
@@ -616,14 +636,16 @@ export default function ProductDetailScreen() {
             <Pressable
               accessibilityLabel="Comprar ahora"
               onPress={onPressComprarAhora}
-              disabled={!producto.disponible}
+              disabled={!producto.disponible || esperandoVerificacion}
               style={[
                 styles.buyButton,
-                !producto.disponible && styles.buyButtonDisabled,
+                (!producto.disponible || esperandoVerificacion) && styles.buyButtonDisabled,
               ]}
             >
               <Text style={styles.buyButtonText}>COMPRAR AHORA</Text>
             </Pressable>
+
+            <PreguntasProducto productoId={producto.id} puedeResponder={puedeGestionar} />
           </View>
         </ScrollView>
       </View>
@@ -889,6 +911,18 @@ function createStyles(
       lineHeight: s(18),
       fontWeight: "700",
       textTransform: "capitalize",
+    },
+    verificada: {
+      marginLeft: s(8),
+      color: Colors.success,
+      fontSize: s(12),
+      fontWeight: "700",
+    },
+    enVerificacion: {
+      marginLeft: s(8),
+      color: Colors.warning,
+      fontSize: s(12),
+      fontWeight: "700",
     },
     sizeSelector: {
       marginTop: s(18),

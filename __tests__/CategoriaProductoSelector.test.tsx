@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react-native';
 import { useForm } from 'react-hook-form';
 
+import { CategoriaProductoSelector } from '../components/ui/CategoriaProductoSelector';
+import { ProductoFormValues } from '../schemas/productoSchema';
+
 jest.mock('../hooks/useCategorias', () => ({
   useCategorias: () => [
     { nombre: 'Camisas', grupo: 'TORSO' },
@@ -12,9 +15,6 @@ jest.mock('../hooks/useCategorias', () => ({
     { nombre: 'Botas', grupo: 'CALZADO' },
   ],
 }));
-
-import { CategoriaProductoSelector } from '../components/ui/CategoriaProductoSelector';
-import { ProductoFormValues } from '../schemas/productoSchema';
 
 function TestForm() {
   const form = useForm<ProductoFormValues>({
