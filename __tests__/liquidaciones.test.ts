@@ -1,6 +1,6 @@
-jest.mock('../services/supabase', () => ({ supabase: {} }));
-
 import { Liquidacion, liquidacionesACsv } from '../services/liquidacionesService';
+
+jest.mock('../services/supabase', () => ({ supabase: {} }));
 
 const liquidacion = (parcial: Partial<Liquidacion>): Liquidacion => ({
   id: 1,

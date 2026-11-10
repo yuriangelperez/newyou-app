@@ -1,3 +1,5 @@
+import { abrirSesionDesdeEnlace } from '../services/auth';
+
 const mockSetSession = jest.fn();
 const mockExchange = jest.fn();
 
@@ -9,8 +11,6 @@ jest.mock('../services/supabase', () => ({
     },
   },
 }));
-
-import { abrirSesionDesdeEnlace } from '../services/auth';
 
 beforeEach(() => {
   mockSetSession.mockReset().mockResolvedValue({ error: null });

@@ -1,6 +1,6 @@
-jest.mock('../services/supabase', () => ({ supabase: {} }));
-
 import { agregarMensaje, MensajePedido } from '../services/chatService';
+
+jest.mock('../services/supabase', () => ({ supabase: {} }));
 
 const mensaje = (id: number, createdAt: string): MensajePedido => ({
   id,

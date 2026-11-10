@@ -4,6 +4,10 @@ tags: [auth]
 ---
 - launchApp:
     clearState: true
+# La tarjeta de bienvenida aparece en cada inicio sin sesión.
+- tapOn:
+    id: "bienvenida-cerrar"
+    optional: true
 - tapOn:
     id: "login-correo"
 - inputText: "noexiste@prueba.com"

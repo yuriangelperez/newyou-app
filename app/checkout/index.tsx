@@ -56,7 +56,6 @@ import {
   selectTotalItems,
   useCarritoStore,
 } from "../../stores/useCarritoStore";
-import { useUsuarioStore } from "../../stores/useUsuarioStore";
 import { DatosTarjeta } from "../../utils/tarjeta";
 import { usePuedeVender } from "../../hooks/usePuedeVender";
 

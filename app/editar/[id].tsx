@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import {
   Platform,
   Pressable,
@@ -87,7 +87,6 @@ export default function EditarProductoScreen() {
     handleSubmit,
     setValue,
     reset,
-    watch,
     formState: { isSubmitting, isDirty, isValid },
   } = useForm<ProductoFormValues, undefined, ProductoFormOutput>({
     resolver: zodResolver(productoSchema),
@@ -95,11 +94,12 @@ export default function EditarProductoScreen() {
     defaultValues: DEFAULT_VALUES,
   });
 
-  const disponible = watch("disponible");
-  const descuentoActivo = watch("descuentoActivo");
-  const precioEscrito = watch("precio");
-  const descuentoEscrito = watch("descuentoPorcentaje");
-  const imagenes = watch("imagenes") ?? [];
+  const disponible = useWatch({ control, name: "disponible" });
+  const descuentoActivo = useWatch({ control, name: "descuentoActivo" });
+  const precioEscrito = useWatch({ control, name: "precio" });
+  const descuentoEscrito = useWatch({ control, name: "descuentoPorcentaje" });
+  const imagenes = useWatch({ control, name: "imagenes" }) ?? [];
+  const condicion = useWatch({ control, name: "condicion" });
   const setImagenes = (lista: string[]) => {
     setValue("imagenes", lista, { shouldValidate: true, shouldDirty: true });
     setValue("imagen", lista[0] ?? "", { shouldValidate: true });
@@ -369,13 +369,13 @@ export default function EditarProductoScreen() {
                 onPress={() => setValue("condicion", opcion, { shouldValidate: true, shouldDirty: true })}
                 style={[
                   styles.condicionOption,
-                  watch("condicion") === opcion && styles.condicionOptionActive,
+                  condicion === opcion && styles.condicionOptionActive,
                 ]}
               >
                 <Text
                   style={[
                     styles.condicionText,
-                    watch("condicion") === opcion && styles.condicionTextActive,
+                    condicion === opcion && styles.condicionTextActive,
                   ]}
                 >
                   {opcion === "nuevo" ? "Nuevo" : "Usado"}

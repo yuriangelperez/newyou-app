@@ -82,9 +82,13 @@ export async function chatsSinLeer(): Promise<Record<number, number>> {
 }
 
 /** Escucha los mensajes nuevos del pedido en tiempo real. Devuelve la función para dejar de escuchar. */
+let suscripcionesChat = 0;
+
 export function escucharMensajes(pedidoId: number, alRecibir: (mensaje: MensajePedido) => void) {
+  // Canal propio por suscripción (mismo motivo que escucharAvisos).
+  suscripcionesChat += 1;
   const canal = supabase
-    .channel(`chat-pedido-${pedidoId}`)
+    .channel(`chat-pedido-${pedidoId}-${suscripcionesChat}`)
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'mensajes_pedido', filter: `pedido_id=eq.${pedidoId}` },

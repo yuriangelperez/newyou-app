@@ -1,8 +1,8 @@
-jest.mock('../services/supabase', () => ({ supabase: {} }));
-jest.mock('../services/storageService', () => ({ pickImageFromCamera: jest.fn(), uploadProductImage: jest.fn() }));
-
 import { mapVerificacion, textoPlazo } from '../services/verificacionService';
 import { enVerificacion } from '../types';
+
+jest.mock('../services/supabase', () => ({ supabase: {} }));
+jest.mock('../services/storageService', () => ({ pickImageFromCamera: jest.fn(), uploadProductImage: jest.fn() }));
 
 const ahora = new Date('2026-11-09T12:00:00Z');
 

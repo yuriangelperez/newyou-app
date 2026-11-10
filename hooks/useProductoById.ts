@@ -11,33 +11,33 @@ interface UseProductoByIdResult {
   refrescar: () => Promise<void>;
 }
 
+interface Resultado {
+  /** Id al que corresponde este resultado; mientras no coincida con el pedido, se está cargando. */
+  id: string;
+  producto: Producto | null;
+  error: string | null;
+}
+
 export function useProductoById(id?: string): UseProductoByIdResult {
-  const [producto, setProducto] = useState<Producto | null>(null);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<Resultado | null>(null);
 
   const cargar = useCallback(async () => {
     if (!id) {
-      setProducto(null);
-      setError('Producto invalido.');
-      setCargando(false);
       return;
     }
 
-    try {
-      setError(null);
-      const data = await getProductoById(id);
-      setProducto(data);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'No se pudo cargar el producto.';
-      setError(message);
-    } finally {
-      setCargando(false);
-    }
+    await getProductoById(id).then(
+      (data) => setResultado({ id, producto: data, error: null }),
+      (err: unknown) => {
+        const message = err instanceof Error ? err.message : 'No se pudo cargar el producto.';
+        // Si falla una recarga se conserva el producto que ya se mostraba.
+        setResultado((previo) => ({ id, producto: previo?.id === id ? previo.producto : null, error: message }));
+      },
+    );
   }, [id]);
 
+  // El estado se actualiza cuando llega la respuesta; "cargando" se deriva del id pedido.
   useEffect(() => {
-    setCargando(true);
     void cargar();
   }, [cargar]);
 
@@ -74,10 +74,16 @@ export function useProductoById(id?: string): UseProductoByIdResult {
     };
   }, [cargar, id]);
 
+  if (!id) {
+    return { producto: null, cargando: false, error: 'Producto invalido.', refrescar: cargar };
+  }
+
+  const vigente = resultado?.id === id ? resultado : null;
+
   return {
-    producto,
-    cargando,
-    error,
+    producto: vigente?.producto ?? null,
+    cargando: !vigente,
+    error: vigente?.error ?? null,
     refrescar: cargar,
   };
 }

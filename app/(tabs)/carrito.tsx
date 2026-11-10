@@ -19,7 +19,6 @@ import { ROUTES } from '../../constants/routes';
 import { Colors, EstiloBarraEstado, Radius, Shadow } from '../../constants/theme';
 import { calcularEnvio, obtenerTiendasDeRetiro, TiendaRetiro } from '../../services/comprasService';
 import { selectSubtotal, selectTotalItems, useCarritoStore } from '../../stores/useCarritoStore';
-import { useUsuarioStore } from '../../stores/useUsuarioStore';
 import { usePuedeVender } from '../../hooks/usePuedeVender';
 
 const CANVAS_WIDTH = 412;

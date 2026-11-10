@@ -1,6 +1,3 @@
-const mockInvoke = jest.fn();
-jest.mock('../services/supabase', () => ({ supabase: { functions: { invoke: (...args: unknown[]) => mockInvoke(...args) } } }));
-
 import {
   calcularComision,
   cancelarPagoMp,
@@ -12,6 +9,9 @@ import {
   tipoTarjeta,
   verificarPagoMp,
 } from '../services/pagosService';
+
+const mockInvoke = jest.fn();
+jest.mock('../services/supabase', () => ({ supabase: { functions: { invoke: (...args: unknown[]) => mockInvoke(...args) } } }));
 
 const RETORNO = 'https://proyecto.supabase.co/functions/v1/mp-webhook';
 

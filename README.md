@@ -295,14 +295,21 @@ El carrito permite:
 | HU12 | Selección de medio de pago                  | Implementado    |
 | HU13 | Resumen y total                             | Implementado    |
 | HU14 | Confirmación y código de compra             | Implementado    |
-| HU15 | Chat interno                                | Segunda entrega |
+| HU15 | Chat interno                                | Implementado    |
 | HU16 | Persistencia ante pérdida de conectividad   | Implementado    |
 | HU17 | Ubicación manual                            | Implementado    |
 | HU18 | Perfil                                      | Implementado    |
 | HU19 | Configuración, modo oscuro y notificaciones | Posterior       |
 | HU20 | Indicador de producto agotado               | Implementado    |
+| HU30 | Efectivo sólo con retiro en persona         | Implementado    |
+| HU31 | Términos y condiciones                      | Implementado    |
+| HU32 | Preguntas antes de comprar                  | Implementado    |
+| HU33 | Filtro por cercanía                         | Implementado    |
+| HU34 | Verificación de prendas usadas              | Implementado    |
+| HU35 | Reclamos con cargo al vendedor              | Implementado    |
+| HU36 | Liquidaciones semanales y datos bancarios   | Implementado    |
 
-El Product Backlog oficial contiene 20 historias de usuario y clasifica HU01–HU14 y HU20 dentro de la Primera Entrega/MVP.
+El Product Backlog oficial contiene 20 historias de usuario y clasifica HU01–HU14 y HU20 dentro de la Primera Entrega/MVP. HU30–HU36 se sumaron en noviembre de 2026; sus criterios Gherkin están en `docs/testing/features/08` a `14`.
 
 ---
 
@@ -318,7 +325,7 @@ Flujo:
 1. Selección de **retiro en el local** o **envío a domicilio**.
    * Retiro: se muestra la dirección de retiro de cada prenda (la dirección elegida por el vendedor al publicar).
    * Domicilio: el comprador elige una de sus direcciones guardadas o escribe una nueva (con GPS opcional y enlace "Ver en el mapa").
-2. Medio de pago: efectivo, tarjeta, Mercado Pago o transferencia (checkout lógico, sin pasarela real).
+2. Medio de pago: Mercado Pago (Checkout Pro), tarjeta de crédito o débito (API propia simulada) o efectivo. **El efectivo sólo se puede elegir con retiro en persona**; con envío a domicilio la app pasa a Mercado Pago y la base rechaza el efectivo (migración 21).
 3. Resumen: productos, descuentos, envío, impuestos y total.
 4. Confirmación con clave de operación única (`operationKey`, formato `NY-ORD-…`).
 5. La función `confirmar_compra` de Supabase registra la orden y descuenta el stock en una sola transacción; reintentar con la misma clave devuelve la orden ya creada, sin duplicar.
@@ -332,7 +339,41 @@ Si no hay conexión al publicar una prenda o confirmar una compra, la operación
 
 ### Pago
 
-La integración de una pasarela de pago real, como Mercado Pago, queda fuera del alcance del First Delivery. El MVP utiliza un **checkout lógico**.
+Mercado Pago funciona en modo prueba y las tarjetas pasan por una API propia simulada (detalle en [`docs/pagos-mercadopago.md`](docs/pagos-mercadopago.md)). New You cobra los pagos online y le paga a cada vendedor una vez por semana (ver *Liquidaciones*).
+
+---
+
+# Funcionalidades de la segunda etapa (noviembre 2026)
+
+## Chat del pedido (HU15)
+
+Cada pedido tiene un chat entre comprador y vendedor (o quienes gestionan pedidos en la empresa), en tiempo real con Supabase Realtime. Muestra arriba el detalle del pedido (prendas, talle, color, precio, entrega y pago), suma mensajes del sistema con cada cambio de estado, cuenta los no leídos en Mis compras / Mis ventas y se cierra 30 días después de terminado el pedido. No se pueden compartir teléfonos, mails, redes ni links.
+
+## Preguntas antes de comprar (HU32)
+
+En el detalle de cada prenda cualquiera puede preguntar y el vendedor responde en público. Mis publicaciones avisa cuántas preguntas faltan responder.
+
+## Panel de notificaciones
+
+La campanita del inicio muestra cuántos avisos hay sin leer y abre el panel con los mensajes del chat, las preguntas (con la pregunta completa y la prenda), las ventas, los cambios de estado, la verificación de usadas, los reclamos y las liquidaciones pagadas. Quedan guardados aunque el push no haya llegado, y tocar uno abre la pantalla que corresponde.
+
+## Filtro por cercanía (HU33)
+
+Con la ubicación del teléfono (o la dirección principal) se filtran las prendas por distancia al punto de retiro: 2, 5, 10 o 25 km, ordenadas de la más cercana y con la distancia en cada tarjeta.
+
+## Verificación de prendas usadas (HU34)
+
+Toda prenda usada queda *En verificación* hasta que el personal de New You la aprueba desde el panel de admin: el vendedor sube una foto con un código de 4 números escrito a mano (para descartar fotos ajenas o generadas con IA) y tiene 3 días hábiles. Mientras tanto no se puede comprar; aprobada lleva el sello *Verificada por New You*. Cambiar las fotos reinicia la verificación.
+
+## Términos, privacidad y reclamos (HU31, HU35)
+
+* Los términos y condiciones se aceptan al registrarse y se leen en Ajustes; para publicar hay que aceptar además los de vendedor (envío y reclamos son responsabilidad del vendedor).
+* La política de privacidad (Ley 25.326) está en Ajustes.
+* En un pedido entregado el comprador tiene 10 días para tocar *Tengo un problema*. El admin lee el chat y resuelve: a favor del comprador se le carga al vendedor un 10% del pedido y, si se pagó online, el reintegro.
+
+## Liquidaciones y datos bancarios (HU36)
+
+Cada lunes New You liquida la semana anterior: lo cobrado online de los pedidos entregados, menos la comisión del 10%, la comisión de las ventas en efectivo y los cargos por reclamos. Si los cargos superan las ventas queda saldo negativo para la semana siguiente. El vendedor carga su cuenta en *Perfil → Datos bancarios* (titular, CUIT, CBU/CVU, alias y banco o billetera) y ve el detalle en *Mis cobros*; si cambia el CBU, el pago queda retenido 48 horas. El admin genera la semana, exporta el CSV de transferencias y marca cada una como pagada con su comprobante.
 
 ---
 
@@ -521,8 +562,11 @@ Expo Go para probar (salvo las notificaciones), y las notificaciones sólo funci
    13. `13-descuentos.sql`: descuento por prenda; `confirmar_compra` cobra el precio con descuento.
    14. `14-push-tokens.sql`: notificaciones push de pedidos. Antes, habilitar la extensión `pg_net` (Database → Extensions). Crea `push_tokens` con RLS, `registrar_push_token` y un trigger en `pedido_eventos` que avisa al particular que vende cuando entra un pedido y al comprador cuando cambia el estado.
    15. `15-vendedores-equipo.sql`: `vendedores_publicos` y `empresas_publicas` (quién vende cada prenda y si la empresa está verificada), una política que impide al propietario de una empresa publicar como particular y `quitar_miembro` sólo para propietario o administrador (un empleado ya no se sale solo).
+   16. De la `16` a la `28`: ver la tabla completa en [`docs/INSTALACION.md`](docs/INSTALACION.md#42-migraciones). Las 21 a 28 (efectivo sólo retiro, términos, preguntas, chat, cercanía, verificación de usadas, liquidaciones y notificaciones) necesitan `pg_net` y Realtime habilitados.
 
 Para recuperar la contraseña, en Supabase > Authentication > URL Configuration agregar a *Redirect URLs* `newyou://**` (app) y `http://localhost:8081/**` (web en desarrollo). El enlace del correo abre la pantalla *Nueva contraseña*.
+
+El registro pide confirmar el correo: Supabase manda un enlace que abre la pantalla *Confirmar correo* y, hasta tocarlo, la cuenta no puede entrar (el login ofrece reenviarlo). Hay que activar *Confirm email*, configurar el SMTP de Gmail y la plantilla en español; los pasos están en [`docs/INSTALACION.md`](docs/INSTALACION.md#44-autenticación).
 
 Para versionar las políticas, funciones y triggers que hoy sólo están en Supabase, ejecutar [`supabase/consultas/exportar-esquema.sql`](supabase/consultas/exportar-esquema.sql). El resultado del 2026-10-23 quedó en `supabase/migraciones/00-base.sql` (referencia, no se ejecuta).
 
@@ -636,6 +680,21 @@ compras       compraid, usuario_id, numero_orden, entrega, metodo_pago, subtotal
 * Roles: comprador y vendedor. Un comprador puede pasar a vendedor desde el Perfil.
 * Las compras guardan los ítems en formato JSONB y se registran con la función `confirmar_compra`.
 
+Tablas agregadas en la segunda etapa (migraciones 21–28):
+
+```text
+terminos_aceptaciones  usuario_id, tipo (comprador | vendedor), version
+preguntas              producto_id, autor_id, texto, respuesta, oculta
+mensajes_pedido        pedido_id, autor_id, texto, sistema      (+ mensajes_lecturas)
+verificacion_eventos   producto_id, estado, motivo               (+ columnas verificacion_* en productos)
+datos_bancarios        usuario_id | empresa_id, titular, cuit, cbu, alias, banco, retener_hasta
+reclamos               pedido_id, comprador_id, motivo, descripcion, estado, resolucion
+cargos_vendedor        vendedor_id | empresa_id, reclamo_id, tipo, monto, liquidacion_id
+liquidaciones          vendedor_id | empresa_id, semana_inicio, ventas_online, comision,
+                       comision_efectivo, cargos, saldo_anterior, neto, estado, comprobante
+notificaciones         usuario_id, titulo, cuerpo, datos (JSONB), leida
+```
+
 ---
 
 # Seguridad
@@ -709,13 +768,9 @@ Esta priorización corresponde a la matriz MoSCoW definida en la documentación 
 
 Las siguientes funcionalidades no son necesarias para cerrar el First Delivery:
 
-* Chat interno.
 * Funcionalidades avanzadas offline.
-* Perfil completo.
-* Configuración avanzada.
-* Modo oscuro.
-* Notificaciones.
-* Dashboard de ventas.
+
+El chat, las notificaciones, el modo oscuro, la configuración y el dashboard de ventas (Métricas) ya se implementaron en etapas posteriores.
 
 Estas funcionalidades corresponden a etapas posteriores o a funcionalidades clasificadas como Could/Won't dentro del alcance definido.
 
@@ -737,7 +792,8 @@ El MVP está implementado de punta a punta:
 * Sesión cifrada en SecureStore, interceptor ante 401 y login/registro con React Hook Form + Zod.
 * Mapa embebido con el punto del GPS, recordatorio local al publicar y push de pedidos.
 * Catálogo con FlashList y React.memo, favoritos animados y deslizar para borrar con Reanimated.
-* 64 pruebas (servicios, stores, esquemas, hooks y componentes) que corren en GitHub Actions.
+* Chat del pedido, preguntas, panel de notificaciones, filtro por cercanía, verificación de usadas, términos y privacidad, reclamos y liquidaciones semanales con datos bancarios.
+* 202 pruebas (servicios, stores, esquemas, hooks y componentes) que corren en GitHub Actions.
 
 Pendientes o mejoras opcionales:
 
@@ -789,7 +845,7 @@ El proyecto utiliza Git y GitHub para el control de versiones.
 
 La estrategia definida para el equipo contempla:
 
-* `main` como rama estable.
+* `main` como rama estable. Cada push a `main` sube el número de versión y crea el tag `vX.Y.Z` (`.github/workflows/version.yml`); el `.apk` se genera aparte con `eas build`.
 * Ramas independientes por funcionalidad.
 * Pull Requests para integrar cambios.
 * Revisión de código por al menos un integrante antes del merge.

@@ -1,3 +1,6 @@
+import { VERSION_TERMINOS } from '../constants/terminos';
+import { faltaAceptarTerminos, versionAceptadaEnRegistro } from '../services/terminosService';
+
 const mockMaybeSingle = jest.fn();
 const mockRpc = jest.fn();
 const consulta = {
@@ -8,9 +11,6 @@ const consulta = {
 jest.mock('../services/supabase', () => ({
   supabase: { from: () => consulta, rpc: (...args: unknown[]) => mockRpc(...args) },
 }));
-
-import { VERSION_TERMINOS } from '../constants/terminos';
-import { faltaAceptarTerminos, versionAceptadaEnRegistro } from '../services/terminosService';
 
 beforeEach(() => {
   mockMaybeSingle.mockReset();

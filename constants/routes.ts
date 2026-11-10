@@ -3,6 +3,8 @@ export const ROUTES = {
   register: '/register',
   forgotPassword: '/recuperar',
   newPassword: '/nueva-contrasena',
+  checkEmail: '/revisar-correo',
+  confirmEmail: '/confirmar-correo',
 
   home: '/(tabs)',
 
@@ -25,9 +27,11 @@ export const ROUTES = {
   admin: '/admin',
   metrics: '/metricas',
   terms: '/terminos',
+  privacy: '/privacidad',
   orderChat: '/pedido/[id]/chat',
   bankDetails: '/datos-bancarios',
   myPayouts: '/mis-cobros',
+  notifications: '/notificaciones',
 
   categories: '/categorias',
   cart: '/carrito',

@@ -13,8 +13,8 @@ import { TarjetaBienvenida } from '../components/TarjetaBienvenida';
 import { Colors, esModoOscuro, EstiloBarraEstado } from '../constants/theme';
 
 import { useEsEscritorio } from '../hooks/useEsEscritorio';
-import { ROUTES } from '../constants/routes';
 import { bienvenidaVista, marcarBienvenidaVista } from '../services/bienvenidaService';
+import { DatosAviso, destinoAviso } from '../services/avisosService';
 import { Notifications } from '../services/notificacionesService';
 import { sincronizarBorradores } from '../services/offlineService';
 import { supabase } from '../services/supabase';
@@ -156,19 +156,9 @@ export default function RootLayout() {
     }
 
     const suscripcion = Notifications.addNotificationResponseReceivedListener((respuesta) => {
-      const datos = respuesta.notification.request.content.data as {
-        tipo?: string;
-        productoId?: string;
-        pedidoId?: number | string;
-      };
-      if (datos.tipo === 'chat' && datos.pedidoId) {
-        router.push({ pathname: ROUTES.orderChat, params: { id: String(datos.pedidoId) } });
-      } else if (datos.tipo === 'venta') {
-        router.push(ROUTES.mySales);
-      } else if (datos.tipo === 'compra') {
-        router.push(ROUTES.myPurchases);
-      } else if (datos.productoId) {
-        router.push({ pathname: ROUTES.productDetail, params: { id: datos.productoId } });
+      const destino = destinoAviso(respuesta.notification.request.content.data as DatosAviso);
+      if (destino) {
+        router.push(destino as Parameters<typeof router.push>[0]);
       }
     });
 
@@ -195,6 +185,7 @@ export default function RootLayout() {
             <Stack.Screen name="(auth)/login" />
             <Stack.Screen name="(auth)/register" />
             <Stack.Screen name="(auth)/recuperar" />
+            <Stack.Screen name="(auth)/revisar-correo" />
           </Stack.Protected>
           <Stack.Protected guard={haySesion}>
             <Stack.Screen name="(tabs)" />
@@ -221,11 +212,15 @@ export default function RootLayout() {
             <Stack.Screen name="pedido/[id]/chat" />
             <Stack.Screen name="datos-bancarios" />
             <Stack.Screen name="mis-cobros" />
+            <Stack.Screen name="notificaciones" />
           </Stack.Protected>
           {/* El enlace de recuperación abre una sesión antes de elegir la contraseña nueva. */}
           <Stack.Screen name="(auth)/nueva-contrasena" />
+          {/* El enlace de confirmación del registro abre la sesión de la cuenta nueva. */}
+          <Stack.Screen name="(auth)/confirmar-correo" />
           {/* Los términos se leen también sin sesión (enlace del registro). */}
           <Stack.Screen name="terminos" />
+          <Stack.Screen name="privacidad" />
         </Stack>
         <TarjetaBienvenida visible={haySesion && mostrarBienvenida} onCerrar={cerrarBienvenida} />
         <AvisoSinConexion />

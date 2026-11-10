@@ -27,6 +27,25 @@ interface UseProductosResult {
 
 export const MENSAJE_SIN_CONEXION = 'Revisá tu conexión a Internet y volvé a intentar.';
 
+/** Resultado de una consulta del catálogo, ya listo para guardar en el estado. */
+type Consulta =
+  | { tipo: 'ok'; productos: Producto[] }
+  | { tipo: 'sinConexion' }
+  | { tipo: 'error'; mensaje: string };
+
+async function consultarCatalogo(): Promise<Consulta> {
+  try {
+    // Sin red no se muestra el catálogo viejo: daría la falsa sensación de que funciona.
+    if (!(await hayConexion())) {
+      return { tipo: 'sinConexion' };
+    }
+
+    return { tipo: 'ok', productos: await getProductos() };
+  } catch (err) {
+    return { tipo: 'error', mensaje: err instanceof Error ? traducirError(err) : 'No se pudo cargar el catálogo.' };
+  }
+}
+
 export function useProductos(): UseProductosResult {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
@@ -34,43 +53,37 @@ export function useProductos(): UseProductosResult {
   const [error, setError] = useState<string | null>(null);
   const [sinConexion, setSinConexion] = useState(false);
 
-  const cargar = useCallback(async (mode: 'loading' | 'refresh' | 'silent' = 'loading') => {
-    if (mode === 'loading') {
-      setCargando(true);
-    }
+  // Los setState se hacen cuando llega la respuesta, nunca de forma síncrona.
+  const cargar = useCallback(
+    () =>
+      consultarCatalogo().then((consulta) => {
+        if (consulta.tipo === 'sinConexion') {
+          setProductos([]);
+          setSinConexion(true);
+          setError(MENSAJE_SIN_CONEXION);
+        } else if (consulta.tipo === 'ok') {
+          setError(null);
+          setSinConexion(false);
+          setProductos(consulta.productos);
+        } else {
+          setError(consulta.mensaje);
+        }
+      }),
+    [],
+  );
 
-    if (mode === 'refresh') {
-      setRefreshing(true);
-    }
-
-    try {
-      // Sin red no se muestra el catálogo viejo: daría la falsa sensación de que funciona.
-      if (!(await hayConexion())) {
-        setProductos([]);
-        setSinConexion(true);
-        setError(MENSAJE_SIN_CONEXION);
-        return;
-      }
-
-      setError(null);
-      setSinConexion(false);
-      const data = await getProductos();
-      setProductos(data);
-    } catch (err) {
-      setError(err instanceof Error ? traducirError(err) : 'No se pudo cargar el catálogo.');
-    } finally {
-      if (mode === 'loading') {
-        setCargando(false);
-      }
-
-      if (mode === 'refresh') {
-        setRefreshing(false);
-      }
-    }
-  }, []);
-
+  // Primera carga: el estado ya arranca con cargando=true.
   useEffect(() => {
-    void cargar('loading');
+    void cargar().finally(() => setCargando(false));
+  }, [cargar]);
+
+  const refrescar = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await cargar();
+    } finally {
+      setRefreshing(false);
+    }
   }, [cargar]);
 
   // Al volver a la pantalla (p. ej. tras editar stock en "Mis publicaciones")
@@ -83,7 +96,7 @@ export function useProductos(): UseProductosResult {
         return;
       }
 
-      void cargar('silent');
+      void cargar();
     }, [cargar]),
   );
 
@@ -97,7 +110,7 @@ export function useProductos(): UseProductosResult {
 
     try {
       unsubscribe = subscribeToProductos(() => {
-        void cargar('silent');
+        void cargar();
       });
     } catch {
       unsubscribe = () => {};
@@ -114,6 +127,6 @@ export function useProductos(): UseProductosResult {
     refreshing,
     error,
     sinConexion,
-    refrescar: () => cargar('refresh'),
+    refrescar,
   };
 }

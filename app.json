@@ -14,8 +14,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F4F4F4",
-        "foregroundImage": "./assets/app-icons/android-icon-foreground.png",
-        "monochromeImage": "./assets/app-icons/android-icon-monochrome.png"
+        "foregroundImage": "./assets/app-icons/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
       "googleServicesFile": "./google-services.json",

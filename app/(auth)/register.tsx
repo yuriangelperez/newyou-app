@@ -33,7 +33,6 @@ export default function RegisterScreen() {
   const {
     control,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegisterForm>({
@@ -51,9 +50,9 @@ export default function RegisterScreen() {
   // Se leen mientras se escribe para pintar la lista de requisitos.
   const contrasena = useWatch({ control, name: 'contrasena' });
   const repetirContrasena = useWatch({ control, name: 'repetirContrasena' });
-  const quiereVender = watch('quiereVender');
-  const comoEmpresa = watch('comoEmpresa');
-  const aceptaTerminos = watch('aceptaTerminos');
+  const quiereVender = useWatch({ control, name: 'quiereVender' });
+  const comoEmpresa = useWatch({ control, name: 'comoEmpresa' });
+  const aceptaTerminos = useWatch({ control, name: 'aceptaTerminos' });
   // Comprar, vender como particular o vender como empresa (la empresa se crea al entrar).
   const elegirTipo = (tipo: 'comprador' | 'particular' | 'empresa') => {
     setValue('quiereVender', tipo === 'particular');
@@ -70,7 +69,7 @@ export default function RegisterScreen() {
 
   const handleRegister = handleSubmit(async (datos) => {
     setErrorServidor('');
-    const { error: authError } = await signUpWithPassword(
+    const { error: authError, necesitaConfirmar } = await signUpWithPassword(
       datos.correo,
       datos.contrasena,
       datos.usuario,
@@ -80,6 +79,12 @@ export default function RegisterScreen() {
 
     if (authError) {
       setErrorServidor(authError.message);
+      return;
+    }
+
+    // Con la confirmación de correo activada en Supabase, la cuenta espera el enlace del correo.
+    if (necesitaConfirmar) {
+      router.replace({ pathname: ROUTES.checkEmail, params: { correo: datos.correo.trim() } });
       return;
     }
 

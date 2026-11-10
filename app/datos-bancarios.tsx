@@ -56,6 +56,7 @@ export default function DatosBancariosScreen() {
     if (titular.trim().length < 3) return setError('Ingresá el nombre del titular de la cuenta.');
     if (!cuitValido(cuit)) return setError('El CUIT/CUIL no es válido.');
     if (!cbuValido(cbu)) return setError('El CBU/CVU no es válido. Revisá los 22 números.');
+    if (banco.trim().length < 2) return setError('Indicá el banco o la billetera virtual de la cuenta.');
     if (alias.trim() && !aliasValido(alias)) return setError('El alias tiene que tener entre 6 y 20 caracteres, sin espacios.');
     try {
       setGuardando(true);
@@ -102,7 +103,7 @@ export default function DatosBancariosScreen() {
             <Campo etiqueta="CUIT / CUIL" valor={cuit} onCambio={setCuit} teclado="number-pad" testID="banco-cuit" maximo={13} />
             <Campo etiqueta="CBU / CVU (22 números)" valor={cbu} onCambio={setCbu} teclado="number-pad" testID="banco-cbu" maximo={26} />
             <Campo etiqueta="Alias (opcional)" valor={alias} onCambio={setAlias} testID="banco-alias" maximo={20} />
-            <Campo etiqueta="Banco o billetera (opcional)" valor={banco} onCambio={setBanco} testID="banco-nombre" />
+            <Campo etiqueta="Banco o billetera virtual" valor={banco} onCambio={setBanco} testID="banco-nombre" />
             {error ? <Text style={styles.error}>{error}</Text> : null}
             <Pressable
               testID="banco-guardar"

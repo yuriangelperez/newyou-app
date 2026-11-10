@@ -145,7 +145,12 @@ export default function AjustesScreen() {
 
         <Text style={styles.sectionTitle}>INFORMACIÓN</Text>
         <View style={styles.card}>
-          <SettingButton title="Política de privacidad" detail="Conocé cómo cuidamos tus datos." styles={styles} />
+          <SettingButton
+            title="Política de privacidad"
+            detail="Conocé cómo cuidamos tus datos."
+            styles={styles}
+            onPress={() => router.push(ROUTES.privacy)}
+          />
           <View style={styles.divider} />
           <SettingButton
             title="Términos y condiciones"

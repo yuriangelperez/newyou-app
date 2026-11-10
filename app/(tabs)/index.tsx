@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar } from "../../components/BottomTabBar";
+import { CampanaAvisos } from "../../components/CampanaAvisos";
 import { ErrorView } from "../../components/ui/ErrorView";
 import { FiltroPrecio } from "../../components/ui/FiltroPrecio";
 import { PanelFiltros } from "../../components/ui/PanelFiltros";
@@ -437,7 +438,9 @@ export default function HomeScreen() {
             tintColor={Colors.textStrong}
             style={styles.logo}
           />
-          <View style={[styles.headerSide, styles.headerRightSide]} />
+          <View style={[styles.headerSide, styles.headerRightSide]}>
+            {usuario ? <CampanaAvisos /> : null}
+          </View>
         </View>
       </View>
 

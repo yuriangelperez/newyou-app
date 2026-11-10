@@ -12,6 +12,7 @@ import {
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DetallePedidoChat } from '../../../components/DetallePedidoChat';
 import { EncabezadoPantalla } from '../../../components/ui/EncabezadoPantalla';
 import { Colors, FontSize, Radius, Spacing } from '../../../constants/theme';
 import {
@@ -113,6 +114,7 @@ export default function ChatPedidoScreen() {
   return (
     <View style={styles.screen}>
       <EncabezadoPantalla titulo={titulo ? String(titulo) : `Pedido #${id}`} />
+      {pedidoId ? <DetallePedidoChat pedidoId={pedidoId} /> : null}
       <KeyboardAvoidingView behavior="padding" style={styles.screen}>
         {mensajes === null ? (
           <ActivityIndicator color={Colors.secondary} style={styles.cargando} />

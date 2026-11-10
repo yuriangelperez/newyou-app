@@ -89,6 +89,9 @@ BEGIN
   IF NOT public.cbu_valido(v_cbu) THEN
     RAISE EXCEPTION 'El CBU/CVU no es válido. Revisá los 22 números.';
   END IF;
+  IF length(btrim(coalesce(p_banco, ''))) < 2 THEN
+    RAISE EXCEPTION 'Indicá el banco o la billetera virtual de la cuenta.';
+  END IF;
   IF p_empresa IS NOT NULL THEN
     SELECT cuit INTO v_cuit_empresa FROM empresas WHERE id = p_empresa;
     IF v_cuit_empresa <> v_cuit THEN
