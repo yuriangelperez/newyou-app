@@ -2,10 +2,12 @@ import {
   calcularComision,
   cancelarPagoMp,
   crearPagoMp,
+  esLinkExterno,
   esPagoOnline,
   medioPermitido,
   pagarConTarjeta,
   resultadoDeRetorno,
+  simularPagoMp,
   tipoTarjeta,
   verificarPagoMp,
 } from '../services/pagosService';
@@ -119,5 +121,67 @@ describe('medioPermitido', () => {
       expect(medioPermitido(medio, 'domicilio')).toBe(true);
       expect(medioPermitido(medio, 'local')).toBe(true);
     }
+  });
+});
+
+describe('esLinkExterno (WebView del Checkout Pro)', () => {
+  it('deja pasar las páginas web de Mercado Pago', () => {
+    expect(esLinkExterno('https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=1')).toBe(false);
+    expect(esLinkExterno('about:blank')).toBe(false);
+  });
+
+  it('frena los links que abrirían la app de Mercado Pago', () => {
+    expect(esLinkExterno('intent://checkout#Intent;scheme=mercadopago;package=com.mercadopago.wallet;end')).toBe(true);
+    expect(esLinkExterno('mercadopago://checkout?pref_id=1')).toBe(true);
+    expect(esLinkExterno('market://details?id=com.mercadopago.wallet')).toBe(true);
+  });
+});
+
+describe('Mercado Pago simulado (versión demo)', () => {
+  beforeEach(() => mockInvoke.mockReset());
+
+  it('manda el resultado elegido a pago-mercadopago', async () => {
+    mockInvoke.mockResolvedValue({ data: { estado: 'aprobado' }, error: null });
+
+    await expect(simularPagoMp(15, 'aprobado')).resolves.toBe('aprobado');
+    expect(mockInvoke).toHaveBeenCalledWith('pago-mercadopago', {
+      body: { accion: 'simular', compraid: 15, resultado: 'aprobado' },
+    });
+  });
+
+  it('un rechazo simulado anula la compra', async () => {
+    mockInvoke.mockResolvedValue({ data: { estado: 'cancelado' }, error: null });
+
+    await expect(simularPagoMp(15, 'rechazado')).resolves.toBe('cancelado');
+  });
+
+  it('muestra el motivo si la simulación está apagada en el servidor', async () => {
+    mockInvoke.mockResolvedValue({
+      data: null,
+      error: { message: 'Edge Function returned a non-2xx status code', context: { json: async () => ({ error: 'El pago simulado está apagado' }) } },
+    });
+
+    await expect(simularPagoMp(15, 'aprobado')).rejects.toThrow('El pago simulado está apagado');
+  });
+});
+
+describe('MP_MODO_DEMO', () => {
+  const original = process.env.EXPO_PUBLIC_MP_MODO;
+  afterEach(() => {
+    if (original === undefined) delete process.env.EXPO_PUBLIC_MP_MODO;
+    else process.env.EXPO_PUBLIC_MP_MODO = original;
+  });
+
+  it('sólo se activa con EXPO_PUBLIC_MP_MODO=demo', () => {
+    process.env.EXPO_PUBLIC_MP_MODO = 'demo';
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      expect(require('../services/pagosService').MP_MODO_DEMO).toBe(true);
+    });
+    delete process.env.EXPO_PUBLIC_MP_MODO;
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      expect(require('../services/pagosService').MP_MODO_DEMO).toBe(false);
+    });
   });
 });

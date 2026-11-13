@@ -16,6 +16,13 @@
       },
       "channel": "preview"
     },
+    "demo": {
+      "extends": "preview",
+      "channel": "demo",
+      "env": {
+        "EXPO_PUBLIC_MP_MODO": "demo"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "android": {

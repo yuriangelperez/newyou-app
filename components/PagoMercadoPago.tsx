@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
 import { Colors, Radius, Spacing } from '../constants/theme';
-import { PagoIniciado, resultadoDeRetorno, RetornoPago } from '../services/pagosService';
+import { esLinkExterno, PagoIniciado, resultadoDeRetorno, RetornoPago } from '../services/pagosService';
 
 interface PagoMercadoPagoProps {
   pago: PagoIniciado | null;
@@ -71,7 +71,14 @@ export function PagoMercadoPago({ pago, verificando, onRetorno, onCancelar }: Pa
             style={styles.web}
             startInLoadingState
             setSupportMultipleWindows={false}
+            // Con la lista por defecto el WebView abre con Linking los links que no son http(s)
+            // (intent://, mercadopago://) y salta a la app de Mercado Pago, que usa la cuenta real
+            // del celular: con credenciales de prueba el pago siempre falla. Se filtran abajo.
+            originWhitelist={['*']}
             onShouldStartLoadWithRequest={(pedido) => {
+              if (esLinkExterno(pedido.url)) {
+                return false;
+              }
               const resultado = resultadoDeRetorno(pedido.url, pago.retorno);
               if (resultado) {
                 onRetorno(resultado);
