@@ -8,7 +8,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import Toast, { BaseToast, ToastConfig } from 'react-native-toast-message';
 
 import { AvisoSinConexion } from '../components/AvisoSinConexion';
-import { BannerDemo } from '../components/BannerDemo';
+import { AvisoVersionDemo } from '../components/BannerDemo';
 import { BarraNavegacionWeb } from '../components/BarraNavegacionWeb';
 import { TarjetaBienvenida } from '../components/TarjetaBienvenida';
 import { Colors, esModoOscuro, EstiloBarraEstado } from '../constants/theme';
@@ -65,8 +65,8 @@ export default function RootLayout() {
     Montserrat_700Bold: require('@expo-google-fonts/montserrat/700Bold/Montserrat_700Bold.ttf'),
   });
 
-  // Sin sesión la tarjeta la muestra el login en cada inicio. Con una sesión guardada la app
-  // salta el login, así que acá aparece sólo la primera vez en el dispositivo.
+  // La tarjeta sale sólo la primera vez en el dispositivo: sin sesión la muestra el login y,
+  // con una sesión guardada (la app salta el login), se muestra acá.
   useEffect(() => {
     void bienvenidaVista().then((vista) => setMostrarBienvenida(!vista));
   }, []);
@@ -178,8 +178,7 @@ export default function RootLayout() {
       <KeyboardProvider>
        <ThemeProvider value={temaNavegacion}>
         <StatusBar style={EstiloBarraEstado} />
-        {/* Web demo de la presentación: aviso y botón para bajar el APK. */}
-        <BannerDemo />
+        <AvisoVersionDemo />
         {esEscritorio && haySesion && segments[0] !== '(auth)' ? <BarraNavegacionWeb /> : null}
         {/* Guardia de rutas (Stack.Protected): sin sesión sólo existen las pantallas de
             (auth) y la app abre en el login; con sesión, (auth) desaparece y abre el inicio. */}

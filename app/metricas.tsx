@@ -15,6 +15,7 @@ import {
   agruparIngresos,
   AgrupacionIngresos,
   barrasPorHora,
+  completarSemana,
   diasDelRango,
   etiquetaRango,
   fechaArgentina,
@@ -42,37 +43,109 @@ const LEYENDAS: Record<AgrupacionIngresos, string> = {
   mes: "Ingresos por mes",
 };
 
+/** Monto corto para el eje y las etiquetas: $1,2M, $650k, $900. */
+export const formatCorto = (valor: number) => {
+  if (valor >= 1_000_000) {
+    const millones = valor / 1_000_000;
+    const texto = millones >= 10 || Number.isInteger(millones) ? String(Math.round(millones)) : millones.toFixed(1).replace(".", ",");
+    return `$${texto}M`;
+  }
+  if (valor >= 1_000) {
+    return `$${Math.round(valor / 1_000)}k`;
+  }
+  return `$${Math.round(valor)}`;
+};
+
+/**
+ * Tope del eje: un poco más que el máximo, elegido para que cada cuarto (las 4 líneas guía)
+ * caiga en un monto redondo ($200k, $400k, $600k, $800k).
+ */
+const topeDelEje = (mayor: number) => {
+  if (mayor <= 0) return 1;
+  const cuarto = (mayor * 1.08) / 4;
+  const magnitud = 10 ** Math.floor(Math.log10(cuarto));
+  const redondo = [1, 2, 2.5, 3, 4, 5, 10].find((n) => n * magnitud >= cuarto) ?? 10;
+  return redondo * magnitud * 4;
+};
+
+/** Líneas guía del gráfico, de arriba (100 %) a la base (0 %). */
+const LINEAS = [1, 0.75, 0.5, 0.25, 0];
+
 /** Ingresos como barras; cómo se dividen depende del período (hoy por hora, semana por día, mes por semana, año por mes). */
 function GraficoIngresos({
   metricas,
   agrupacion,
+  semanaCompleta,
 }: {
   metricas: MetricasVentas;
   agrupacion: AgrupacionIngresos;
+  /** "Esta semana": siempre de lunes a domingo, aunque todavía no hayan pasado todos los días. */
+  semanaCompleta: boolean;
 }) {
   // Sin la migración 20 no hay datos por hora: se muestra el día completo en una sola barra.
   const sinHoras = agrupacion === "hora" && metricas.porHora.length === 0;
   const modo = sinHoras ? "dia" : agrupacion;
-  const barras = useMemo(
-    () => (modo === "hora" ? barrasPorHora(metricas.porHora) : agruparIngresos(metricas.porDia, modo)),
-    [metricas.porDia, metricas.porHora, modo],
-  );
+  const barras = useMemo(() => {
+    if (modo === "hora") return barrasPorHora(metricas.porHora);
+    const dias = semanaCompleta && modo === "dia" ? completarSemana(metricas.porDia) : metricas.porDia;
+    return agruparIngresos(dias, modo);
+  }, [metricas.porDia, metricas.porHora, modo, semanaCompleta]);
   const mayor = Math.max(...barras.map((b) => b.ingresos), 0);
-  const maximo = mayor || 1;
-  const cadaCuanto = modo === "hora" ? 3 : Math.ceil(barras.length / 6);
+  const tope = topeDelEje(mayor);
+  const cadaCuanto = modo === "hora" ? 3 : Math.ceil(barras.length / 7);
+  // Con pocas barras se escribe el monto arriba de cada una.
+  const conMontos = barras.length <= 12;
+
+  if (mayor <= 0) {
+    return (
+      <View style={grafico.wrapper}>
+        <View style={grafico.vacio}>
+          <Ionicons name="bar-chart-outline" size={28} color={Colors.textMuted} />
+          <Text style={grafico.vacioTexto}>Sin ventas en el período</Text>
+        </View>
+        <Text style={grafico.leyenda}>{LEYENDAS[modo]}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={grafico.wrapper}>
-      <Text style={grafico.maximo}>{mayor > 0 ? `Máximo: ${formatPrecio(mayor)}` : "Sin ventas en el período"}</Text>
-      <View style={grafico.area}>
-        {barras.map((barra, i) => (
-          <View key={`${barra.etiqueta}-${i}`} style={grafico.columna}>
-            <View
-              accessibilityLabel={`${barra.etiqueta}: ${formatPrecio(barra.ingresos)}`}
-              style={[grafico.barra, { height: `${(barra.ingresos / maximo) * 100}%` }]}
-            />
+      <View style={grafico.cuerpo}>
+        <View style={grafico.ejeY}>
+          {LINEAS.map((linea) => (
+            <Text key={linea} style={[grafico.ejeYTexto, { top: `${(1 - linea) * 100}%` }]}>
+              {formatCorto(tope * linea)}
+            </Text>
+          ))}
+        </View>
+        <View style={grafico.zona}>
+          {LINEAS.map((linea) => (
+            <View key={linea} style={[grafico.linea, linea === 0 && grafico.lineaBase, { top: `${(1 - linea) * 100}%` }]} />
+          ))}
+          <View style={grafico.barras}>
+            {barras.map((barra, i) => {
+              const esMayor = barra.ingresos === mayor;
+              return (
+                <View key={`${barra.etiqueta}-${i}`} style={grafico.columna}>
+                  {conMontos && barra.ingresos > 0 ? (
+                    <Text style={[grafico.monto, esMayor && grafico.montoMayor]} numberOfLines={1}>
+                      {formatCorto(barra.ingresos)}
+                    </Text>
+                  ) : null}
+                  <View
+                    accessibilityLabel={`${barra.etiqueta}: ${formatPrecio(barra.ingresos)}`}
+                    style={[
+                      grafico.barra,
+                      !conMontos && grafico.barraFina,
+                      esMayor && grafico.barraMayor,
+                      { height: barra.ingresos > 0 ? `${Math.max((barra.ingresos / tope) * 100, 1.5)}%` : 0 },
+                    ]}
+                  />
+                </View>
+              );
+            })}
           </View>
-        ))}
+        </View>
       </View>
       <View style={grafico.ejeX}>
         {barras.map((barra, i) => (
@@ -237,7 +310,11 @@ export default function MetricasScreen() {
             </Text>
 
             <View style={styles.card}>
-              <GraficoIngresos metricas={metricas} agrupacion={agrupacionDelPeriodo(periodo, diasDelRango(rango))} />
+              <GraficoIngresos
+                metricas={metricas}
+                agrupacion={agrupacionDelPeriodo(periodo, diasDelRango(rango))}
+                semanaCompleta={periodo === "semana"}
+              />
             </View>
 
             <Text style={styles.sectionTitle}>Más vendidos</Text>
@@ -303,20 +380,48 @@ const local = StyleSheet.create({
   kpiValor: { color: Colors.primary, fontSize: FontSize.xl, fontFamily: "Montserrat_700Bold" },
 });
 
+const ANCHO_EJE_Y = 44;
+const SEPARACION = 6;
+
 const grafico = StyleSheet.create({
-  wrapper: { rowGap: Spacing.xs },
-  maximo: { color: Colors.textMuted, fontSize: FontSize.xs, fontFamily: "Montserrat_500Medium" },
-  area: {
-    height: 140,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    columnGap: 2,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+  wrapper: { rowGap: Spacing.sm },
+  cuerpo: { flexDirection: "row", height: 190, paddingTop: 18 },
+  ejeY: { width: ANCHO_EJE_Y },
+  ejeYTexto: {
+    position: "absolute",
+    right: 8,
+    marginTop: -7,
+    color: Colors.textMuted,
+    fontSize: 10,
+    fontFamily: "Montserrat_500Medium",
   },
-  columna: { flex: 1, height: "100%", justifyContent: "flex-end" },
-  barra: { backgroundColor: Colors.secondary, borderTopLeftRadius: 2, borderTopRightRadius: 2, minHeight: 1 },
-  ejeX: { flexDirection: "row", columnGap: 2 },
-  etiqueta: { flex: 1, color: Colors.textMuted, fontSize: 9, fontFamily: "Montserrat_500Medium", overflow: "visible" },
+  zona: { flex: 1 },
+  linea: { position: "absolute", left: 0, right: 0, height: 1, backgroundColor: Colors.border, opacity: 0.5 },
+  lineaBase: { opacity: 1 },
+  barras: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, flexDirection: "row", alignItems: "flex-end", columnGap: SEPARACION },
+  columna: { flex: 1, height: "100%", justifyContent: "flex-end", alignItems: "center" },
+  monto: { color: Colors.textMuted, fontSize: 10, marginBottom: 4, fontFamily: "Montserrat_500Medium" },
+  montoMayor: { color: Colors.primary, fontFamily: "Montserrat_700Bold" },
+  barra: {
+    width: "62%",
+    maxWidth: 46,
+    backgroundColor: Colors.secondary,
+    opacity: 0.7,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  barraFina: { width: "72%", borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  barraMayor: { opacity: 1 },
+  ejeX: { flexDirection: "row", columnGap: SEPARACION, marginLeft: ANCHO_EJE_Y },
+  etiqueta: {
+    flex: 1,
+    textAlign: "center",
+    color: Colors.textMuted,
+    fontSize: 10,
+    fontFamily: "Montserrat_500Medium",
+    overflow: "visible",
+  },
   leyenda: { color: Colors.textMuted, fontSize: FontSize.sm, fontFamily: "Montserrat_500Medium" },
+  vacio: { height: 160, alignItems: "center", justifyContent: "center", rowGap: Spacing.xs },
+  vacioTexto: { color: Colors.textMuted, fontSize: FontSize.sm, fontFamily: "Montserrat_500Medium" },
 });

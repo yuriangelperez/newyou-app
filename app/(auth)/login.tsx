@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
@@ -15,8 +15,9 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import { TarjetaBienvenida } from '../../components/TarjetaBienvenida';
-import { marcarBienvenidaVista } from '../../services/bienvenidaService';
+import { bienvenidaVista, marcarBienvenidaVista } from '../../services/bienvenidaService';
 import { BRANDING_LOGO } from '../../constants/assets';
+import { CuentaInvitado, CUENTAS_INVITADO, INVITADO_DISPONIBLE } from '../../constants/demo';
 import { ROUTES } from '../../constants/routes';
 import { Colors, Radius, Shadow } from '../../constants/theme';
 import { useEsEscritorio } from '../../hooks/useEsEscritorio';
@@ -24,17 +25,20 @@ import { LoginForm, loginSchema } from '../../schemas/authSchemas';
 import { signInWithPassword } from '../../services/auth';
 import { obtenerMisEmpresas } from '../../services/empresasService';
 
-// Vive mientras la app está abierta: al cerrar sesión no vuelve a salir la tarjeta.
-let bienvenidaMostradaEnEsteInicio = false;
-
 export default function LoginScreen() {
   const router = useRouter();
   // En la web de escritorio el formulario va en una tarjeta centrada.
   const esEscritorio = useEsEscritorio();
   const [errorServidor, setErrorServidor] = useState('');
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
-  // Cada vez que la app abre en el login aparece la tarjeta de bienvenida (una vez por inicio).
-  const [mostrarBienvenida, setMostrarBienvenida] = useState(() => !bienvenidaMostradaEnEsteInicio);
+  const [elegirInvitado, setElegirInvitado] = useState(false);
+  const [entrandoInvitado, setEntrandoInvitado] = useState<CuentaInvitado['tipo'] | null>(null);
+  // La tarjeta de bienvenida sale sólo la primera vez que se abre la app en el dispositivo
+  // (queda guardado al cerrarla). Después se puede volver a ver con "¿Qué es New You?".
+  const [mostrarBienvenida, setMostrarBienvenida] = useState(false);
+  useEffect(() => {
+    void bienvenidaVista().then((vista) => setMostrarBienvenida(!vista));
+  }, []);
   // RHF + Zod (Clase 8): se valida en el cliente antes de llamar a Supabase.
   const {
     control,
@@ -45,7 +49,7 @@ export default function LoginScreen() {
     defaultValues: { identificador: '', contrasena: '' },
   });
   const error = errors.identificador?.message ?? errors.contrasena?.message ?? errorServidor;
-  const cargando = isSubmitting;
+  const cargando = isSubmitting || entrandoInvitado !== null;
 
   const goToHome = handleSubmit(async ({ identificador, contrasena }) => {
     setErrorServidor('');
@@ -74,6 +78,22 @@ export default function LoginScreen() {
 
     router.replace(ROUTES.home);
   });
+
+  // Versión demo: entra con la cuenta compartida que eligió (constants/demo.ts).
+  const entrarComoInvitado = async (cuenta: CuentaInvitado) => {
+    setErrorServidor('');
+    setEntrandoInvitado(cuenta.tipo);
+    try {
+      const { error: authError } = await signInWithPassword(cuenta.correo, cuenta.contrasena);
+      if (authError) {
+        setErrorServidor('No se pudo entrar como invitado. Probá registrarte.');
+        return;
+      }
+      router.replace(ROUTES.home);
+    } finally {
+      setEntrandoInvitado(null);
+    }
+  };
 
   const goToRegister = () => {
     router.push(ROUTES.register);
@@ -173,7 +193,39 @@ export default function LoginScreen() {
           disabled={cargando}>
           <Text style={styles.buttonText}>REGISTRARSE</Text>
         </TouchableOpacity>
+
+        {INVITADO_DISPONIBLE && !elegirInvitado ? (
+          <TouchableOpacity
+            testID="login-invitado"
+            style={styles.guestButton}
+            onPress={() => setElegirInvitado(true)}
+            disabled={cargando}>
+            <Text style={styles.guestText}>ENTRAR COMO INVITADO</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
+
+      {INVITADO_DISPONIBLE && elegirInvitado ? (
+        <View style={styles.guestPanel} testID="login-invitado-opciones">
+          <Text style={styles.guestTitle}>¿Cómo querés probar New You?</Text>
+          {CUENTAS_INVITADO.map((cuenta) => (
+            <TouchableOpacity
+              key={cuenta.tipo}
+              testID={`login-invitado-${cuenta.tipo}`}
+              style={styles.guestOption}
+              onPress={() => void entrarComoInvitado(cuenta)}
+              disabled={cargando}>
+              <Text style={styles.guestOptionTitle}>
+                {entrandoInvitado === cuenta.tipo ? 'ENTRANDO...' : cuenta.etiqueta}
+              </Text>
+              <Text style={styles.guestOptionDetail}>{cuenta.detalle}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity onPress={() => setElegirInvitado(false)} disabled={cargando}>
+            <Text style={styles.guestCancel}>Volver</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       <TouchableOpacity onPress={() => router.push(ROUTES.forgotPassword)}>
         <Text style={styles.resetText}>¿OLVIDASTE TU CONTRASEÑA?</Text>
@@ -186,7 +238,6 @@ export default function LoginScreen() {
       <TarjetaBienvenida
         visible={mostrarBienvenida}
         onCerrar={() => {
-          bienvenidaMostradaEnEsteInicio = true;
           setMostrarBienvenida(false);
           void marcarBienvenidaVista();
         }}
@@ -311,6 +362,50 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  guestButton: {
+    width: '100%',
+    height: 46,
+    borderRadius: Radius.md,
+    borderWidth: 2,
+    borderColor: Colors.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  guestPanel: {
+    width: '85%',
+    maxWidth: 400,
+    gap: 10,
+    marginBottom: 30,
+  },
+  guestTitle: {
+    color: Colors.primary,
+    fontSize: 15,
+    textAlign: 'center',
+    fontFamily: 'Montserrat_700Bold',
+  },
+  guestOption: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.secondary,
+    backgroundColor: Colors.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  guestOptionTitle: { color: Colors.secondary, fontSize: 16, fontFamily: 'Montserrat_700Bold' },
+  guestOptionDetail: { color: Colors.textMuted, fontSize: 12, marginTop: 2, fontFamily: 'Montserrat_400Regular' },
+  guestCancel: {
+    color: Colors.primary,
+    fontSize: 14,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+    fontFamily: 'Montserrat_500Medium',
+  },
+  guestText: {
+    fontSize: 16,
+    color: Colors.secondary,
+    textAlign: 'center',
+    fontFamily: 'Montserrat_700Bold',
   },
   buttonText: {
     fontSize: 20,

@@ -13,6 +13,9 @@
 // Titular de prueba → resultado: APRO aprobado · FUND sin fondos · SECU código incorrecto ·
 // CONT pendiente · OTHE rechazado. Cualquier otro nombre se aprueba.
 // Nunca se guarda el número completo ni el CVV: sólo la marca y los últimos 4 dígitos.
+//
+// Versión demo (secreto MP_MODO_DEMO=true, el mismo del Mercado Pago simulado): sólo se
+// aceptan las tarjetas de prueba, para que nadie cargue una tarjeta real en la presentación.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { registrarPago } from '../_shared/mercadopago.ts';
@@ -20,6 +23,7 @@ import {
   calcularCuotas,
   type DatosTarjeta,
   detectarMarca,
+  esTarjetaDePrueba,
   soloDigitos,
   validarTarjeta,
 } from '../_shared/tarjeta.ts';
@@ -100,6 +104,13 @@ Deno.serve(async (req) => {
     );
     const primerError = Object.values(errores)[0];
     if (primerError) return respuesta({ estado: 'rechazado', detalle: primerError });
+
+    if (Deno.env.get('MP_MODO_DEMO') === 'true' && !esTarjetaDePrueba(datos.numero)) {
+      return respuesta({
+        estado: 'rechazado',
+        detalle: 'En la versión demo sólo se aceptan tarjetas de prueba. No uses una tarjeta real.',
+      });
+    }
 
     const resultado = RESULTADOS[datos.titular.trim().toUpperCase()] ?? RESULTADOS.APRO;
     const operacion = `NY-TAR-${crypto.randomUUID()}`;
