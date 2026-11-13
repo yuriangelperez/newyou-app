@@ -162,6 +162,22 @@ export function agruparIngresos(
     }));
 }
 
+/**
+ * "Esta semana" se muestra de lunes a domingo: agrega en 0 los días que faltan (los que todavía
+ * no pasaron) para que el gráfico tenga siempre las 7 barras.
+ */
+export function completarSemana(porDia: { dia: string; ingresos: number }[]): { dia: string; ingresos: number }[] {
+  if (porDia.length === 0) return porDia;
+  const ingresosPorDia = new Map(porDia.map((d) => [d.dia, d.ingresos]));
+  const lunes = new Date(`${lunesDe(porDia[0].dia)}T00:00:00Z`);
+  return Array.from({ length: 7 }, (_, i) => {
+    const fecha = new Date(lunes);
+    fecha.setUTCDate(lunes.getUTCDate() + i);
+    const dia = fecha.toISOString().slice(0, 10);
+    return { dia, ingresos: ingresosPorDia.get(dia) ?? 0 };
+  });
+}
+
 /** Las 24 horas del día: "00h", "01h"... */
 export function barrasPorHora(porHora: { hora: number; ingresos: number }[]): BarraIngresos[] {
   return porHora.map((h) => ({ etiqueta: `${dosCifras(h.hora)}h`, ingresos: h.ingresos }));

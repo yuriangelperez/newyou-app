@@ -1,4 +1,4 @@
-import { diasDelRango, etiquetaRango, rangoPredefinido, validarRango } from '../utils/rangoFechas';
+import { completarSemana, diasDelRango, etiquetaRango, rangoPredefinido, validarRango } from '../utils/rangoFechas';
 
 // Lunes 27 de octubre de 2026, a la tarde.
 const HOY = new Date(2026, 9, 27, 18, 30);
@@ -52,5 +52,18 @@ describe('etiquetaRango', () => {
   it('muestra un día o el rango completo', () => {
     expect(etiquetaRango({ desde: '2026-10-27', hasta: '2026-10-27' })).toBe('27/10/2026');
     expect(etiquetaRango({ desde: '2026-10-01', hasta: '2026-10-27' })).toBe('01/10/2026 al 27/10/2026');
+  });
+});
+
+describe('completarSemana', () => {
+  it('muestra los 7 días de lunes a domingo, con 0 en los que todavía no pasaron', () => {
+    const semana = completarSemana([
+      { dia: '2026-11-09', ingresos: 100 },
+      { dia: '2026-11-13', ingresos: 500 },
+    ]);
+    expect(semana.map((d) => d.dia)).toEqual([
+      '2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15',
+    ]);
+    expect(semana.map((d) => d.ingresos)).toEqual([100, 0, 0, 0, 500, 0, 0]);
   });
 });

@@ -14,6 +14,7 @@ import Toast from "react-native-toast-message";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar } from "../../components/BottomTabBar";
+import { esCuentaInvitado } from "../../constants/demo";
 import { ROUTES } from "../../constants/routes";
 import { Colors, EstiloBarraEstado, Radius, Shadow } from "../../constants/theme";
 import { supabase } from "../../services/supabase";
@@ -30,6 +31,8 @@ export default function PerfilScreen() {
   const totalItems = useCarritoStore(selectTotalItems);
   const setUsuario = useUsuarioStore((state) => state.setUsuario);
   const esVendedor = usePuedeVender();
+  // Versión demo: las cuentas de invitado son compartidas y no cambian de tipo.
+  const esInvitado = esCuentaInvitado(usuario?.email);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const canvasWidth = Math.min(width, 412);
@@ -146,7 +149,7 @@ export default function PerfilScreen() {
     : puede(empresaActiva, "pedidos.ver")
       ? // Por ejemplo, el rol Envíos: no publica, pero gestiona los pedidos de la empresa.
         [fila("receipt-outline", `Ventas de ${empresaActiva?.nombre}`, () => router.push(ROUTES.mySales))]
-      : usuario?.role === "comprador" && !esPropietario
+      : usuario?.role === "comprador" && !esPropietario && !esInvitado
         ? [
             fila("storefront-outline", "Quiero vender prendas", () => void convertirseEnVendedor(), {
               destacada: true,
@@ -196,7 +199,7 @@ export default function PerfilScreen() {
 
         <Text style={styles.sectionTitle}>Mi cuenta</Text>
         <View style={styles.card}>
-          {fila("create-outline", "Editar perfil", () => router.push(ROUTES.editProfile))}
+          {esInvitado ? null : fila("create-outline", "Editar perfil", () => router.push(ROUTES.editProfile))}
           {fila("bag-handle-outline", "Mis compras", () => router.push(ROUTES.myPurchases))}
           {fila("star-outline", "Favoritos", () => router.push(ROUTES.favorites))}
           {fila("location-outline", "Direcciones", () => router.push(ROUTES.addresses))}
@@ -210,7 +213,19 @@ export default function PerfilScreen() {
           </>
         ) : null}
 
-        {usuario ? (
+        {usuario && esInvitado ? (
+          <>
+            <Text style={styles.sectionTitle}>Cuenta de invitado</Text>
+            <View style={styles.card}>
+              <Text style={styles.helper} testID="perfil-aviso-invitado">
+                Es una cuenta de prueba compartida, por eso no se puede cambiar de tipo. Para probar otra forma de
+                usar New You, cerrá sesión y entrá como invitado eligiendo comprador, vendedor particular o empresa.
+              </Text>
+            </View>
+          </>
+        ) : null}
+
+        {usuario && !(esInvitado && membresias.length === 0) ? (
           <>
             <Text style={styles.sectionTitle}>Modo empresa</Text>
             <View style={styles.card}>
@@ -234,7 +249,7 @@ export default function PerfilScreen() {
                     )}
                   </View>
                 </View>
-              ) : membresias.length === 0 ? (
+              ) : membresias.length === 0 && !esInvitado ? (
                 <Text style={styles.helper}>Vendé como tienda, con sedes y equipo.</Text>
               ) : null}
               {empresaActiva
@@ -242,8 +257,10 @@ export default function PerfilScreen() {
                     destacada: true,
                   })
                 : null}
-              {fila("add-circle-outline", "Crear empresa", () => router.push(ROUTES.newCompany))}
-              {fila("key-outline", "Tengo un código de invitación", () => router.push(ROUTES.invitation))}
+              {esInvitado ? null : fila("add-circle-outline", "Crear empresa", () => router.push(ROUTES.newCompany))}
+              {esInvitado
+                ? null
+                : fila("key-outline", "Tengo un código de invitación", () => router.push(ROUTES.invitation))}
             </View>
           </>
         ) : null}

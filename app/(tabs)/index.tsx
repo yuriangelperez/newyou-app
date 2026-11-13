@@ -17,13 +17,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar } from "../../components/BottomTabBar";
+import { HeroCarrusel } from "../../components/HeroCarrusel";
 import { CampanaAvisos } from "../../components/CampanaAvisos";
 import { ErrorView } from "../../components/ui/ErrorView";
 import { FiltroPrecio } from "../../components/ui/FiltroPrecio";
 import { PanelFiltros } from "../../components/ui/PanelFiltros";
 import { SkeletonList } from "../../components/ui/SkeletonList";
 import TarjetaProducto from "../../components/TarjetaProducto";
-import { BRANDING_LOGO, HOME_HERO_IMAGES } from "../../constants/assets";
+import { BRANDING_LOGO } from "../../constants/assets";
 import { normalizarPublicos, PUBLICOS } from "../../constants/categoriasProductos";
 import { ROUTES } from "../../constants/routes";
 import { Colors, EstiloBarraEstado } from "../../constants/theme";
@@ -116,7 +117,6 @@ export default function HomeScreen() {
     ? Math.min(Math.round(bannerWidth * 0.32), 290)
     : 150;
 
-  const heroScrollRef = useRef<ScrollView>(null);
 
   const styles = useMemo(
     () =>
@@ -193,7 +193,6 @@ export default function HomeScreen() {
   useEffect(() => {
     void cargarHistorial();
   }, [cargarHistorial]);
-  const [heroIndex, setHeroIndex] = useState(0);
   const [searchText, setSearchText] = useState("");
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
   const addedTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>(
@@ -561,48 +560,13 @@ export default function HomeScreen() {
               </View>
 
               <View style={styles.heroOuter}>
-                <View style={styles.heroContainer}>
-                  <ScrollView
-                    ref={heroScrollRef}
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    bounces={false}
-                    onMomentumScrollEnd={(event) => {
-                      const nextIndex = Math.round(
-                        event.nativeEvent.contentOffset.x / bannerWidth,
-                      );
-                      setHeroIndex(nextIndex);
-                    }}
-                  >
-                    {HOME_HERO_IMAGES.map((image, index) => (
-                      <Image
-                        key={index}
-                        source={image}
-                        style={styles.heroImage}
-                      />
-                    ))}
-                  </ScrollView>
-                  <View style={styles.heroDots}>
-                    {HOME_HERO_IMAGES.map((_, index) => (
-                      <Pressable
-                        key={index}
-                        accessibilityLabel={`Ir a la imagen ${index + 1}`}
-                        onPress={() => {
-                          heroScrollRef.current?.scrollTo({
-                            x: index * bannerWidth,
-                            animated: true,
-                          });
-                          setHeroIndex(index);
-                        }}
-                        style={[
-                          styles.heroDot,
-                          index === heroIndex && styles.heroDotActive,
-                        ]}
-                      />
-                    ))}
-                  </View>
-                </View>
+                <HeroCarrusel
+                  ancho={bannerWidth}
+                  alto={bannerHeight}
+                  escritorio={isDesktop}
+                  onElegirTag={setSelectedTag}
+                  onPublicar={() => router.push(ROUTES.newProduct)}
+                />
               </View>
 
               <View style={styles.filtrosFila}>
@@ -899,37 +863,6 @@ function createStyles({
       width: "100%",
       alignItems: "center",
       paddingHorizontal: isDesktop ? horizontalPadding : 0,
-    },
-    heroContainer: {
-      width: bannerWidth,
-      height: bannerHeight,
-      backgroundColor: Colors.secondary,
-      overflow: "hidden",
-      borderRadius: isDesktop ? s(14) : 0,
-      position: "relative",
-    },
-    heroImage: {
-      width: bannerWidth,
-      height: bannerHeight,
-      resizeMode: "cover",
-    },
-    heroDots: {
-      position: "absolute",
-      bottom: s(10),
-      alignSelf: "center",
-      flexDirection: "row",
-      columnGap: s(6),
-      zIndex: 10,
-    },
-    heroDot: {
-      width: s(8),
-      height: s(8),
-      borderRadius: s(4),
-      backgroundColor: "rgba(255, 255, 255, 0.5)",
-    },
-    heroDotActive: {
-      backgroundColor: "#FFFFFF",
-      width: s(18),
     },
     listWrapper: {
       flex: 1,

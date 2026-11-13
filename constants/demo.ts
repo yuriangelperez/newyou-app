@@ -34,23 +34,33 @@ export const CUENTAS_INVITADO: CuentaInvitado[] = [
     tipo: 'comprador',
     etiqueta: 'Comprador',
     detalle: 'Explorá, guardá favoritos y comprá.',
-    correo: process.env.EXPO_PUBLIC_DEMO_COMPRADOR_CORREO || 'newyou.testing+comprador@gmail.com',
-    contrasena: process.env.EXPO_PUBLIC_DEMO_COMPRADOR_CONTRASENA || 'Comprador1',
+    correo: process.env.EXPO_PUBLIC_DEMO_COMPRADOR_CORREO || 'newyou.testing+compradordemo@gmail.com',
+    contrasena: process.env.EXPO_PUBLIC_DEMO_COMPRADOR_CONTRASENA || 'Demo123',
   },
   {
     tipo: 'particular',
     etiqueta: 'Vendedor particular',
     detalle: 'Publicá prendas y mirá tus ventas.',
-    correo: process.env.EXPO_PUBLIC_DEMO_PARTICULAR_CORREO || 'newyou.testing+vendedor@gmail.com',
-    contrasena: process.env.EXPO_PUBLIC_DEMO_PARTICULAR_CONTRASENA || 'Vendedor1',
+    correo: process.env.EXPO_PUBLIC_DEMO_PARTICULAR_CORREO || 'newyou.testing+vendedordemo@gmail.com',
+    contrasena: process.env.EXPO_PUBLIC_DEMO_PARTICULAR_CONTRASENA || 'Demo123',
   },
   {
     tipo: 'empresa',
     etiqueta: 'Empresa',
     detalle: 'Tienda, sedes, equipo y métricas.',
-    correo: process.env.EXPO_PUBLIC_DEMO_EMPRESA_CORREO || 'newyou.testing+empresa@gmail.com',
-    contrasena: process.env.EXPO_PUBLIC_DEMO_EMPRESA_CONTRASENA || 'Empresa1',
+    correo: process.env.EXPO_PUBLIC_DEMO_EMPRESA_CORREO || 'newyou.testing+empresademo@gmail.com',
+    contrasena: process.env.EXPO_PUBLIC_DEMO_EMPRESA_CONTRASENA || 'Demo123',
   },
 ].filter((cuenta) => cuenta.correo !== '' && cuenta.contrasena !== '') as CuentaInvitado[];
 
 export const INVITADO_DISPONIBLE = MP_MODO_DEMO && CUENTAS_INVITADO.length > 0;
+
+/**
+ * Cuenta compartida del botón "Entrar como invitado". En éstas no se ofrece cambiar el tipo de
+ * cuenta ni crear o unirse a una empresa, así la cuenta queda igual para el próximo que la use.
+ */
+export function esCuentaInvitado(correo?: string | null) {
+  if (!INVITADO_DISPONIBLE || !correo) return false;
+  const buscado = correo.trim().toLowerCase();
+  return CUENTAS_INVITADO.some((cuenta) => cuenta.correo.trim().toLowerCase() === buscado);
+}

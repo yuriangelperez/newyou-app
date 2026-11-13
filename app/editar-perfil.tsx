@@ -11,7 +11,8 @@ import { estilosFormulario as styles } from "../constants/estilosFormulario";
 import { Colors } from "../constants/theme";
 import { PerfilForm, perfilSchema, USUARIO_MAX } from "../schemas/authSchemas";
 import { traducirError } from "../services/erroresSupabase";
-import { actualizarPerfil } from "../services/perfilService";
+import { esCuentaInvitado } from "../constants/demo";
+import { actualizarPerfil, MENSAJE_INVITADO } from "../services/perfilService";
 import { supabase } from "../services/supabase";
 import { useUsuarioStore } from "../stores/useUsuarioStore";
 
@@ -20,6 +21,8 @@ export default function EditarPerfilScreen() {
   const router = useRouter();
   const usuario = useUsuarioStore((state) => state.usuario);
   const hidratarDesdeAuthUser = useUsuarioStore((state) => state.hidratarDesdeAuthUser);
+  // Versión demo: la cuenta de invitado se ve pero no se edita.
+  const bloqueado = esCuentaInvitado(usuario?.email);
   const [errorServidor, setErrorServidor] = useState("");
 
   const {
@@ -56,6 +59,11 @@ export default function EditarPerfilScreen() {
       <EncabezadoPantalla titulo="EDITAR PERFIL" />
       <KeyboardAwareScrollView bottomOffset={24} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
+          {bloqueado ? (
+            <Text style={styles.muted} testID="perfil-bloqueado">
+              {MENSAJE_INVITADO}
+            </Text>
+          ) : null}
           <Text style={styles.label}>Nombre de usuario</Text>
           <Controller
             control={control}
@@ -63,6 +71,7 @@ export default function EditarPerfilScreen() {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 testID="perfil-usuario"
+                editable={!bloqueado}
                 value={value}
                 onBlur={onBlur}
                 onChangeText={(texto) => {
@@ -87,6 +96,7 @@ export default function EditarPerfilScreen() {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 testID="perfil-correo"
+                editable={!bloqueado}
                 value={value}
                 onBlur={onBlur}
                 onChangeText={(texto) => {
@@ -108,9 +118,9 @@ export default function EditarPerfilScreen() {
 
           <Pressable
             testID="perfil-guardar"
-            disabled={isSubmitting || !isDirty}
+            disabled={bloqueado || isSubmitting || !isDirty}
             onPress={() => void onGuardar()}
-            style={[styles.saveButton, (isSubmitting || !isDirty) && styles.disabled]}>
+            style={[styles.saveButton, (bloqueado || isSubmitting || !isDirty) && styles.disabled]}>
             {isSubmitting ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.saveText}>Guardar cambios</Text>}
           </Pressable>
         </View>

@@ -1,3 +1,4 @@
+import { esCuentaInvitado } from '../constants/demo';
 import { usuarioDisponible } from './auth';
 import { errorTraducido } from './erroresSupabase';
 import { supabase } from './supabase';
@@ -50,6 +51,9 @@ export async function guardarPreferencias(cambios: Partial<Preferencias>) {
   }
 }
 
+export const MENSAJE_INVITADO =
+  'Es una cuenta de prueba compartida: en la versión demo no se pueden cambiar sus datos.';
+
 export interface ResultadoPerfil {
   /** Cambió el correo: Supabase manda un enlace de confirmación a la dirección nueva. */
   correoPendiente: boolean;
@@ -58,6 +62,10 @@ export interface ResultadoPerfil {
 /** Cambia el nombre de usuario y, si es distinto, el correo (queda pendiente de confirmar). */
 export async function actualizarPerfil({ usuario, correo }: { usuario: string; correo: string }): Promise<ResultadoPerfil> {
   const user = await usuarioActual();
+  // Versión demo: las cuentas de invitado son compartidas y no se editan.
+  if (esCuentaInvitado(user.email)) {
+    throw new Error(MENSAJE_INVITADO);
+  }
   const nombre = usuario.trim();
   const email = correo.trim().toLowerCase();
   const nombreActual = String(user.user_metadata?.username ?? '');
