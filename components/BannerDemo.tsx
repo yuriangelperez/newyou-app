@@ -2,10 +2,16 @@ import { useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Colors, Spacing } from '../constants/theme';
-import { MP_MODO_DEMO } from '../services/pagosService';
+import { MP_MODO_DEMO } from '../constants/demo';
 
-/** Link de descarga del APK demo (variable URL_APK_DEMO del repo, la pone deploy-web.yml). */
-const URL_APK = process.env.EXPO_PUBLIC_URL_APK ?? '';
+/**
+ * Link de descarga del APK demo. Por defecto, el archivo newyou-demo.apk del último Release
+ * de GitHub (link fijo: subir un APK nuevo no cambia el QR ni este botón). Se puede
+ * reemplazar con la variable URL_APK_DEMO del repo (la pone deploy-web.yml).
+ */
+const URL_APK =
+  process.env.EXPO_PUBLIC_URL_APK ||
+  'https://github.com/yuriangelperez/newyou-app/releases/latest/download/newyou-demo.apk';
 
 /**
  * Franja de la web demo (rama demo, /newyou-app/demo/): avisa que es la versión de la

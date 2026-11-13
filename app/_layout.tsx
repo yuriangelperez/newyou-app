@@ -65,8 +65,8 @@ export default function RootLayout() {
     Montserrat_700Bold: require('@expo-google-fonts/montserrat/700Bold/Montserrat_700Bold.ttf'),
   });
 
-  // Sin sesión la tarjeta la muestra el login en cada inicio. Con una sesión guardada la app
-  // salta el login, así que acá aparece sólo la primera vez en el dispositivo.
+  // La tarjeta sale sólo la primera vez en el dispositivo: sin sesión la muestra el login y,
+  // con una sesión guardada (la app salta el login), se muestra acá.
   useEffect(() => {
     void bienvenidaVista().then((vista) => setMostrarBienvenida(!vista));
   }, []);

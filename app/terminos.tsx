@@ -70,6 +70,8 @@ export default function TerminosScreen() {
 
       {tipo ? (
         <View style={[styles.pie, { paddingBottom: insets.bottom + Spacing.sm }]}>
+          {/* Mismo ancho que el texto: en la web de escritorio queda centrado debajo. */}
+          <View style={styles.pieContenido}>
           <Pressable
             testID="terminos-casilla"
             accessibilityRole="checkbox"
@@ -100,6 +102,7 @@ export default function TerminosScreen() {
               <Text style={styles.botonTexto}>ACEPTAR</Text>
             )}
           </Pressable>
+          </View>
         </View>
       ) : null}
     </View>
@@ -145,6 +148,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.sm,
   },
+  pieContenido: { width: '100%', maxWidth: 800 - 2 * Spacing.md, alignSelf: 'center' },
   casillaFila: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
   casilla: {
     width: 22,

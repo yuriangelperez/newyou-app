@@ -14,6 +14,12 @@ export const TARJETAS_PRUEBA: { numero: string; marca: MarcaTarjeta; tipo: TipoT
   { numero: '5287338310253304', marca: 'Mastercard', tipo: 'debito' },
 ];
 
+/** true si el número es una de las tarjetas de prueba (la versión demo sólo acepta éstas). */
+export function esTarjetaDePrueba(numero: string) {
+  const digitos = numero.replace(/\D/g, '');
+  return TARJETAS_PRUEBA.some((tarjeta) => tarjeta.numero === digitos);
+}
+
 /** Prefijos (BIN) de débito conocidos además de las tarjetas de prueba. */
 const BINES_DEBITO = ['400276', '528733', '451766', '517562', '589657'];
 

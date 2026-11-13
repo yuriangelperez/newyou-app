@@ -37,12 +37,8 @@ export function medioPermitido(medio: MedioPago, entrega: Entrega) {
   return !(medio === 'Efectivo' && entrega === 'domicilio');
 }
 
-/**
- * Mercado Pago simulado: con EXPO_PUBLIC_MP_MODO=demo (rama demo, perfil "demo" de EAS y
- * web /newyou-app/demo/) se usa una pantalla de pago propia que anda para cualquiera, sin
- * cuenta de Mercado Pago. Si no, el Checkout Pro de Mercado Pago con credenciales de prueba.
- */
-export const MP_MODO_DEMO = process.env.EXPO_PUBLIC_MP_MODO === 'demo';
+/** Mercado Pago simulado (versión demo): ver constants/demo.ts. */
+export { MP_MODO_DEMO } from '../constants/demo';
 
 /** Cómo termina el pago simulado: lo elige el comprador en la pantalla de simulación. */
 export type ResultadoSimulado = 'aprobado' | 'rechazado' | 'cancelado';

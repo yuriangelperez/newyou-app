@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomTabBar } from "../components/BottomTabBar";
+import { TarjetaBienvenida } from "../components/TarjetaBienvenida";
 import { PRODUCT_DETAIL_ICONS } from "../constants/assets";
 import { ROUTES } from "../constants/routes";
 import { Colors, esModoOscuro, EstiloBarraEstado, Radius } from "../constants/theme";
@@ -37,6 +38,8 @@ export default function AjustesScreen() {
   const push = usePushNotifications();
   // Se guardan en el perfil (migración 16) y el correo de compra respeta "Notificaciones por correo".
   const [preferencias, setPreferencias] = useState<Preferencias | null>(null);
+  // "¿Qué es New You?": la misma tarjeta de bienvenida que sale la primera vez.
+  const [verBienvenida, setVerBienvenida] = useState(false);
 
   useEffect(() => {
     obtenerPreferencias()
@@ -146,6 +149,14 @@ export default function AjustesScreen() {
         <Text style={styles.sectionTitle}>INFORMACIÓN</Text>
         <View style={styles.card}>
           <SettingButton
+            title="¿Qué es New You?"
+            detail="Volvé a ver la presentación de la app."
+            styles={styles}
+            onPress={() => setVerBienvenida(true)}
+            testID="ajustes-que-es-new-you"
+          />
+          <View style={styles.divider} />
+          <SettingButton
             title="Política de privacidad"
             detail="Conocé cómo cuidamos tus datos."
             styles={styles}
@@ -176,6 +187,8 @@ export default function AjustesScreen() {
         onPressCart={() => router.push(ROUTES.cart)}
         onPressMenu={() => router.push(ROUTES.profile)}
       />
+
+      <TarjetaBienvenida visible={verBienvenida} onCerrar={() => setVerBienvenida(false)} />
     </View>
   );
 }
@@ -222,14 +235,16 @@ function SettingButton({
   detail,
   styles,
   onPress,
+  testID,
 }: {
   title: string;
   detail: string;
   styles: SettingStyles;
   onPress?: () => void;
+  testID?: string;
 }) {
   return (
-    <Pressable style={styles.settingRow} accessibilityRole="button" onPress={onPress}>
+    <Pressable style={styles.settingRow} accessibilityRole="button" onPress={onPress} testID={testID}>
       <View style={styles.settingCopy}>
         <Text style={styles.settingTitle}>{title}</Text>
         <Text style={styles.settingDetail}>{detail}</Text>

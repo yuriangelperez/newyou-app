@@ -1,19 +1,22 @@
-// Copia de FormularioTarjeta.tsx: este archivo ya no hace falta y se puede borrar.
+// Mismo formulario que FormularioTarjeta.tsx (la web usa este archivo): mantenerlos iguales.
 import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Radius, Spacing } from '../constants/theme';
+import { MP_MODO_DEMO } from '../constants/demo';
 import {
   calcularCuotas,
   DatosTarjeta,
   INTERES_CUOTAS,
   detectarMarca,
+  detectarTipo,
   formatearNumero,
   formatearVencimiento,
   largoCvv,
   soloDigitos,
+  TARJETAS_PRUEBA,
   validarTarjeta,
 } from '../utils/tarjeta';
 
@@ -30,6 +33,22 @@ interface FormularioTarjetaProps {
 const CUOTAS = Object.keys(INTERES_CUOTAS).map(Number);
 const VACIO = { numero: '', titular: '', vencimiento: '', cvv: '', dni: '', cuotas: 1 };
 
+/**
+ * Versión demo (EXPO_PUBLIC_MP_MODO=demo): la tarjeta se elige de la lista de prueba y los
+ * datos vienen cargados y no se pueden editar, así nadie escribe una tarjeta real en la
+ * presentación. El titular de prueba decide el resultado (ver pago-tarjeta).
+ */
+const RESULTADOS_DEMO = [
+  { titular: 'APRO', etiqueta: 'Aprobado' },
+  { titular: 'FUND', etiqueta: 'Sin fondos' },
+  { titular: 'OTHE', etiqueta: 'Rechazado' },
+];
+
+function datosDePrueba(numero: string, titular = 'APRO'): DatosTarjeta {
+  const amex = detectarMarca(numero) === 'American Express';
+  return { numero, titular, vencimiento: '11/30', cvv: amex ? '1234' : '123', dni: '12345678', cuotas: 1 };
+}
+
 const formatPrecio = (valor: number) => `$${Math.round(valor).toLocaleString('es-AR')}`;
 
 /**
@@ -38,7 +57,11 @@ const formatPrecio = (valor: number) => `$${Math.round(valor).toLocaleString('es
  */
 export function FormularioTarjeta({ visible, monto, tipo, procesando, onPagar, onCancelar }: FormularioTarjetaProps) {
   const insets = useSafeAreaInsets();
-  const [datos, setDatos] = useState<DatosTarjeta>(VACIO);
+  const demo = MP_MODO_DEMO;
+  const tarjetasDemo = TARJETAS_PRUEBA.filter((tarjeta) => tarjeta.tipo === tipo);
+  const [datos, setDatos] = useState<DatosTarjeta>(() =>
+    demo && tarjetasDemo[0] ? datosDePrueba(tarjetasDemo[0].numero) : VACIO,
+  );
   const [intentado, setIntentado] = useState(false);
   // El aviso va dentro del formulario: un Toast quedaría tapado por el Modal.
   const [rechazo, setRechazo] = useState<string | null>(null);
@@ -48,8 +71,12 @@ export function FormularioTarjeta({ visible, monto, tipo, procesando, onPagar, o
   // Débito siempre en 1 pago; en crédito el total suma el interés de las cuotas elegidas.
   const aPagar = calcularCuotas(monto, tipo === 'debito' ? 1 : datos.cuotas);
   const errores = validarTarjeta(datos, new Date(), tipo);
-  // El tipo de tarjeta se avisa apenas se completa el número, sin esperar a "Pagar".
-  const errorTipo = !intentado && errores.numero?.startsWith('Esta tarjeta es') ? errores.numero : null;
+  // Apenas se completa el número se avisa si es inválido o si es de débito/crédito
+  // (TC-PAGO-06), sin esperar a "Pagar".
+  const digitos = soloDigitos(datos.numero);
+  const numeroCompleto = digitos.length >= (marca === 'American Express' ? 15 : 16);
+  const errorTipo = !intentado && numeroCompleto && errores.numero ? errores.numero : null;
+  const tipoDetectado = numeroCompleto && !errores.numero ? detectarTipo(digitos) : null;
   const cambiar = (campo: keyof DatosTarjeta) => (valor: string) => {
     setRechazo(null);
     setDatos((previo) => ({ ...previo, [campo]: valor }));
@@ -69,7 +96,10 @@ export function FormularioTarjeta({ visible, monto, tipo, procesando, onPagar, o
       // Por seguridad se borra el código; el resto queda para corregir. No se marca
       // como error: el motivo ya se muestra arriba del botón.
       setRechazo(motivo);
-      setDatos((previo) => ({ ...previo, cvv: '' }));
+      // En la demo el código viene fijo y no se puede volver a escribir: no se borra.
+      if (!demo) {
+        setDatos((previo) => ({ ...previo, cvv: '' }));
+      }
       setIntentado(false);
     }
   };
@@ -99,25 +129,87 @@ export function FormularioTarjeta({ visible, monto, tipo, procesando, onPagar, o
             </View>
           </View>
 
+          {demo ? (
+            <View testID="tarjeta-demo">
+              <View style={styles.avisoDemo}>
+                <Text style={styles.avisoDemoTexto}>
+                  Versión demo: elegí una tarjeta de prueba. Los datos vienen cargados y no se cobra nada. No uses una
+                  tarjeta real.
+                </Text>
+              </View>
+              <Text style={styles.label}>Tarjeta de prueba</Text>
+              <View style={styles.opciones}>
+                {tarjetasDemo.map((tarjeta) => {
+                  const elegida = datos.numero === tarjeta.numero;
+                  return (
+                    <Pressable
+                      key={tarjeta.numero}
+                      testID={`tarjeta-demo-${tarjeta.numero.slice(-4)}`}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: elegida }}
+                      disabled={procesando}
+                      onPress={() => {
+                        setRechazo(null);
+                        setDatos((previo) => ({ ...datosDePrueba(tarjeta.numero, previo.titular), cuotas: previo.cuotas }));
+                      }}
+                      style={[styles.opcion, elegida && styles.opcionElegida]}>
+                      <Text style={styles.opcionTexto}>{`${tarjeta.marca} •••• ${tarjeta.numero.slice(-4)}`}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text style={styles.label}>Resultado del pago</Text>
+              <View style={styles.opciones}>
+                {RESULTADOS_DEMO.map((opcion) => {
+                  const elegida = datos.titular === opcion.titular;
+                  return (
+                    <Pressable
+                      key={opcion.titular}
+                      testID={`tarjeta-demo-resultado-${opcion.titular}`}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: elegida }}
+                      disabled={procesando}
+                      onPress={() => {
+                        setRechazo(null);
+                        setDatos((previo) => ({ ...previo, titular: opcion.titular }));
+                      }}
+                      style={[styles.opcion, elegida && styles.opcionElegida]}>
+                      <Text style={styles.opcionTexto}>{opcion.etiqueta}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
           <Text style={styles.label}>Número de tarjeta</Text>
           <TextInput
             testID="tarjeta-numero"
-            style={[styles.input, intentado && errores.numero && styles.inputError]}
-            value={formatearNumero(datos.numero)}
-            onChangeText={(valor) => cambiar('numero')(soloDigitos(valor))}
+            editable={!demo}
+            style={[styles.input, intentado && errores.numero && styles.inputError, demo && styles.inputFijo]}
+            // Sólo dígitos en el campo: reformatear con espacios mientras se escribe movía
+            // el cursor en Android y desordenaba el número. Con espacios se ve en la tarjeta de arriba.
+            value={datos.numero}
+            onChangeText={(valor) => cambiar('numero')(soloDigitos(valor).slice(0, 19))}
             keyboardType="number-pad"
             placeholder="1234 5678 9012 3456"
             placeholderTextColor={Colors.textMuted}
-            maxLength={23}
+            maxLength={19}
             autoComplete="cc-number"
           />
           {error('numero')}
-          {errorTipo ? <Text style={styles.error}>{errorTipo}</Text> : null}
+          {errorTipo ? <Text style={styles.error} testID="tarjeta-aviso-numero">{errorTipo}</Text> : null}
+          {tipoDetectado ? (
+            <Text style={styles.ok} testID="tarjeta-tipo-detectado">
+              {`${marca} ${tipoDetectado === 'debito' ? 'débito' : 'crédito'} ✓`}
+            </Text>
+          ) : null}
 
           <Text style={styles.label}>Nombre del titular</Text>
           <TextInput
             testID="tarjeta-titular"
-            style={[styles.input, intentado && errores.titular && styles.inputError]}
+            editable={!demo}
+            style={[styles.input, intentado && errores.titular && styles.inputError, demo && styles.inputFijo]}
             value={datos.titular}
             onChangeText={cambiar('titular')}
             autoCapitalize="characters"
@@ -132,7 +224,8 @@ export function FormularioTarjeta({ visible, monto, tipo, procesando, onPagar, o
               <Text style={styles.label}>Vencimiento</Text>
               <TextInput
                 testID="tarjeta-vencimiento"
-                style={[styles.input, intentado && errores.vencimiento && styles.inputError]}
+                editable={!demo}
+                style={[styles.input, intentado && errores.vencimiento && styles.inputError, demo && styles.inputFijo]}
                 value={datos.vencimiento}
                 onChangeText={(valor) => cambiar('vencimiento')(formatearVencimiento(valor))}
                 keyboardType="number-pad"
@@ -146,7 +239,8 @@ export function FormularioTarjeta({ visible, monto, tipo, procesando, onPagar, o
               <Text style={styles.label}>Código de seguridad</Text>
               <TextInput
                 testID="tarjeta-cvv"
-                style={[styles.input, intentado && errores.cvv && styles.inputError]}
+                editable={!demo}
+                style={[styles.input, intentado && errores.cvv && styles.inputError, demo && styles.inputFijo]}
                 value={datos.cvv}
                 onChangeText={(valor) => cambiar('cvv')(soloDigitos(valor))}
                 keyboardType="number-pad"
@@ -162,7 +256,8 @@ export function FormularioTarjeta({ visible, monto, tipo, procesando, onPagar, o
           <Text style={styles.label}>DNI del titular</Text>
           <TextInput
             testID="tarjeta-dni"
-            style={[styles.input, intentado && errores.dni && styles.inputError]}
+            editable={!demo}
+            style={[styles.input, intentado && errores.dni && styles.inputError, demo && styles.inputFijo]}
             value={datos.dni}
             onChangeText={(valor) => cambiar('dni')(soloDigitos(valor))}
             keyboardType="number-pad"
@@ -223,10 +318,12 @@ export function FormularioTarjeta({ visible, monto, tipo, procesando, onPagar, o
             )}
           </Pressable>
 
+          {demo ? null : (
           <Pressable accessibilityRole="button" onPress={() => setVerPrueba((v) => !v)}>
             <Text style={styles.enlace}>{verPrueba ? 'Ocultar tarjetas de prueba' : 'Ver tarjetas de prueba'}</Text>
           </Pressable>
-          {verPrueba ? (
+          )}
+          {verPrueba && !demo ? (
             <Text style={styles.ayuda}>
               {'Pago simulado, no se cobra nada.\n'}
               {'Crédito: 4509 9535 6623 3704 · 5031 7557 3453 0604\n'}
@@ -280,7 +377,29 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat_400Regular',
   },
   inputError: { borderColor: Colors.danger },
+  // Demo: datos fijos, se ven pero no se editan.
+  inputFijo: { backgroundColor: Colors.backgroundMuted, color: Colors.textMuted },
+  avisoDemo: {
+    borderWidth: 1,
+    borderColor: Colors.secondary,
+    backgroundColor: Colors.accentSoft,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+  },
+  avisoDemoTexto: { color: Colors.textStrong, fontSize: 13, fontFamily: 'Montserrat_500Medium' },
+  opciones: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  opcion: {
+    borderWidth: 1,
+    borderColor: Colors.secondary,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  opcionElegida: { backgroundColor: Colors.tertiary, borderColor: Colors.primary, borderWidth: 2 },
+  opcionTexto: { color: Colors.primary, fontSize: 13, fontFamily: 'Montserrat_500Medium' },
   error: { color: Colors.danger, fontSize: 12, fontFamily: 'Montserrat_500Medium', marginTop: 4 },
+  ok: { color: Colors.success, fontSize: 12, fontFamily: 'Montserrat_600SemiBold', marginTop: 4 },
   fila: { flexDirection: 'row', columnGap: Spacing.sm },
   columna: { flex: 1 },
   cuotas: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },

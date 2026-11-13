@@ -132,6 +132,16 @@ En main y testing el Checkout Pro real ahora **no deja que el WebView salte a la
 (se frenan los links `intent://`, `mercadopago://` y `market://`, ver `esLinkExterno` en `services/pagosService.ts`).
 Ahí hay que pagar con un usuario de prueba comprador o como invitado con una tarjeta de prueba.
 
+**Tarjetas en la demo:** el formulario no deja escribir. Se elige una de las tarjetas de prueba (crédito o
+débito según el medio) y el resultado (Aprobado `APRO`, Sin fondos `FUND`, Rechazado `OTHE`); número, vencimiento
+`11/30`, código y DNI vienen cargados. Además, con `MP_MODO_DEMO=true` la función `pago-tarjeta` rechaza cualquier
+tarjeta que no sea de prueba ("En la versión demo sólo se aceptan tarjetas de prueba"), aunque alguien la mande
+desde otra versión de la app. El interruptor de la app está en `constants/demo.ts`.
+
+**Botón "Descargar APK":** apunta a `https://github.com/yuriangelperez/newyou-app/releases/latest/download/newyou-demo.apk`
+(link fijo). Para publicar un APK: GitHub > Releases > Draft a new release, subir el archivo con el nombre
+`newyou-demo.apk` y publicar. La variable `URL_APK_DEMO` es opcional y reemplaza ese link.
+
 ### Puesta en marcha de la demo (una vez)
 
 1. Activar la simulación en Supabase y redesplegar la función:
@@ -139,6 +149,7 @@ Ahí hay que pagar con un usuario de prueba comprador o como invitado con una ta
    ```bash
    npx supabase secrets set MP_MODO_DEMO=true
    npx supabase functions deploy pago-mercadopago
+   npx supabase functions deploy pago-tarjeta
    ```
 
 2. Crear la rama `demo` desde la rama con estos cambios y subirla (`git push -u origin demo`).

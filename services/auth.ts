@@ -1,4 +1,5 @@
 import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
 
 import { VERSION_TERMINOS } from '../constants/terminos';
 import { errorTraducido } from './erroresSupabase';
@@ -7,8 +8,22 @@ import { supabase } from './supabase';
 const CREDENCIALES_INCORRECTAS = 'Correo/usuario o contraseña incorrectos.';
 const CORREO_YA_REGISTRADO = 'Ya existe una cuenta con ese correo. Iniciá sesión o recuperá tu contraseña.';
 
+/**
+ * URL a la que vuelven los enlaces de los correos. En el celular, el esquema de la app
+ * (newyou://ruta o exp://... en Expo Go). En la web, la página actual con su ruta base:
+ * en GitHub Pages la app vive en /newyou-app/, /newyou-app/testing/ o /newyou-app/demo/,
+ * y Linking.createURL la dejaba afuera (el enlace terminaba en un 404).
+ */
+export function urlDeRetorno(ruta: string) {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const base = (process.env.EXPO_BASE_URL ?? '').replace(/\/$/, '');
+    return `${window.location.origin}${base}/${ruta}`;
+  }
+  return Linking.createURL(ruta);
+}
+
 /** Ruta a la que vuelve el enlace de confirmación del registro (newyou://confirmar-correo). */
-export const URL_CONFIRMAR_CORREO = () => Linking.createURL('confirmar-correo');
+export const URL_CONFIRMAR_CORREO = () => urlDeRetorno('confirmar-correo');
 
 /** Busca el correo de un nombre de usuario (sin distinguir mayúsculas) para ingresar con él. */
 async function correoDeUsuario(usuario: string) {
@@ -128,7 +143,7 @@ function esCorreoSinConfirmar(error: { message?: string; code?: string }) {
 }
 
 /** Ruta a la que vuelve el enlace del correo (newyou://nueva-contrasena, o la URL web en el navegador). */
-export const URL_NUEVA_CONTRASENA = () => Linking.createURL('nueva-contrasena');
+export const URL_NUEVA_CONTRASENA = () => urlDeRetorno('nueva-contrasena');
 
 /** Envía el correo para restablecer la contraseña. */
 export async function enviarRecuperacion(email: string) {
