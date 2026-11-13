@@ -10,6 +10,9 @@
 //   - "crear": arma la preferencia del Checkout Pro con los precios del servidor y devuelve el link.
 //   - "verificar": pregunta a Mercado Pago cómo quedó el pago y lo guarda en la compra.
 //   - "cancelar": el comprador cerró el pago sin pagar; se anula la compra y vuelve el stock.
+//   - "simular" ({ resultado }): pago simulado de la versión demo (presentación). Sólo anda con
+//     el secreto MP_MODO_DEMO=true:  supabase secrets set MP_MODO_DEMO=true
+//     "aprobado" registra el pago; "rechazado" o "cancelado" anulan la compra y devuelven el stock.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { llamarMp, registrarPago, sincronizarCompra } from '../_shared/mercadopago.ts';
@@ -41,8 +44,8 @@ Deno.serve(async (req) => {
   const { data: auth } = await usuario.auth.getUser();
   if (!auth?.user) return respuesta({ error: 'Sesión requerida' }, 401);
 
-  const { accion, compraid } = await req.json().catch(() => ({}));
-  if (!compraid || !['crear', 'verificar', 'cancelar'].includes(accion)) {
+  const { accion, compraid, resultado } = await req.json().catch(() => ({}));
+  if (!compraid || !['crear', 'verificar', 'cancelar', 'simular'].includes(accion)) {
     return respuesta({ error: 'Pedido inválido' }, 400);
   }
 
@@ -56,6 +59,24 @@ Deno.serve(async (req) => {
   if (!compra) return respuesta({ error: 'Compra no encontrada' }, 404);
 
   try {
+    if (accion === 'simular') {
+      if (Deno.env.get('MP_MODO_DEMO') !== 'true') {
+        return respuesta({ error: 'El pago simulado está apagado (falta el secreto MP_MODO_DEMO=true)' }, 403);
+      }
+      if (!['aprobado', 'rechazado', 'cancelado'].includes(resultado)) {
+        return respuesta({ error: 'Resultado inválido' }, 400);
+      }
+      if (compra.estado_pago !== 'pendiente' || compra.metodo_pago !== 'Mercado Pago') {
+        return respuesta({ error: 'Esta compra no tiene un pago pendiente con Mercado Pago' }, 409);
+      }
+      // Un rechazo en la demo termina como en el real: se anula la compra y vuelve el stock.
+      const registrada =
+        resultado === 'aprobado'
+          ? await registrarPago(admin, compra.compraid, 'aprobado', `DEMO-${Date.now()}`)
+          : await registrarPago(admin, compra.compraid, 'cancelado');
+      return respuesta({ estado: registrada.estado_pago });
+    }
+
     if (accion === 'crear') {
       // De paso libera el stock de compras viejas que nunca se pagaron.
       await admin.rpc('anular_pagos_vencidos');

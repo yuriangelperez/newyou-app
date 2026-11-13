@@ -1,8 +1,12 @@
 # Publica la versión web de la app en GitHub Pages:
 #   main    -> https://yuriangelperez.github.io/newyou-app/
 #   testing -> https://yuriangelperez.github.io/newyou-app/testing/
-# GitHub Pages tiene un solo sitio por repo, así que en cada corrida se compilan las dos
-# ramas y se publican juntas, cada una en su carpeta.
+#   demo    -> https://yuriangelperez.github.io/newyou-app/demo/   (presentación: pagos simulados)
+# GitHub Pages tiene un solo sitio por repo, así que en cada corrida se compilan las
+# ramas y se publican juntas, cada una en su carpeta. La rama demo es opcional: si no
+# existe, se publican sólo main y testing.
+# Link del botón "Descargar APK" de la demo: variable URL_APK_DEMO del repo
+# (Settings > Secrets and variables > Actions > Variables), con el link del build de EAS.
 # Corre cuando algo llega a testing, después de que version.yml sube la versión de main
 # (así la web de main se compila con el número nuevo), o a mano desde la pestaña Actions.
 # El workflow de tests (test.yml) sigue aparte; este sólo compila y publica.
@@ -10,7 +14,7 @@ name: Deploy web (GitHub Pages)
 
 on:
   push:
-    branches: [testing]
+    branches: [testing, demo]
   workflow_run:
     workflows: [Versión]
     types: [completed]
@@ -47,6 +51,22 @@ jobs:
         with:
           ref: testing
           path: rama-testing
+
+      - name: ¿Existe la rama demo?
+        id: demo
+        run: |
+          if git ls-remote --exit-code --heads "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" demo > /dev/null; then
+            echo "existe=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "existe=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout demo
+        if: steps.demo.outputs.existe == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: demo
+          path: rama-demo
 
       - name: Configurar Node
         uses: actions/setup-node@v4
@@ -105,14 +125,31 @@ jobs:
           npx expo export -p web
           node ../ayuda/restaurar-ruta.js
 
+      - name: Compilar demo
+        if: steps.demo.outputs.existe == 'true'
+        working-directory: rama-demo
+        env:
+          BASE: /newyou-app/demo
+          EXPO_PUBLIC_MP_MODO: demo
+          EXPO_PUBLIC_URL_APK: ${{ vars.URL_APK_DEMO }}
+        run: |
+          npm ci
+          node ../ayuda/ruta-base.js
+          npx expo export -p web
+          node ../ayuda/restaurar-ruta.js
+
       # 404.html: si se entra directo a una ruta (o se recarga), Pages devuelve 404.html,
-      # que manda a la app que corresponde (main o testing) con la ruta en ?p=.
+      # que manda a la app que corresponde (main, testing o demo) con la ruta en ?p=.
       # invitacion/: la página de paso de las invitaciones queda en la URL que ya usa la app.
       - name: Armar sitio
         run: |
           mkdir -p sitio/testing sitio/invitacion
           cp -r rama-main/dist/. sitio/
           cp -r rama-testing/dist/. sitio/testing/
+          if [ -d rama-demo/dist ]; then
+            mkdir -p sitio/demo
+            cp -r rama-demo/dist/. sitio/demo/
+          fi
           # Se usa la de main; si main todavía no la tiene, la de testing.
           for rama in main testing; do
             if [ -f "rama-$rama/docs/invitacion/index.html" ]; then
@@ -126,7 +163,8 @@ jobs:
           <script>
             (function () {
               var ruta = location.pathname;
-              var base = ruta.indexOf('/newyou-app/testing/') === 0 ? '/newyou-app/testing' : '/newyou-app';
+              var base = ruta.indexOf('/newyou-app/testing/') === 0 ? '/newyou-app/testing'
+                : ruta.indexOf('/newyou-app/demo/') === 0 ? '/newyou-app/demo' : '/newyou-app';
               var q = new URLSearchParams(location.search);
               q.set('p', ruta.slice(base.length) || '/');
               location.replace(base + '/?' + q.toString() + location.hash);

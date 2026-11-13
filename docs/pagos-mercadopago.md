@@ -103,3 +103,57 @@ débito de prueba de Mercado Pago (4002 7686 9439 5619, código 123, vencimiento
 No uses tu cuenta real de Mercado Pago con credenciales de prueba: el pago falla.
 
 - Con `CONT`: pantalla "Compra registrada" (pago en revisión) y el vendedor no puede confirmar el pedido.
+
+## Versión demo (presentación del 16/11)
+
+En el celular el Checkout Pro saltaba a la **app de Mercado Pago**, que usa la cuenta real del teléfono: con
+credenciales de prueba ese pago siempre falla. Para la presentación y para que cualquiera pruebe la app
+(APK o web) sin cuenta de Mercado Pago, la **rama `demo`** usa un pago con Mercado Pago **simulado**.
+
+| | main / testing | demo |
+| --- | --- | --- |
+| Mercado Pago | Checkout Pro real (credenciales de prueba) | Pantalla simulada dentro de New You |
+| Se activa con | (nada) | `EXPO_PUBLIC_MP_MODO=demo` |
+| APK | perfil `preview` | perfil `demo` (canal `demo`) |
+| Web | `/newyou-app/` y `/newyou-app/testing/` | `/newyou-app/demo/` (con botón "Descargar APK") |
+
+Cómo funciona:
+
+1. `confirmar_compra` registra la compra y reserva el stock, igual que siempre (`estado_pago = 'pendiente'`).
+2. Se abre `components/PagoMercadoPagoDemo.tsx`: total, orden, "Dinero en cuenta" o "Tarjeta de débito guardada"
+   y el botón **Pagar**. Muestra "Procesando el pago..." un poco más de un segundo.
+3. La app llama a `pago-mercadopago` con `accion: 'simular'`. El **servidor** registra el resultado con
+   `registrar_pago_mp` (`mp_payment_id = DEMO-...`): el celular no puede marcar una compra como pagada si el
+   secreto `MP_MODO_DEMO` no está en `true`.
+   - **Pagar**: pago aprobado, correo de compra y pantalla de confirmación (como un pago real).
+   - **Simular pago rechazado** o **Cancelar**: se anula la compra, vuelve el stock y el carrito queda igual.
+
+En main y testing el Checkout Pro real ahora **no deja que el WebView salte a la app de Mercado Pago**
+(se frenan los links `intent://`, `mercadopago://` y `market://`, ver `esLinkExterno` en `services/pagosService.ts`).
+Ahí hay que pagar con un usuario de prueba comprador o como invitado con una tarjeta de prueba.
+
+### Puesta en marcha de la demo (una vez)
+
+1. Activar la simulación en Supabase y redesplegar la función:
+
+   ```bash
+   npx supabase secrets set MP_MODO_DEMO=true
+   npx supabase functions deploy pago-mercadopago
+   ```
+
+2. Crear la rama `demo` desde la rama con estos cambios y subirla (`git push -u origin demo`).
+3. Copiar `deploy-web.yml` (versión con la rama demo) a `.github/workflows/` en las ramas que lo usan.
+4. GitHub > **Settings > Environments > github-pages > Deployment branches**: agregar `demo`.
+5. APK: `eas build -p android --profile demo`. Copiar el link de descarga del build y guardarlo en
+   GitHub > **Settings > Secrets and variables > Actions > Variables** como `URL_APK_DEMO`.
+   Volver a correr "Deploy web" para que el botón "Descargar APK" use ese link.
+6. Para actualizar el APK demo sin reinstalar: `EXPO_PUBLIC_MP_MODO=demo eas update --channel demo --environment preview`.
+
+### Probar la demo
+
+- Web: <https://yuriangelperez.github.io/newyou-app/demo/>. Arriba aparece "Versión demo de New You" y el botón
+  "Descargar APK".
+- Agregar una prenda, checkout con **Mercado Pago**, **PAGAR Y FINALIZAR** > **Pagar**: confirmación de compra,
+  correo y en Supabase `compras.estado_pago = 'aprobado'` con `mp_payment_id` que empieza con `DEMO-`.
+- **Simular pago rechazado**: aviso "El pago fue rechazado", el stock vuelve y el carrito sigue igual.
+- Sin el secreto `MP_MODO_DEMO=true`: aviso "El pago simulado está apagado" y la compra no se marca como pagada.

@@ -16,6 +16,7 @@ import Toast from "react-native-toast-message";
 import { BottomTabBar } from "../../components/BottomTabBar";
 import { FormularioTarjeta } from "../../components/FormularioTarjeta";
 import { PagoMercadoPago } from "../../components/PagoMercadoPago";
+import { PagoMercadoPagoDemo } from "../../components/PagoMercadoPagoDemo";
 import { SelectorDireccion } from "../../components/ui/SelectorDireccion";
 import { PRODUCT_DETAIL_ICONS } from "../../constants/assets";
 
@@ -45,6 +46,9 @@ import {
   crearPagoMp,
   esPagoOnline,
   medioPermitido,
+  MP_MODO_DEMO,
+  ResultadoSimulado,
+  simularPagoMp,
   EstadoPago,
   PagoIniciado,
   pagarConTarjeta,
@@ -117,6 +121,8 @@ export default function CheckoutScreen() {
     compra: CompraConfirmada;
     direccionEntrega: string;
     checkoutPro?: PagoIniciado;
+    /** Versión demo: Mercado Pago simulado dentro de la app (EXPO_PUBLIC_MP_MODO=demo). */
+    demo?: boolean;
   } | null>(null);
   const [verificandoPago, setVerificandoPago] = useState(false);
 
@@ -240,6 +246,8 @@ export default function CheckoutScreen() {
           // Tarjetas: formulario propio. Mercado Pago: Checkout Pro.
           if (tipoTarjeta(medioPago)) {
             setPago({ compra, direccionEntrega });
+          } else if (MP_MODO_DEMO) {
+            setPago({ compra, direccionEntrega, demo: true });
           } else {
             const checkoutPro = await crearPagoMp(compra.compraid);
             setPago({ compra, direccionEntrega, checkoutPro });
@@ -379,6 +387,35 @@ export default function CheckoutScreen() {
       return detalle ?? "La tarjeta rechazó el pago. Probá con otra o elegí otro medio de pago.";
     } catch (error) {
       return traducirError(error);
+    } finally {
+      setVerificandoPago(false);
+    }
+  };
+
+  /** Versión demo: el servidor registra el resultado elegido en la pantalla simulada. */
+  const resolverPagoDemo = async (resultado: ResultadoSimulado) => {
+    if (!pago || verificandoPago) {
+      return;
+    }
+
+    try {
+      setVerificandoPago(true);
+      const estado = await simularPagoMp(pago.compra.compraid, resultado);
+      if (estado === "aprobado") {
+        enviarCorreoCompra(pago.compra.compraid);
+        setPago(null);
+        finalizarCompra(pago.compra, pago.direccionEntrega, estado);
+        return;
+      }
+      setPago(null);
+      operationKey.current = generarOperationKey();
+      Toast.show({
+        type: "error",
+        text1: resultado === "rechazado" ? "El pago fue rechazado" : "Pago cancelado",
+        text2: "No se cobró nada. Podés intentar de nuevo o elegir otro medio de pago.",
+      });
+    } catch (error) {
+      Toast.show({ type: "error", text1: "No pudimos registrar el pago", text2: traducirError(error) });
     } finally {
       setVerificandoPago(false);
     }
@@ -583,7 +620,7 @@ export default function CheckoutScreen() {
         </View>
       </KeyboardAwareScrollView>
 
-      {pago && !pago.checkoutPro ? (
+      {pago && !pago.checkoutPro && !pago.demo ? (
         <FormularioTarjeta
           visible
           monto={Number(pago.compra.total)}
@@ -591,6 +628,16 @@ export default function CheckoutScreen() {
           procesando={verificandoPago}
           onPagar={pagarTarjeta}
           onCancelar={() => void cancelarTarjeta()}
+        />
+      ) : null}
+
+      {pago?.demo ? (
+        <PagoMercadoPagoDemo
+          visible
+          total={Number(pago.compra.total)}
+          orden={Number(pago.compra.numero_orden)}
+          procesando={verificandoPago}
+          onResultado={(resultado) => void resolverPagoDemo(resultado)}
         />
       ) : null}
 

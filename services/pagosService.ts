@@ -37,6 +37,25 @@ export function medioPermitido(medio: MedioPago, entrega: Entrega) {
   return !(medio === 'Efectivo' && entrega === 'domicilio');
 }
 
+/**
+ * Mercado Pago simulado: con EXPO_PUBLIC_MP_MODO=demo (rama demo, perfil "demo" de EAS y
+ * web /newyou-app/demo/) se usa una pantalla de pago propia que anda para cualquiera, sin
+ * cuenta de Mercado Pago. Si no, el Checkout Pro de Mercado Pago con credenciales de prueba.
+ */
+export const MP_MODO_DEMO = process.env.EXPO_PUBLIC_MP_MODO === 'demo';
+
+/** Cómo termina el pago simulado: lo elige el comprador en la pantalla de simulación. */
+export type ResultadoSimulado = 'aprobado' | 'rechazado' | 'cancelado';
+
+/**
+ * true si el WebView no tiene que abrir la URL: links que no son http(s), como
+ * intent:// o mercadopago://, que mandarían a la app de Mercado Pago (con la cuenta
+ * real del celular, donde un pago de prueba siempre falla).
+ */
+export function esLinkExterno(url: string) {
+  return !/^https?:\/\//i.test(url) && !url.startsWith('about:') && !url.startsWith('data:');
+}
+
 export function esPagoOnline(medio: MedioPago) {
   return MEDIOS_ONLINE.includes(medio);
 }
@@ -78,7 +97,7 @@ export function resultadoDeRetorno(url: string, retorno: string): RetornoPago | 
 /** Llama a una Edge Function de pagos y devuelve su mensaje de error si falla. */
 async function invocarPago<T>(
   funcion: 'pago-mercadopago' | 'pago-tarjeta',
-  accion: 'crear' | 'pagar' | 'verificar' | 'cancelar',
+  accion: 'crear' | 'pagar' | 'verificar' | 'cancelar' | 'simular',
   compraid: number,
   extra: Record<string, unknown> = {},
 ): Promise<T> {
@@ -123,5 +142,16 @@ export async function verificarPagoMp(compraid: number) {
  */
 export async function cancelarPagoMp(compraid: number) {
   const { estado } = await invocarPago<{ estado: EstadoPago }>('pago-mercadopago', 'cancelar', compraid);
+  return estado;
+}
+
+/**
+ * Pago simulado de Mercado Pago (MP_MODO_DEMO). El servidor registra el resultado:
+ * aprobado, o rechazado/cancelado (se anula la compra y vuelve el stock).
+ */
+export async function simularPagoMp(compraid: number, resultado: ResultadoSimulado) {
+  const { estado } = await invocarPago<{ estado: EstadoPago }>('pago-mercadopago', 'simular', compraid, {
+    resultado,
+  });
   return estado;
 }
