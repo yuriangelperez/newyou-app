@@ -5,6 +5,7 @@ export const ROUTES = {
   newPassword: '/nueva-contrasena',
   checkEmail: '/revisar-correo',
   confirmEmail: '/confirmar-correo',
+  guest: '/invitado',
 
   home: '/(tabs)',
 

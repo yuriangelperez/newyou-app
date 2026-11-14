@@ -247,7 +247,7 @@ export default function NuevoProductoScreen() {
           control={control}
           name="nombre"
           label="Nombre"
-          placeholder="Campera denim oversize"
+          placeholder="Ej. Campera oversize"
           textInputProps={{ maxLength: NOMBRE_MAX }}
         />
 

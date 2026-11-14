@@ -188,6 +188,7 @@ export default function RootLayout() {
             <Stack.Screen name="(auth)/register" />
             <Stack.Screen name="(auth)/recuperar" />
             <Stack.Screen name="(auth)/revisar-correo" />
+            <Stack.Screen name="(auth)/invitado" />
           </Stack.Protected>
           <Stack.Protected guard={haySesion}>
             <Stack.Screen name="(tabs)" />

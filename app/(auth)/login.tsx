@@ -17,7 +17,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { TarjetaBienvenida } from '../../components/TarjetaBienvenida';
 import { bienvenidaVista, marcarBienvenidaVista } from '../../services/bienvenidaService';
 import { BRANDING_LOGO } from '../../constants/assets';
-import { CuentaInvitado, CUENTAS_INVITADO, INVITADO_DISPONIBLE } from '../../constants/demo';
+import { INVITADO_DISPONIBLE } from '../../constants/demo';
 import { ROUTES } from '../../constants/routes';
 import { Colors, Radius, Shadow } from '../../constants/theme';
 import { useEsEscritorio } from '../../hooks/useEsEscritorio';
@@ -31,8 +31,6 @@ export default function LoginScreen() {
   const esEscritorio = useEsEscritorio();
   const [errorServidor, setErrorServidor] = useState('');
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
-  const [elegirInvitado, setElegirInvitado] = useState(false);
-  const [entrandoInvitado, setEntrandoInvitado] = useState<CuentaInvitado['tipo'] | null>(null);
   // La tarjeta de bienvenida sale sólo la primera vez que se abre la app en el dispositivo
   // (queda guardado al cerrarla). Después se puede volver a ver con "¿Qué es New You?".
   const [mostrarBienvenida, setMostrarBienvenida] = useState(false);
@@ -49,7 +47,7 @@ export default function LoginScreen() {
     defaultValues: { identificador: '', contrasena: '' },
   });
   const error = errors.identificador?.message ?? errors.contrasena?.message ?? errorServidor;
-  const cargando = isSubmitting || entrandoInvitado !== null;
+  const cargando = isSubmitting;
 
   const goToHome = handleSubmit(async ({ identificador, contrasena }) => {
     setErrorServidor('');
@@ -78,22 +76,6 @@ export default function LoginScreen() {
 
     router.replace(ROUTES.home);
   });
-
-  // Versión demo: entra con la cuenta compartida que eligió (constants/demo.ts).
-  const entrarComoInvitado = async (cuenta: CuentaInvitado) => {
-    setErrorServidor('');
-    setEntrandoInvitado(cuenta.tipo);
-    try {
-      const { error: authError } = await signInWithPassword(cuenta.correo, cuenta.contrasena);
-      if (authError) {
-        setErrorServidor('No se pudo entrar como invitado. Probá registrarte.');
-        return;
-      }
-      router.replace(ROUTES.home);
-    } finally {
-      setEntrandoInvitado(null);
-    }
-  };
 
   const goToRegister = () => {
     router.push(ROUTES.register);
@@ -194,38 +176,17 @@ export default function LoginScreen() {
           <Text style={styles.buttonText}>REGISTRARSE</Text>
         </TouchableOpacity>
 
-        {INVITADO_DISPONIBLE && !elegirInvitado ? (
+        {/* Versión demo: la elección de cuenta va en su propia pantalla, así el login no se mueve. */}
+        {INVITADO_DISPONIBLE ? (
           <TouchableOpacity
             testID="login-invitado"
             style={styles.guestButton}
-            onPress={() => setElegirInvitado(true)}
+            onPress={() => router.push(ROUTES.guest)}
             disabled={cargando}>
             <Text style={styles.guestText}>ENTRAR COMO INVITADO</Text>
           </TouchableOpacity>
         ) : null}
       </View>
-
-      {INVITADO_DISPONIBLE && elegirInvitado ? (
-        <View style={styles.guestPanel} testID="login-invitado-opciones">
-          <Text style={styles.guestTitle}>¿Cómo querés probar New You?</Text>
-          {CUENTAS_INVITADO.map((cuenta) => (
-            <TouchableOpacity
-              key={cuenta.tipo}
-              testID={`login-invitado-${cuenta.tipo}`}
-              style={styles.guestOption}
-              onPress={() => void entrarComoInvitado(cuenta)}
-              disabled={cargando}>
-              <Text style={styles.guestOptionTitle}>
-                {entrandoInvitado === cuenta.tipo ? 'ENTRANDO...' : cuenta.etiqueta}
-              </Text>
-              <Text style={styles.guestOptionDetail}>{cuenta.detalle}</Text>
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity onPress={() => setElegirInvitado(false)} disabled={cargando}>
-            <Text style={styles.guestCancel}>Volver</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
 
       <TouchableOpacity onPress={() => router.push(ROUTES.forgotPassword)}>
         <Text style={styles.resetText}>¿OLVIDASTE TU CONTRASEÑA?</Text>
@@ -371,35 +332,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.secondary,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  guestPanel: {
-    width: '85%',
-    maxWidth: 400,
-    gap: 10,
-    marginBottom: 30,
-  },
-  guestTitle: {
-    color: Colors.primary,
-    fontSize: 15,
-    textAlign: 'center',
-    fontFamily: 'Montserrat_700Bold',
-  },
-  guestOption: {
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.secondary,
-    backgroundColor: Colors.surface,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  guestOptionTitle: { color: Colors.secondary, fontSize: 16, fontFamily: 'Montserrat_700Bold' },
-  guestOptionDetail: { color: Colors.textMuted, fontSize: 12, marginTop: 2, fontFamily: 'Montserrat_400Regular' },
-  guestCancel: {
-    color: Colors.primary,
-    fontSize: 14,
-    textAlign: 'center',
-    textDecorationLine: 'underline',
-    fontFamily: 'Montserrat_500Medium',
   },
   guestText: {
     fontSize: 16,

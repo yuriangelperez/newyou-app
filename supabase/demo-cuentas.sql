@@ -11,9 +11,12 @@
 -- 2) Copia el perfil de la cuenta del MVP equivalente (tipo de cuenta, dirección, ubicación)
 --    y sus direcciones guardadas.
 -- 3) Da por aceptados los términos, para que no les aparezcan al entrar ni al publicar.
--- 4) VendedorDemo: copia las prendas publicadas de newyou.testing+vendedor@gmail.com.
+-- 4) Las prendas publicadas de particulares reales se reparten mitad y mitad: una va a
+--    VendedorDemo y la siguiente a la tienda de EmpresaDemo (así el catálogo demo no queda vacío,
+--    porque las cuentas demo sólo ven lo demo, y las dos cuentas quedan parejas).
 -- 5) EmpresaDemo: copia la empresa de newyou.testing+empresa@gmail.com (nombre con "Demo",
---    slug con "-demo"), sus sedes, sus prendas y el stock de cada sede.
+--    slug con "-demo"), sus sedes, sus prendas y el stock de cada sede. Además suma las prendas
+--    de las demás empresas reales, en su primera sede y con el mismo stock.
 -- Las copias usan las mismas fotos: borrar una prenda demo no borra la foto ni la original.
 -- Se puede volver a correr: no duplica cuentas, prendas ni empresa; sólo completa lo que falte
 -- y vuelve el perfil (nombre, tipo de cuenta) a como estaba. Para dejarlas como nuevas, usar
@@ -50,8 +53,38 @@ BEGIN
 END;
 $$;
 
+-- Copia una prenda y le deja la misma verificación que la original (el trigger de alta mandaba
+-- las usadas a revisar de nuevo).
+CREATE OR REPLACE FUNCTION pg_temp.clonar_producto(p_id bigint, p_cambios jsonb)
+RETURNS bigint
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_orig public.productos;
+  v_nuevo bigint;
+BEGIN
+  SELECT * INTO v_orig FROM public.productos WHERE productoid = p_id;
+  v_nuevo := pg_temp.clonar('productos', 'productoid', p_id, p_cambios);
+  PERFORM set_config('newyou.verificacion', '1', true);
+  UPDATE public.productos d
+     SET estado_verificacion = v_orig.estado_verificacion,
+         verificacion_codigo = v_orig.verificacion_codigo,
+         verificacion_foto_url = v_orig.verificacion_foto_url,
+         verificacion_vence_at = v_orig.verificacion_vence_at,
+         verificacion_motivo = v_orig.verificacion_motivo,
+         verificado_por = v_orig.verificado_por,
+         verificado_at = v_orig.verificado_at
+   WHERE d.productoid = v_nuevo;
+  PERFORM set_config('newyou.verificacion', '', true);
+  RETURN v_nuevo;
+END;
+$$;
+
 DO $$
 DECLARE
+  v_demos text[] := ARRAY['newyou.testing+compradordemo@gmail.com', 'newyou.testing+vendedordemo@gmail.com',
+                          'newyou.testing+empresademo@gmail.com'];
+  v_sede_principal bigint;
   v_cuenta record;
   v_nuevo uuid;
   v_original uuid;
@@ -96,6 +129,11 @@ BEGIN
     );
     END IF;
 
+    -- Si ya se corrió demo-aislamiento.sql, la cuenta queda marcada como demo.
+    IF to_regclass('public.cuentas_demo') IS NOT NULL THEN
+      EXECUTE 'INSERT INTO public.cuentas_demo (usuario_id) VALUES ($1) ON CONFLICT DO NOTHING' USING v_nuevo;
+    END IF;
+
     -- 3) Términos aceptados (comprador y vendedor).
     INSERT INTO public.terminos_aceptaciones (usuario_id, tipo, version)
     VALUES (v_nuevo, 'comprador', '2026-11-09'), (v_nuevo, 'vendedor', '2026-11-09')
@@ -129,24 +167,18 @@ BEGIN
     -- 4) Prendas de particular (sin empresa), menos los borradores.
     IF v_cuenta.usuario = 'VendedorDemo'
        AND NOT EXISTS (SELECT 1 FROM public.productos WHERE creado_por = v_nuevo AND empresa_id IS NULL) THEN
+      -- La mitad de las de particulares reales (no las de otras cuentas demo); la otra mitad va a la tienda.
       FOR v_prod IN
-        SELECT * FROM public.productos
-         WHERE creado_por = v_original AND empresa_id IS NULL AND estado <> 'borrador'
+        SELECT x.productoid FROM (
+          SELECT pr.productoid, row_number() OVER (ORDER BY pr.productoid) AS n
+            FROM public.productos pr
+           WHERE pr.empresa_id IS NULL AND pr.estado <> 'borrador' AND pr.creado_por IS NOT NULL
+             AND pr.creado_por NOT IN (SELECT id FROM auth.users WHERE lower(email) = ANY (v_demos))
+        ) x
+         WHERE x.n % 2 = 1
+         ORDER BY x.productoid
       LOOP
-        v_prod_nuevo := pg_temp.clonar('productos', 'productoid', v_prod.productoid,
-          jsonb_build_object('creado_por', v_nuevo));
-        -- Las usadas quedan con la misma verificación que la original (el trigger las mandaba a revisar).
-        PERFORM set_config('newyou.verificacion', '1', true);
-        UPDATE public.productos d
-           SET estado_verificacion = v_prod.estado_verificacion,
-               verificacion_codigo = v_prod.verificacion_codigo,
-               verificacion_foto_url = v_prod.verificacion_foto_url,
-               verificacion_vence_at = v_prod.verificacion_vence_at,
-               verificacion_motivo = v_prod.verificacion_motivo,
-               verificado_por = v_prod.verificado_por,
-               verificado_at = v_prod.verificado_at
-         WHERE d.productoid = v_prod_nuevo;
-        PERFORM set_config('newyou.verificacion', '', true);
+        PERFORM pg_temp.clonar_producto(v_prod.productoid, jsonb_build_object('creado_por', v_nuevo));
       END LOOP;
     END IF;
 
@@ -185,7 +217,7 @@ BEGIN
       FOR v_prod IN
         SELECT * FROM public.productos WHERE empresa_id = v_empresa_orig AND estado <> 'borrador'
       LOOP
-        v_prod_nuevo := pg_temp.clonar('productos', 'productoid', v_prod.productoid,
+        v_prod_nuevo := pg_temp.clonar_producto(v_prod.productoid,
           jsonb_build_object(
             'creado_por', v_nuevo,
             'empresa_id', v_empresa_nueva,
@@ -197,6 +229,40 @@ BEGIN
          WHERE s.producto_id = v_prod.productoid
            AND v_sedes ? s.sede_id::text;
       END LOOP;
+
+      -- Prendas de las demás empresas reales, en la primera sede de la empresa demo.
+      SELECT min(id) INTO v_sede_principal FROM public.sedes WHERE empresa_id = v_empresa_nueva;
+      IF v_sede_principal IS NOT NULL THEN
+        FOR v_prod IN
+          SELECT pr.* FROM public.productos pr
+            JOIN public.empresas e ON e.id = pr.empresa_id
+           WHERE pr.empresa_id NOT IN (v_empresa_orig, v_empresa_nueva) AND pr.estado <> 'borrador'
+             AND e.creada_por NOT IN (SELECT id FROM auth.users WHERE lower(email) = ANY (v_demos))
+           ORDER BY pr.productoid
+        LOOP
+          v_prod_nuevo := pg_temp.clonar_producto(v_prod.productoid,
+            jsonb_build_object('creado_por', v_nuevo, 'empresa_id', v_empresa_nueva, 'sede_id', v_sede_principal));
+          INSERT INTO public.stock_sede (producto_id, sede_id, cantidad)
+          VALUES (v_prod_nuevo, v_sede_principal, greatest(coalesce(v_prod.stock, 0), 0));
+        END LOOP;
+
+        -- La otra mitad de las prendas de particulares reales (las pares), como prendas de la tienda.
+        FOR v_prod IN
+          SELECT x.* FROM (
+            SELECT pr.*, row_number() OVER (ORDER BY pr.productoid) AS n
+              FROM public.productos pr
+             WHERE pr.empresa_id IS NULL AND pr.estado <> 'borrador' AND pr.creado_por IS NOT NULL
+               AND pr.creado_por NOT IN (SELECT id FROM auth.users WHERE lower(email) = ANY (v_demos))
+          ) x
+           WHERE x.n % 2 = 0
+           ORDER BY x.productoid
+        LOOP
+          v_prod_nuevo := pg_temp.clonar_producto(v_prod.productoid,
+            jsonb_build_object('creado_por', v_nuevo, 'empresa_id', v_empresa_nueva, 'sede_id', v_sede_principal));
+          INSERT INTO public.stock_sede (producto_id, sede_id, cantidad)
+          VALUES (v_prod_nuevo, v_sede_principal, greatest(coalesce(v_prod.stock, 0), 0));
+        END LOOP;
+      END IF;
     END IF;
 
     RAISE NOTICE '% lista', v_cuenta.usuario;
