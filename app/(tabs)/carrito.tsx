@@ -20,6 +20,7 @@ import { Colors, EstiloBarraEstado, Radius, Shadow } from '../../constants/theme
 import { calcularEnvio, obtenerTiendasDeRetiro, TiendaRetiro } from '../../services/comprasService';
 import { selectSubtotal, selectTotalItems, useCarritoStore } from '../../stores/useCarritoStore';
 import { usePuedeVender } from '../../hooks/usePuedeVender';
+import { useRefrescarCarrito } from '../../hooks/useRefrescarCarrito';
 
 const CANVAS_WIDTH = 412;
 
@@ -28,6 +29,7 @@ export default function CarritoScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const items = useCarritoStore((state) => state.items);
+  useRefrescarCarrito();
   const restarUnidad = useCarritoStore((state) => state.restarUnidad);
   const incrementarUnidad = useCarritoStore((state) => state.incrementarUnidad);
   const eliminarProducto = useCarritoStore((state) => state.eliminarProducto);

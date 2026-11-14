@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
   const admin = createClient(url, servicio);
   const { data: compra, error } = await admin
     .from('compras')
-    .select('compraid, metodo_pago, total, interes_cuotas, estado_pago')
+    .select('compraid, metodo_pago, total, interes_cuotas, estado_pago, mp_payment_id')
     .eq('compraid', compraid)
     .eq('usuario_id', auth.user.id)
     .maybeSingle();
@@ -81,14 +81,19 @@ Deno.serve(async (req) => {
   const tipoEsperado = TIPO_DEL_MEDIO[compra.metodo_pago];
   if (!tipoEsperado) return respuesta({ error: 'Esta compra no se paga con tarjeta' }, 409);
 
+  // Pago en revisión (titular CONT): ya hay una operación, no se cobra otra vez ni se anula
+  // desde el celular; lo resuelve el procesador.
+  const enRevision = compra.estado_pago === 'pendiente' && Boolean(compra.mp_payment_id);
+
   try {
     if (accion === 'cancelar') {
+      if (enRevision) return respuesta({ estado: compra.estado_pago });
       const anulada = await registrarPago(admin, compra.compraid, 'cancelado');
       return respuesta({ estado: anulada.estado_pago });
     }
 
     // 'rechazado' también: el comprador puede reintentar con otra tarjeta.
-    if (!['pendiente', 'rechazado'].includes(compra.estado_pago)) {
+    if (enRevision || !['pendiente', 'rechazado'].includes(compra.estado_pago)) {
       return respuesta({ error: 'Esta compra no tiene un pago pendiente' }, 409);
     }
 

@@ -84,4 +84,46 @@ describe('useCarritoStore: descuentos', () => {
     expect(item.precio).toBe(750);
     expect(item.precioOriginal).toBe(1000);
   });
+
+  describe('actualizarDesdeCatalogo', () => {
+    it('pone al día precio, descuento y stock, y recorta la cantidad', () => {
+      agregar(remera, 'M', 'Negro', 4);
+
+      const cambio = useCarritoStore
+        .getState()
+        .actualizarDesdeCatalogo([{ ...remera, precio: 2000, descuentoPorcentaje: 25, stock: 2 }]);
+
+      const [item] = useCarritoStore.getState().items;
+      expect(cambio).toBe(true);
+      expect(item.precio).toBe(1500);
+      expect(item.precioOriginal).toBe(2000);
+      expect(item.stock).toBe(2);
+      expect(item.cantidad).toBe(2);
+    });
+
+    it('saca las prendas que ya no están publicadas', () => {
+      agregar(remera);
+      agregar(jean);
+
+      useCarritoStore.getState().actualizarDesdeCatalogo([remera]);
+
+      expect(useCarritoStore.getState().items.map((item) => item.productoId)).toEqual(['1']);
+    });
+
+    it('marca agotada sin borrarla la prenda que se quedó sin stock', () => {
+      agregar(remera, 'M', 'Negro', 2);
+
+      useCarritoStore.getState().actualizarDesdeCatalogo([{ ...remera, stock: 0, disponible: false }]);
+
+      const [item] = useCarritoStore.getState().items;
+      expect(item.disponible).toBe(false);
+      expect(item.cantidad).toBe(2);
+    });
+
+    it('no avisa cambios si todo sigue igual', () => {
+      agregar(remera);
+
+      expect(useCarritoStore.getState().actualizarDesdeCatalogo([remera])).toBe(false);
+    });
+  });
 });

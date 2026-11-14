@@ -40,6 +40,12 @@ interface CarritoStore {
   eliminarProducto: (key: string) => void;
   actualizarCantidad: (key: string, cantidad: number) => void;
   vaciarCarrito: () => void;
+  /**
+   * Pone al día precio, descuento y stock con lo que hay ahora en el catálogo (el carrito
+   * queda guardado en el celular y el vendedor puede cambiarlos). Las prendas que ya no
+   * están publicadas se sacan. Devuelve si cambió algo.
+   */
+  actualizarDesdeCatalogo: (productos: Producto[]) => boolean;
 }
 
 function makeKey(productoId: string, talle: string, color: string) {
@@ -190,6 +196,48 @@ export const useCarritoStore = create<CarritoStore>()(
 
       vaciarCarrito: () => {
         set({ items: [] });
+      },
+
+      actualizarDesdeCatalogo: (productos) => {
+        const porId = new Map(productos.map((producto) => [producto.id, producto]));
+        let cambio = false;
+
+        set((state) => {
+          const items = state.items.flatMap((item) => {
+            const producto = porId.get(item.productoId);
+            if (!producto) {
+              cambio = true;
+              return [];
+            }
+
+            const stock = producto.stock ?? 0;
+            const actualizado: CarritoItem = {
+              ...item,
+              nombre: producto.nombre,
+              precio: calcularPrecioFinal(producto),
+              precioOriginal: producto.precio,
+              descuentoPorcentaje: producto.descuentoPorcentaje,
+              stock,
+              disponible: producto.disponible && stock > 0,
+              cantidad: stock > 0 ? Math.min(item.cantidad, stock) : item.cantidad,
+            };
+
+            if (
+              actualizado.precio !== item.precio ||
+              actualizado.precioOriginal !== item.precioOriginal ||
+              actualizado.stock !== item.stock ||
+              actualizado.disponible !== item.disponible ||
+              actualizado.cantidad !== item.cantidad
+            ) {
+              cambio = true;
+            }
+            return [actualizado];
+          });
+
+          return cambio ? { items } : state;
+        });
+
+        return cambio;
       },
     }),
     {

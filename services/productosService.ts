@@ -659,6 +659,30 @@ export async function getProductoById(id: string) {
   return producto;
 }
 
+/**
+ * Precio, descuento y stock actuales de varias prendas (para refrescar el carrito guardado).
+ * Las que ya no existen o no están publicadas no vuelven.
+ */
+export async function getProductosPorIds(ids: string[]): Promise<Producto[]> {
+  const client = assertSupabaseConfigured();
+  const productoids = ids.map(Number).filter(Number.isFinite);
+  if (productoids.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await client
+    .from(TABLA_PRODUCTOS)
+    .select(COLUMNAS_PRODUCTO)
+    .in("productoid", productoids)
+    .eq("estado", "publicada");
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => mapRowToProducto(row as ProductoRow));
+}
+
 /*
  * Crear producto.
  */
@@ -797,11 +821,17 @@ export async function deleteProducto(id: string) {
 /*
  * Escuchar cambios en tiempo real de productos.
  */
+let suscripcionesProductos = 0;
+
 export function subscribeToProductos(onChange: () => void) {
   const client = assertSupabaseConfigured();
 
+  // Un canal por suscripción: el inicio, Categorías y el detalle escuchan a la vez, y
+  // supabase.channel() con el mismo nombre devuelve el canal ya suscripto (agregarle otro
+  // callback tira error) y al cerrarlo uno se cortaba el de los demás.
+  suscripcionesProductos += 1;
   const channel = client
-    .channel("productos-realtime")
+    .channel(`productos-realtime-${suscripcionesProductos}`)
     .on(
       "postgres_changes",
       {

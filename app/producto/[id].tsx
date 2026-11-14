@@ -223,6 +223,12 @@ export default function ProductDetailScreen() {
       return false;
     }
 
+    // El servidor tampoco deja comprarse lo propio (migración 29).
+    if (puedeGestionar) {
+      Toast.show({ type: "info", text1: "Es tu publicación", text2: "No podés comprar tus propias prendas." });
+      return false;
+    }
+
     if (esperandoVerificacion) {
       Toast.show({
         type: "info",
@@ -281,7 +287,10 @@ export default function ProductDetailScreen() {
       key: `directa::${producto.id}::${selectedSize}::${selectedColor}`,
       productoId: producto.id,
       nombre: producto.nombre,
-      precio: producto.precio,
+      // Igual que el carrito: precio con descuento y el de lista para mostrarlo tachado.
+      precio: calcularPrecioFinal(producto),
+      precioOriginal: producto.precio,
+      descuentoPorcentaje: producto.descuentoPorcentaje,
       imagen: producto.imagen,
       categoria: producto.categoria,
       disponible: producto.disponible,

@@ -62,6 +62,7 @@ import {
 } from "../../stores/useCarritoStore";
 import { DatosTarjeta } from "../../utils/tarjeta";
 import { usePuedeVender } from "../../hooks/usePuedeVender";
+import { useRefrescarCarrito } from "../../hooks/useRefrescarCarrito";
 
 const CANVAS_WIDTH = 412;
 
@@ -82,6 +83,8 @@ const formatPrecio = (valor: number) => `$${valor.toLocaleString("es-AR")}`;
 export default function CheckoutScreen() {
   const router = useRouter();
   const itemsCarrito = useCarritoStore((state) => state.items);
+  // Precios y stock al día antes de mostrar el total (el servidor cobra los actuales).
+  useRefrescarCarrito();
   const compraDirecta = useCarritoStore((state) => state.compraDirecta);
   const limpiarCompraDirecta = useCarritoStore((state) => state.limpiarCompraDirecta);
   const vaciarCarrito = useCarritoStore((state) => state.vaciarCarrito);
